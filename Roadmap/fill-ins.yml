@@ -28,7 +28,7 @@ project_sections: |
 
   - **This repo has no Roadmap of its own any more.** Epics, seeds, audits, bets and LEARNINGS for the plugin,
     the kit and the template live in
-    [`danybgoode/golden-beans` → `Roadmap/`](https://github.com/danybgoode/golden-beans/tree/main/Roadmap)
+    [`danybgoode/golden-frijoles` → `Roadmap/`](https://github.com/danybgoode/golden-frijoles/tree/main/Roadmap)
     (`09-platform-infra/`), moved there by `one-roadmap`. Where this document says `Roadmap/LEARNINGS.md`,
     `Roadmap/00-ideas/` or `Roadmap/bets/`, read **that** repo's. Don't groom, scaffold or promote learnings here:
     `Roadmap/` in this repo keeps only the template sources CI renders and checks.

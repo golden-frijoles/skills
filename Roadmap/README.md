@@ -1,9 +1,9 @@
 # Roadmap — moved
 
 **Golden Frijoles is planned in one place:
-[`danybgoode/golden-beans` → `Roadmap/`](https://github.com/danybgoode/golden-beans/tree/main/Roadmap).**
+[`danybgoode/golden-frijoles` → `Roadmap/`](https://github.com/danybgoode/golden-frijoles/tree/main/Roadmap).**
 This repo's epics, seeds, audits, bets and LEARNINGS moved there on 2026-09-28
-([`one-roadmap`](https://github.com/danybgoode/golden-beans/tree/main/Roadmap/09-platform-infra/one-roadmap)).
+([`one-roadmap`](https://github.com/danybgoode/golden-frijoles/tree/main/Roadmap/09-platform-infra/one-roadmap)).
 Plugin, kit and template work is now under that Roadmap's `09-platform-infra/`, and new seeds go in its `00-ideas/seeds/`.
 
 What stays here, until `public-monorepo` retires this folder, is **template sources only**. CI renders or checks
