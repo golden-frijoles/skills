@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-28
+
+### Changed
+
+- This repository is now a **mirror**. The plugin, the kit and the template are developed in
+  [`danybgoode/golden-beans`](https://github.com/danybgoode/golden-beans) under `skills/`, and every merge there that
+  touches `skills/` is published here as a fast-forward. Install, pinning and releases are unchanged: the install prompt, `golden-frijoles/skills@<tag>`
+  and `@golden-frijoles/kit` on npm (with provenance) all work as before. This is the first release made through the mirror.
+
 ## [0.5.2] - 2026-09-24
 
 ### Fixed
