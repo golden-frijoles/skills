@@ -7,6 +7,64 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-29
+
+### Changed
+
+- **One review rail.** `cross-review.mjs` and `lib/cross-agent-cli.mjs` are now the superset of the three copies
+  that had forked (the template, the origin project and a second consumer): whole-file context, builder/reviewer
+  pairing, the transient-agy fallback and truncation guard, the `readSection('review')` config loader, the codex
+  self-heal onto agy (now also on a stale codex CLI), and a comment that records the model that actually
+  answered. Every consumer's old tests were run against it.
+- **One doctor: `cross-agent-doctor.mjs`** (codex + agy) ships in the template. `agy-doctor.mjs` is an alias for
+  `cross-agent-doctor.mjs agy`. Every fix message names a doctor that exists.
+- **Codex now reviews on a pinned model, `gpt-5.6-terra` at high effort** (was: codex's own configured default).
+  The review's model is then a property of the repo, not of each machine. If your codex account cannot use it,
+  the failure names the escape: **`CODEX_MODEL=default`** uses codex's built-in default model. Reviews ignore
+  `~/.codex/config.toml` (below), so a custom `model_provider` or base URL is not used either: such a setup
+  routes past codex (`review-route.mjs --exclude codex`). The default
+  `--agent` stays `codex`.
+- **`review-route.mjs` passes `--builder`** in every command it prints, so the same-family refusal (and the
+  codex→agy heal's re-check) fire in normal use. The heal also checks agy's version pin now.
+- **The doctor checks the agy help contract before "signed out"**, so a visible contract break is never
+  reported as merely could-not-look.
+
+### Security
+
+- **The Vibe reviewer runs with every host tool disabled** (`--disabled-tools '*'`, no `--auto-approve`). The
+  read-only allow-list one copy carried let a malicious diff read an absolute path, such as `.env.local`, into a
+  review comment posted on the PR. Reviewers still get the touched files' contents, embedded in the prompt.
+- **`--agent devin` is refused.** A consumer used Devin as a third review pool, but `devin -p` auto-approves
+  read-only tools with no flag to disable them, so the same injected-diff read applies. Devin stays the prose
+  writer.
+- **Codex reviews locked down:** `--sandbox read-only --ignore-user-config --ignore-rules --ephemeral`. It used to inherit the
+  user's config — observed: a `workspace-write` sandbox, `on-request` approvals, and the user's MCP servers,
+  a database one among them. Codex can still **read** host files; no flag removes that, so the risk is reduced,
+  not closed. The channel is closed instead:
+- **cross-review never publishes a reply that carries a secret verbatim** — not in a comment, not in a status,
+  and not to Jev. Encoded or transformed output is out of scope for a string match; read access is the real
+  control, and codex keeps it. The reply is checked first, against every value in the project's `.env*` files (root and two levels
+  down, plus `.envrc`), this process's secret-named env vars, the values in the operator's own credential stores (`~/.aws/credentials`,
+  `.netrc`, `.npmrc`, `gh`'s hosts file and a few more — an AWS secret key has no distinctive shape), and common
+  credential shapes. A
+  match posts nothing, fails the status, and prints the reply locally with the match redacted.
+- **cross-review refuses an outsider's diff.** A PR whose author lacks write access to the repo (a fork PR on a
+  public repo, or permission that cannot be read) is refused before any reviewer sees it. Read the diff yourself,
+  then pass `--allow-untrusted-author`. This is the control for what the reviewer can read: no reviewer flag
+  stops codex reading host files, and no string matcher catches an encoded secret. Long opaque base64 runs are
+  withheld too, as defence in depth. **Residual, stated plainly:** a collaborator with write access is still
+  trusted with more than their push access gives them. Their diff can steer codex into reading the *operator's*
+  own files (`~/.aws`, `~/.npmrc`, codex's auth) and encoding the value so no string match catches it. Run the
+  rail only on PRs from people you would hand those files to, or review from a machine that doesn't hold them.
+- **A codex usage cap heals onto agy** like an auth lapse (a different quota pool).
+- **The codex→agy self-heal re-checks the builder.** When agy built the diff, the heal fails loud instead of
+  turning into a same-family review.
+
+### Fixed
+
+- **A signed-out agy is diagnosed as signed out,** not as a broken contract with every model "not listed", and
+  the doctor no longer waits a minute per probe for a login that will not come.
+
 ## [0.5.4] - 2026-09-28
 
 ### Changed

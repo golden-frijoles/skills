@@ -32,7 +32,7 @@ test('the security lens takes a DIFFERENT family from the general pass', () => {
   const plan = planReview({ builder: 'claude', securityPass: true });
   assert.equal(plan.general, 'codex');
   assert.equal(plan.security, 'agy');
-  assert.match(renderPlan(plan, 7, 'o/r'), /--agent antigravity --lens security/);
+  assert.match(renderPlan(plan, 7, 'o/r'), /--agent antigravity --builder claude --lens security/);
 });
 
 test('a capped family falls to the next in the order — no refund ask, no waiting', () => {
@@ -72,4 +72,13 @@ test('--exclude routes past a capped family without any protocol', () => {
 
 test('an unknown builder throws rather than silently routing to the default family', () => {
   assert.throws(() => planReview({ builder: 'gemini' }), /unknown builder/);
+});
+
+test('every emitted command names the builder, so the pairing guard fires in normal use (#188 B3)', () => {
+  const plan = planReview({ builder: 'agy', securityPass: true });
+  const cmds = renderPlan(plan, 7, 'o/r')
+    .split('\n')
+    .filter((l) => l.includes('cross-review.mjs'));
+  assert.equal(cmds.length, 2);
+  for (const c of cmds) assert.match(c, /--builder agy\b/);
 });

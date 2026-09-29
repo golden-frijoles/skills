@@ -91,8 +91,10 @@ export function planReview({ builder, available = PREFERENCE, securityPass = fal
 
 /** The exact commands to run, in order. Pure. */
 export function renderPlan(plan, pr, repo) {
+  // `--builder` rides along so cross-review's pairing guard (and its codex→agy heal re-check) fire in
+  // normal use, not only when someone remembers to pass it (distribute-what-we-use S1, pr-reviewer B3).
   const arg = (f) =>
-    `node scripts/cross-review.mjs ${pr}${repo ? ` --repo ${repo}` : ''} --agent ${AGENT_FLAG[f]}`;
+    `node scripts/cross-review.mjs ${pr}${repo ? ` --repo ${repo}` : ''} --agent ${AGENT_FLAG[f]} --builder ${plan.builder}`;
   const l = [
     `Review plan — PR #${pr}${repo ? ` (${repo})` : ''}`,
     `  built by:       ${plan.builder}`,
@@ -160,7 +162,8 @@ function main() {
       throw e;
     },
   });
-  if (!reviewPresent) die('scripts/review-config.json not found, and golden-frijoles.config.json has no review section');
+  if (!reviewPresent)
+    die('scripts/review-config.json not found, and golden-frijoles.config.json has no review section');
   const config = parseReviewConfig(reviewRaw);
   let securityPass = forceSecurity;
   let trigger = forceSecurity ? 'forced with --security' : null;
