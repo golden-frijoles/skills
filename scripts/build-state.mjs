@@ -11,9 +11,17 @@
 // second source of truth: every field it prints is either a frontmatter value or a fact git/gh reports.
 //
 // ── Which epic, which story, which status ────────────────────────────────────────────────────────────
-// Epic   — the branch: `feat/<slug>`, `fix/…`, `chore/…`, optionally `-s<N>` / `-sprint-<N>` for a stacked
-//          sprint. A branch that names no epic under Roadmap/ is "nothing in flight", said plainly. So are
-//          the default branch and a detached HEAD. It never guesses the nearest epic.
+// Epic   — the branch: `feat|fix|chore|spike|bug|docs/<slug>`, optionally `-s<N>` / `-sprint-<N>` for a
+//          stacked sprint, and optionally any `-<words>` after it (`feat/foo-s4-licences`, `docs/foo-close`).
+//          The LONGEST leading run of the branch's words that names an epic wins, so `feat/aws-s3` is the
+//          `aws-s3` epic when one exists and sprint 3 of `aws` when it doesn't. A branch naming no epic but
+//          a seed (`Roadmap/00-ideas/seeds/<slug>.md`) is that seed's work: a bug, chore or spike with no
+//          epic, or — when the seed carries `epic:` — that epic. A branch naming neither is "nothing in
+//          flight here", said plainly. So are the default branch and a detached HEAD.
+// Elsewhere — builders usually work in their own `git worktree` while the session sits on `main`, and
+//          worktrees share one set of refs. So when this checkout has nothing in flight, the view lists
+//          the other worktrees that do (resolved exactly like this one, offline) and, failing those, the
+//          epics whose WRITTEN `status:` is in-progress. It reads; it never guesses which one you meant.
 // Story  — D2: the newest commit on the branch (base..HEAD) whose subject names `S<n>.<m>` / `Story n.m`,
 //          else the newest session-journal entry naming one AND this epic's slug, else `unknown`. A named
 //          story that no sprint of this epic lists is `unknown` too — a confident wrong story is the
@@ -53,7 +61,11 @@ import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journa
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BRANCH_RE = /^(?:feat|fix|chore|spike|bug)\/(.+?)(?:-(?:s|sprint-?)(\d+))?$/;
+const BRANCH_PREFIX_RE = /^(?:feat|fix|chore|spike|bug|docs)\/(.+)$/;
+const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9_.]*(?:-[A-Za-z0-9_.]+)*$/;
+const SEEDS_DIR = ['Roadmap', '00-ideas', 'seeds'];
+const MAX_WORKTREES = 8; // resolved per refresh — a pile of stale agent worktrees must not stall the view
+const MAX_ELSEWHERE_LINES = 4;
 const STORY_IN_TEXT_RE = /\b(?:S|Story\s+)(\d+)\.(\d+)\b/g;
 const rank = (phase) => PHASES.indexOf(phase);
 
@@ -62,10 +74,44 @@ export function storyIdsIn(text) {
   return [...String(text).matchAll(STORY_IN_TEXT_RE)].map((m) => `S${Number(m[1])}.${Number(m[2])}`);
 }
 
-/** `feat/foo-s3` → { slug: 'foo', sprint: 3 }; null for a branch that is not an epic branch. */
+/** A sprint token right after the slug: `s3`, `sprint3`, or `sprint` `3` → 3; else null. */
+function sprintAt(rest) {
+  const m = String(rest[0] ?? '').match(/^s(?:print)?(\d+)$/);
+  if (m) return Number(m[1]);
+  return rest[0] === 'sprint' && /^\d+$/.test(rest[1] ?? '') ? Number(rest[1]) : null;
+}
+
+/**
+ * Every reading of a work branch as `<slug>[-s<N>][-anything]`, LONGEST slug first:
+ * `feat/foo-s4-licences` → foo-s4-licences, foo-s4, foo (sprint 4). The resolver takes the first reading
+ * whose slug names an epic (or a seed) on disk. [] for a branch that isn't a work branch.
+ */
+export function branchCandidates(branch) {
+  const m = String(branch || '').match(BRANCH_PREFIX_RE);
+  if (!m || !SLUG_RE.test(m[1]) || m[1].includes('..')) return [];
+  const tokens = m[1].split('-');
+  const out = [];
+  for (let i = tokens.length; i >= 1; i--) {
+    out.push({
+      slug: tokens.slice(0, i).join('-'),
+      sprint: sprintAt(tokens.slice(i)),
+      exact: i === tokens.length,
+    });
+  }
+  return out;
+}
+
+/**
+ * The syntactic reading alone, no disk: `feat/foo-s3` → { slug: 'foo', sprint: 3 },
+ * `feat/foo-s3-extra` → { slug: 'foo', sprint: 3 }; null for a branch that is not a work branch.
+ */
 export function parseBranch(branch) {
-  const m = String(branch || '').match(BRANCH_RE);
-  return m ? { slug: m[1], sprint: m[2] ? Number(m[2]) : null } : null;
+  const cands = branchCandidates(branch);
+  if (!cands.length) return null;
+  const withSprint = cands.find((c) => c.sprint !== null);
+  return withSprint
+    ? { slug: withSprint.slug, sprint: withSprint.sprint }
+    : { slug: cands[0].slug, sprint: null };
 }
 
 function makeGit(root) {
@@ -129,6 +175,76 @@ function readEpic(root, slug) {
   };
 }
 
+const unquoteNull = (v) => (v === null || v === undefined || v === 'null' || v === '' ? null : v);
+
+function readSeed(root, slug) {
+  const path = join(root, ...SEEDS_DIR, `${slug}.md`);
+  if (!existsSync(path)) return null;
+  const p = parseDocFrontmatter(readFileSync(path, 'utf8'));
+  if (!p.hasFrontmatter) return null;
+  const d = p.data;
+  return {
+    slug,
+    title: d.title ?? slug,
+    type: TYPES_KNOWN.includes(d.type) ? d.type : 'chore',
+    appetite: unquoteNull(d.appetite),
+    risk: unquoteNull(d.risk),
+    status: unquoteNull(d.status),
+    epic: unquoteNull(d.epic),
+    path: `${SEEDS_DIR.join('/')}/${slug}.md`,
+  };
+}
+const TYPES_KNOWN = ['feature', 'spike', 'bug', 'chore'];
+
+/**
+ * What the branch names, longest reading first: an epic, else a seed (a seed that carries `epic:` is that
+ * epic — once scaffolded the seed is funnel-only), else null.
+ */
+function resolveTarget(root, branch) {
+  for (const c of branchCandidates(branch)) {
+    const epic = readEpic(root, c.slug);
+    if (epic) return { kind: 'epic', epic, sprint: c.sprint, match: c.exact ? 'exact' : 'prefix' };
+    const seed = readSeed(root, c.slug);
+    if (seed) {
+      const epicSlug = seed.epic ? String(seed.epic).split('/').pop() : null;
+      const linked = epicSlug ? readEpic(root, epicSlug) : null;
+      if (linked) return { kind: 'epic', epic: linked, sprint: c.sprint, match: 'seed' };
+      return { kind: 'seed', seed, match: c.exact ? 'exact' : 'prefix' };
+    }
+  }
+  return null;
+}
+
+/** Epics whose WRITTEN lifecycle is in-progress — the Roadmap's own answer to "what is open". */
+function openEpics(root) {
+  const roadmap = join(root, 'Roadmap');
+  if (!existsSync(roadmap)) return [];
+  const out = [];
+  for (const macro of readdirSync(roadmap).sort()) {
+    if (!/^\d{2}-/.test(macro)) continue;
+    let dirs = [];
+    try {
+      dirs = readdirSync(join(roadmap, macro), { withFileTypes: true }).filter((d) => d.isDirectory());
+    } catch {
+      continue;
+    }
+    for (const d of dirs) {
+      const readme = join(roadmap, macro, d.name, 'README.md');
+      if (!existsSync(readme)) continue;
+      const p = parseDocFrontmatter(readFileSync(readme, 'utf8'));
+      if (p.data.status !== 'in-progress') continue;
+      out.push({
+        slug: d.name,
+        title: p.data.title ?? d.name,
+        area: p.data.area ?? macro,
+        phase: p.data.phase ?? null,
+        path: `Roadmap/${macro}/${d.name}/README.md`,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * The base to measure "this branch's commits" from: of every default-branch candidate that exists, the one
  * whose merge-base with HEAD is the NEWEST. A stale `origin/main` (local `main` fetched since, or advanced)
@@ -186,15 +302,140 @@ export function namesSlug(text, slug) {
  * Resolve the build state. Every external read is injectable so the tests drive real fixture repos with
  * a fake `gh`: { root, offline, git, gh }. It NEVER throws — it runs once per turn inside a CLI hook, and
  * an exception there is a blank view: any failure is reported as "not in flight", with the reason.
+ * `elsewhere: false` skips the other-worktrees / open-epics scan (used when resolving those worktrees).
  */
 export function resolveBuildState(opts = {}) {
+  let state;
   try {
-    return resolve_(opts);
+    state = resolve_(opts);
   } catch (err) {
-    return notInFlight(
+    state = notInFlight(
       `the resolver could not read this checkout (${err && err.message ? err.message : err})`
     );
   }
+  if (opts.elsewhere === false) return state;
+  try {
+    state.elsewhere = elsewhere_({ root: opts.root, git: opts.git || makeGit(opts.root), state });
+  } catch {
+    state.elsewhere = { worktrees: [], open_epics: [] };
+  }
+  return state;
+}
+
+/** `git worktree list --porcelain` → [{ path, branch, bare, prunable }]. Pure. */
+export function parseWorktrees(porcelain) {
+  const out = [];
+  let cur = null;
+  for (const line of String(porcelain || '').split('\n')) {
+    if (line.startsWith('worktree ')) {
+      cur = { path: line.slice('worktree '.length), branch: null, bare: false, prunable: false };
+      out.push(cur);
+    } else if (!cur) continue;
+    else if (line.startsWith('branch '))
+      cur.branch = line.slice('branch '.length).replace(/^refs\/heads\//, '');
+    else if (line === 'bare') cur.bare = true;
+    else if (line.startsWith('prunable')) cur.prunable = true;
+  }
+  return out;
+}
+
+function samePath(a, b) {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return a === b;
+  }
+}
+
+const DONE_LIFECYCLES = ['shipped', 'archived'];
+
+/**
+ * Work in flight OUTSIDE this checkout: every other worktree on a work branch, resolved exactly like this
+ * one (offline — no `gh` per worktree), and the epics the Roadmap itself says are in progress. Worktrees
+ * share this repo's refs, so this is local reads only.
+ */
+function elsewhere_({ root, git, state }) {
+  const top = tryGit(git, ['rev-parse', '--show-toplevel']) || root;
+  const worktrees = [];
+  const seen = new Set();
+  let resolved = 0;
+  for (const w of parseWorktrees(tryGit(git, ['worktree', 'list', '--porcelain']))) {
+    if (!w.branch || w.bare || w.prunable || samePath(w.path, top) || !existsSync(w.path)) continue;
+    if (!branchCandidates(w.branch).length) continue; // main, release branches: nothing to resolve
+    if (resolved++ >= MAX_WORKTREES) break;
+    const s = resolveBuildState({ root: w.path, offline: true, elsewhere: false });
+    if (!s.in_flight || DONE_LIFECYCLES.includes(s.lifecycle)) continue;
+    const item = s.epic
+      ? { kind: 'epic', slug: s.epic.slug, title: s.epic.title }
+      : { kind: s.kind, slug: s.seed.slug, title: s.seed.title };
+    seen.add(item.slug);
+    worktrees.push({
+      ...item,
+      path: w.path,
+      branch: w.branch,
+      story: s.story ? s.story.id : null,
+      status: s.status ?? null,
+    });
+  }
+  const current = state.in_flight ? (state.epic?.slug ?? state.seed?.slug) : null;
+  const open_epics = openEpics(root).filter((e) => !seen.has(e.slug) && e.slug !== current);
+  return { worktrees, open_epics };
+}
+
+/** A branch naming a seed and no epic: a bug, chore, spike or unscaffolded feature. No stories, no sprints. */
+function seedState({ root, git, gh, offline, branch, seed, match }) {
+  const { ref: base, mergeBase } = baseRef(git);
+  const subjects = mergeBase
+    ? (tryGit(git, ['log', '--format=%s', `${mergeBase}..HEAD`]) || '').split('\n').filter(Boolean)
+    : [];
+  let status = seed.status;
+  let statusSource = seed.status ? 'written' : 'unknown';
+  if (subjects.length) {
+    status = 'Building';
+    statusSource = 'git';
+  }
+  let pr = null;
+  let ghChecked = false;
+  if (!offline) {
+    const res = gh(root, branch);
+    ghChecked = res.ok;
+    pr = res.pr;
+    if (pr) {
+      status = 'In review';
+      statusSource = 'gh';
+    }
+  }
+  return {
+    in_flight: true,
+    kind: seed.type,
+    branch,
+    branch_match: match,
+    epic: null,
+    seed: {
+      slug: seed.slug,
+      title: seed.title,
+      type: seed.type,
+      appetite: seed.appetite,
+      risk: seed.risk,
+      path: seed.path,
+    },
+    sprint: null,
+    story: null,
+    story_source: 'n/a',
+    story_note: null,
+    progress: null,
+    lifecycle: seed.status,
+    status,
+    status_source: statusSource,
+    phase_written: null,
+    evidence: {
+      base,
+      merge_base: mergeBase,
+      commits: subjects.length,
+      pr,
+      gh: offline ? 'skipped (--offline)' : ghChecked ? 'ok' : 'unavailable',
+    },
+  };
 }
 
 function resolve_({ root, offline = false, git = makeGit(root), gh = ghOpenPr } = {}) {
@@ -202,22 +443,23 @@ function resolve_({ root, offline = false, git = makeGit(root), gh = ghOpenPr } 
     return notInFlight('not inside a git checkout (or git is not installed)');
   const branch = tryGit(git, ['symbolic-ref', '-q', '--short', 'HEAD']);
   if (!branch) return notInFlight('detached HEAD — no branch, so no epic in flight');
-  let parsed = parseBranch(branch);
-  if (!parsed)
+  const cands = branchCandidates(branch);
+  if (!cands.length)
     return notInFlight(`on ${branch} — not an epic branch (feat/<slug>…), so no epic in flight`, { branch });
-  // An EXACT epic slug wins over reading `-s<N>` as a sprint suffix: with both `aws` and `aws-s3` on the
-  // board, `feat/aws-s3` is the `aws-s3` epic, never sprint 3 of `aws` (codex, on a consumer copy-in).
-  let epic = null;
-  if (parsed.sprint !== null) {
-    const whole = branch.slice(branch.indexOf('/') + 1);
-    epic = readEpic(root, whole);
-    if (epic) parsed = { slug: whole, sprint: null };
+  // The LONGEST reading that names something wins: with both `aws` and `aws-s3` on the board, `feat/aws-s3`
+  // is the `aws-s3` epic, never sprint 3 of `aws` (codex, on a consumer copy-in).
+  const target = resolveTarget(root, branch);
+  if (!target) {
+    const slug = cands.at(-1).slug;
+    return notInFlight(
+      `${branch} names no epic under Roadmap/ (looked for */${cands[0].slug}/README.md … */${slug}/README.md) and no seed`,
+      { branch }
+    );
   }
-  if (!epic) epic = readEpic(root, parsed.slug);
-  if (!epic)
-    return notInFlight(`${branch} names no epic under Roadmap/ (looked for */${parsed.slug}/README.md)`, {
-      branch,
-    });
+  if (target.kind === 'seed')
+    return seedState({ root, git, gh, offline, branch, seed: target.seed, match: target.match });
+  const epic = target.epic;
+  const parsed = { slug: epic.slug, sprint: target.sprint };
   if (!epic.contract)
     return notInFlight(`${epic.path} predates the frontmatter contract — run scripts/roadmap-backfill.mjs`, {
       branch,
@@ -325,7 +567,10 @@ function resolve_({ root, offline = false, git = makeGit(root), gh = ghOpenPr } 
 
   return {
     in_flight: true,
+    kind: 'epic',
     branch,
+    branch_match: target.match,
+    lifecycle: epic.lifecycle,
     epic: {
       slug: epic.slug,
       title: epic.title,
@@ -368,14 +613,62 @@ function resolve_({ root, offline = false, git = makeGit(root), gh = ghOpenPr } 
   };
 }
 
+const HEADINGS = {
+  bug: 'Currently fixing',
+  chore: 'Currently on a chore',
+  spike: 'Currently investigating',
+  feature: 'Currently shaping',
+};
+const clip = (t, n = 56) => (String(t).length > n ? `${String(t).slice(0, n - 1)}…` : String(t));
+
+/** One line per piece of work elsewhere, worktrees first, capped — the JSON carries the full lists. */
+function elsewhereLines(state, pad) {
+  const e = state.elsewhere || { worktrees: [], open_epics: [] };
+  const items = [
+    ...e.worktrees.map(
+      (w) =>
+        `${pad('Worktree')}${clip(w.title)}${w.story ? ` · ${w.story}` : ''}${w.status ? ` · ${w.status}` : ''} · ${w.branch}`
+    ),
+    ...e.open_epics.map((o) => `${pad('Open')}${clip(o.title)}${o.phase ? ` · ${o.phase}` : ''} · ${o.area}`),
+  ];
+  if (items.length <= MAX_ELSEWHERE_LINES) return items;
+  const shown = items.slice(0, MAX_ELSEWHERE_LINES - 1);
+  return [...shown, `${pad('')}+${items.length - shown.length} more — node scripts/build-state.mjs --json`];
+}
+
 /**
  * The build view as the CLI shows it — a pure function of resolveBuildState's output (Sprint 4's mod
- * renders exactly these lines and nothing else: D3). Five lines under the heading, no box.
+ * renders exactly these lines and nothing else: D3). Five lines under the heading for an epic, no box;
+ * work in other worktrees appears as one `Also` line when this checkout is building, and as the list
+ * itself when it isn't.
  */
 export function renderLines(state) {
-  if (!state.in_flight) return [`No epic in flight — ${state.reason}`];
-  const { epic, story, progress } = state;
   const pad = (label) => `  ${label.padEnd(9)}`;
+  if (!state.in_flight) return [`No epic in flight — ${state.reason}`, ...elsewhereLines(state, pad)];
+  const others = state.elsewhere?.worktrees?.length || 0;
+  const also = others
+    ? [
+        `${pad('Also')}${others} more in other worktrees: ${state.elsewhere.worktrees.map((w) => w.branch).join(', ')}`,
+      ]
+    : [];
+  if (state.seed) {
+    const { seed } = state;
+    const meta = [
+      seed.appetite && `appetite ${seed.appetite}`,
+      seed.risk && `risk ${String(seed.risk).toUpperCase()}`,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    const label = seed.type.charAt(0).toUpperCase() + seed.type.slice(1);
+    return [
+      HEADINGS[seed.type] || 'Currently working on',
+      `${pad(label)}${seed.title}${meta ? `    ${meta}` : ''}`,
+      `${pad('Seed')}${seed.path}`,
+      `${pad('Status')}${state.status || 'unknown'}`,
+      ...also,
+    ];
+  }
+  const { epic, story, progress } = state;
   const cont = ' '.repeat(11);
   const risk = epic.risk ? ` · risk ${epic.risk.toUpperCase()}` : '';
   const lines = ['Currently building', `${pad('Epic')}${epic.title}    ${epic.area}${risk}`];
@@ -394,7 +687,7 @@ export function renderLines(state) {
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
   lines.push(`${pad('Progress')}${storyPart} · ${sprintPart}`);
   lines.push(`${pad('Status')}${state.status || `unknown${state.warning ? ` — ${state.warning}` : ''}`}`);
-  return lines;
+  return [...lines, ...also];
 }
 
 // realpath on both sides: a plugin or checkout reached through a symlink (macOS /tmp → /private/tmp) would

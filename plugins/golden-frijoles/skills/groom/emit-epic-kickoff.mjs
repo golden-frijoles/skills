@@ -17,6 +17,12 @@
 // (default cwd), reads the epic README and EVERY sprint-N.md, substitutes into templates/epic-kickoff.md
 // and prints to stdout. It writes no file — read + print, editorial control stays with the caller.
 //
+// The prompt POINTS at the process instead of restating it. WAYS-OF-WORKING → *Epic-mode builds* is the
+// one copy of the doctrine; an earlier template restated it verbatim and the two had already drifted on the
+// review policy. The test fails if a section the template names is missing, so the pointer can't dangle.
+// What stays in the prompt: the few non-negotiables that went missing when prompts were hand-composed, and
+// rules picked from THIS epic's docs (high risk, a migration, a flag) — see buildEpicRules.
+//
 // Usage:
 //   node skills/groom/emit-epic-kickoff.mjs --epic <slug> [--repo-root <path>]
 
@@ -63,24 +69,63 @@ export function buildSprintFileList(sprints) {
   return sprints.map((s) => s.name).join(', ');
 }
 
-// The per-sprint breakdown at the foot of the prompt: heading, title, and its stories. This is the only
-// part that genuinely varies per epic, and it is deliberately the LAST thing in the prompt — the process
-// contract above it is invariant, so a reader (human or agent) can diff two kickoffs and see only scope.
+// `Story 1.1 — Persist intent ✅ #12. **Decided …**` → `1.1 Persist intent`, clipped. The breakdown is a
+// checklist for the orchestrator and the product owner; the sprint files carry the detail.
+export function compactStory(heading) {
+  const m = String(heading).match(/^Story\s+(\d+\.\d+)\s+[-–—]\s+(.+)$/);
+  if (!m) return String(heading);
+  const title = m[2].replace(/\s+✅.*$/, '').replace(/\*\*/g, '').trim();
+  return `${m[1]} ${title.length > 70 ? `${title.slice(0, 69)}…` : title}`;
+}
+
+// The per-sprint breakdown at the foot of the prompt: one line per sprint, its stories inline. This is the
+// only part that genuinely varies per epic, and it is deliberately the LAST thing in the prompt — the
+// contract above it is invariant, so two kickoffs diff to their scope.
 export function buildSprintBreakdown(sprints) {
   if (!sprints.length) return '(no sprint files found — scaffold the epic first)';
   return sprints
     .map((s) => {
       const stories = s.stories.length
-        ? s.stories.map((h) => `- ${h}`).join('\n')
+        ? s.stories.map(compactStory).join(' · ')
         : '(no `### Story N.M — <title>` headings found in this sprint doc)';
-      const title = s.title ? `: ${s.title}` : '';
-      return `### Sprint ${s.num}${title}\n_(boundary: ${s.name})_\n\n${stories}`;
+      const clean = s.title ? s.title.replace(/^S\d+\s*[—–:-]?\s*/, '') : '';
+      const title = clean ? ` · ${clean}` : '';
+      return `- **S${s.num}${title}** (${s.name}): ${stories}`;
     })
-    .join('\n\n');
+    .join('\n');
 }
 
-export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText }) {
+// Rules that apply to THIS epic only, picked from its docs. A false positive costs one line; a missing one
+// is the incident each rule came from, so the patterns lean inclusive.
+const MIGRATION_RE = /\bmigrations?\b|supabase\/migrations|\bALTER TABLE\b|\bCREATE TABLE\b/i;
+// A flag KEY (`checkout.stripe_enabled`) or a flag write — not the words "kill-switch" / "flag", which every
+// scaffolded README's Definition of Done carries whether or not a flag was planned.
+const FLAG_RE = /\b[a-z][a-z0-9_]*\.[a-z0-9_]+_enabled\b|\bgf flags (?:create|set|on)\b/;
+
+// "No new table, no migration" is the most common way a doc mentions one — strip negated mentions first.
+const NEGATED_RE = /\b(?:no|without|zero|not an?|nor an?)\s+(?:new\s+)?(?:db\s+|database\s+|schema\s+)?migrations?\b/gi;
+
+export function buildEpicRules({ risk, texts }) {
+  const all = texts.join('\n').replace(NEGATED_RE, '');
+  const rules = [];
+  if (String(risk).toUpperCase() === 'HIGH')
+    rules.push(
+      '- **High risk:** the fresh `pr-reviewer` pass is mandatory on every PR, on top of the routed external passes.'
+    );
+  if (MIGRATION_RE.test(all))
+    rules.push(
+      '- **Migration:** apply it BEFORE merging (merging deploys), verify live, merge, then confirm the deploy.'
+    );
+  if (FLAG_RE.test(all))
+    rules.push(
+      '- **Flag:** create it in Golden Frijoles in every env and ACTIVATE it; `gf flags get <key>` must show production.'
+    );
+  return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';
+}
+
+export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText, texts = [] }) {
   return sub(templateText, {
+    EPIC_RULES: buildEpicRules({ risk, texts }),
     MACRO: macro,
     SLUG: slug,
     EPIC_TITLE: epicTitle,
@@ -153,7 +198,7 @@ function main() {
   const sprints = found.map(({ name, num }) => {
     const text = readFileSync(join(dir, name), 'utf8');
     const header = parseSprintHeader(text);
-    return { name, num, title: header ? header.sprintTitle : null, stories: parseStoryHeadings(text) };
+    return { name, num, text, title: header ? header.sprintTitle : null, stories: parseStoryHeadings(text) };
   });
 
   // A single-sprint "epic" is the documented exception, not the default — say so instead of emitting a
@@ -177,6 +222,7 @@ function main() {
       risk: parseEpicRisk(readmeText).toUpperCase(),
       sprints,
       templateText: readFileSync(templatePath, 'utf8'),
+      texts: [readmeText, ...sprints.map((s) => s.text)],
     })
   );
 }

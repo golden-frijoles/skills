@@ -10,6 +10,8 @@ import {
   buildSprintFileList,
   buildSprintBreakdown,
   buildEpicKickoff,
+  buildEpicRules,
+  compactStory,
   parseEpicRisk,
 } from './emit-epic-kickoff.mjs';
 
@@ -40,17 +42,34 @@ test('buildSprintFileList names every boundary file in order', () => {
   assert.match(buildSprintFileList([]), /no sprint-N\.md files found/);
 });
 
-test('buildSprintBreakdown renders each sprint with its stories', () => {
+test('buildSprintBreakdown renders one line per sprint, its stories inline', () => {
   const out = buildSprintBreakdown([
-    { name: 'sprint-1.md', num: 1, title: 'Durable payment state', stories: ['Story 1.1 — Persist intent', 'Story 1.2 — Reconcile'] },
+    { name: 'sprint-1.md', num: 1, title: 'S1 — Durable payment state', stories: ['Story 1.1 — Persist intent', 'Story 1.2 — Reconcile'] },
     { name: 'sprint-2.md', num: 2, title: 'Block ship before paid', stories: [] },
   ]);
-  assert.match(out, /### Sprint 1: Durable payment state/);
-  assert.match(out, /- Story 1\.1 — Persist intent/);
-  assert.match(out, /_\(boundary: sprint-1\.md\)_/);
+  const [one, two] = out.split('\n');
+  assert.equal(one, '- **S1 · Durable payment state** (sprint-1.md): 1.1 Persist intent · 1.2 Reconcile');
+  assert.match(two, /^- \*\*S2 · Block ship before paid\*\* \(sprint-2\.md\)/);
   // A sprint with no parsed stories must SAY so — an empty list that looks complete is the failure shape
   // emit-kickoff's em-dash bug produced (a plausible prompt with no stories at all).
-  assert.match(out, /no `### Story N\.M — <title>` headings found/);
+  assert.match(two, /no `### Story N\.M — <title>` headings found/);
+});
+
+test('compactStory keeps the id and title, drops shipped notes, clips long titles', () => {
+  assert.equal(compactStory('Story 4.1 — Per-folder licences ✅ #184. **Decided 2026-09-28:** long'), '4.1 Per-folder licences');
+  assert.equal(compactStory(`Story 1.2 — ${'x'.repeat(90)}`).length, '1.2 '.length + 70);
+  assert.equal(compactStory('not a story heading'), 'not a story heading');
+});
+
+test('buildEpicRules picks only the rules this epic needs', () => {
+  assert.equal(buildEpicRules({ risk: 'LOW', texts: ['Copy change on the landing page.'] }), '');
+  const high = buildEpicRules({ risk: 'HIGH', texts: ['Nothing new is modelled. No new table, no migration.'] });
+  assert.match(high, /High risk/);
+  assert.doesNotMatch(high, /Migration/, 'a negated mention is not a migration');
+  assert.match(buildEpicRules({ risk: 'LOW', texts: ['Adds `supabase/migrations/2026…_x.sql`.'] }), /Migration:.*BEFORE merging/);
+  assert.match(buildEpicRules({ risk: 'LOW', texts: ['Gate on `checkout.stripe_enabled`.'] }), /Flag:.*ACTIVATE/);
+  // Every scaffolded README's DoD mentions a kill-switch; that alone must not add the flag rule.
+  assert.equal(buildEpicRules({ risk: 'LOW', texts: ['- [ ] **Kill-switch (only if one was planned)**'] }), '');
 });
 
 test('parseEpicRisk reads the header line and defaults to high when absent', () => {
@@ -76,7 +95,7 @@ test('buildEpicKickoff substitutes every placeholder the template uses', () => {
   });
   assert.match(out, /Epic checkout-hardening under 02-checkout — "Checkout hardening", risk HIGH\./);
   assert.match(out, /1 sprints: sprint-1\.md/);
-  assert.match(out, /### Sprint 1: S1/);
+  assert.match(out, /- \*\*S1\*\* \(sprint-1\.md\): 1\.1 A/);
   // An unresolved placeholder must be VISIBLE in the output rather than silently blanked — same rule the
   // sibling generator's `sub()` follows.
   assert.doesNotMatch(out, /\{\{(MACRO|SLUG|EPIC_TITLE|RISK|SPRINT_COUNT)\}\}/);
@@ -101,11 +120,33 @@ test('the real template renders with no leftover placeholders', async () => {
     templateText,
   });
   assert.doesNotMatch(out, /\{\{\w+\}\}/, 'template has a placeholder the generator does not supply');
-  // The contract lines that must survive any future template edit — these are the whole reason the
-  // generator exists instead of a hand-composed prompt.
-  assert.match(out, /EPIC MODE/);
+  // The non-negotiables that went missing when kickoffs were hand-composed — the reason this generator exists.
+  assert.match(out, /ONE orchestrated run/);
+  assert.match(out, /Lock first/);
   assert.match(out, /review-route\.mjs/);
-  assert.match(out, /security lens/);
-  assert.match(out, /pre-authorized to merge on a green gate/);
+  assert.match(out, /Merge on green/);
   assert.match(out, /Done means shipped/);
+  assert.ok(out.split(/\s+/).length < 450, 'the prompt stays lean — the doctrine lives in WAYS-OF-WORKING');
+});
+
+test('every WAYS-OF-WORKING section the template points at exists', async () => {
+  // The prompt points at the process instead of restating it. A pointer to a renamed section would leave the
+  // builder with neither, so the pointer is checked against the shared WAYS-OF-WORKING template.
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const tpl = readFileSync(join(here, 'templates', 'epic-kickoff.md'), 'utf8');
+  const ways = ['../../../../Roadmap/WAYS-OF-WORKING.template.md', '../../../../template/Roadmap/WAYS-OF-WORKING.template.md']
+    .map((p) => join(here, p))
+    .find(existsSync);
+  assert.ok(ways, 'WAYS-OF-WORKING.template.md not found next to the plugin');
+  const headings = readFileSync(ways, 'utf8')
+    .split('\n')
+    .filter((l) => l.startsWith('## '))
+    .map((l) => l.slice(3));
+  const named = [...tpl.matchAll(/(?<!\*)\*([A-Z][^*\n]+)\*(?!\*)/g)].map((m) => m[1]); // *italic* only
+  assert.ok(named.length >= 3, `expected the template to name its sections, found: ${named.join(', ')}`);
+  for (const section of named)
+    assert.ok(headings.some((h) => h.startsWith(section)), `WAYS-OF-WORKING has no "## ${section}…" section`);
 });

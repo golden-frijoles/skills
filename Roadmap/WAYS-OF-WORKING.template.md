@@ -61,6 +61,10 @@ outcome genuinely changes the next one's scope). Six things make it work, and th
 2. **Stack the branches** — `feat/<slug>` → `-s2` → `-s3`, one PR per sprint (a single PR only when the
    sprints don't split along a review boundary), merged in order; sprints share hot files, so stack or
    pay. **Never delete a base branch while a stacked PR is open** — GitHub closes that PR for good.
+   **Where to build is the orchestrator's call:** switch branches in place when you are the only session
+   in the checkout and run one builder; take your own `git worktree` when another session shares it
+   (planning sessions commit `Roadmap/` docs there) or builders run in parallel. Name the branch
+   `<type>/<slug>[-s<N>][-words]` either way — the build view resolves it, and lists other worktrees.
 3. **Route models by risk, invert for review** — the contract-defining sprint to the stronger model, the
    mechanical ones to the faster, the riskiest PR's fresh reviewer to the strongest; state the routing in
    the epic README. Findings route back to the original builder, whose context makes fixes cheap.

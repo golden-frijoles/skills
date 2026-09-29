@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-09-28
+
+### Changed
+
+- **The epic kickoff is lean.** `emit-epic-kickoff.mjs` no longer restates WAYS-OF-WORKING (the copy had
+  already drifted on the review policy): the prompt points at *Epic-mode builds*, *Review & merge* and
+  *Escalate, don't guess*, keeps five non-negotiables, and adds only the rules this epic's docs call for (high
+  risk, a migration, a flag key). About 390 words instead of about 1,400 for a four-sprint epic. A test fails
+  if a section the template names disappears from WAYS-OF-WORKING.
+- **Worktree or in place is the orchestrator's call** (WAYS-OF-WORKING → *Epic-mode builds*): in place when
+  it is the only session in the checkout and runs one builder, its own worktree otherwise.
+
+### Fixed
+
+- **The build view sees work in other worktrees.** On `main` (or any branch naming nothing) it lists every
+  other worktree on a work branch, resolved like the current one, and the epics whose written `status:` is
+  in-progress. On a work branch it adds an `Also` line when other worktrees are building.
+- **Branch names with words after the sprint number resolve** (`feat/<slug>-s4-licences`), and `docs/` is a
+  work branch. The longest leading run of words naming an epic wins, as before.
+- **Bugs, chores and spikes show up.** A branch naming a seed with no epic renders that seed (type, appetite,
+  risk, status); a seed that carries `epic:` resolves to that epic.
+
 ## [0.5.3] - 2026-09-28
 
 ### Changed

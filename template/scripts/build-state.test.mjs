@@ -7,7 +7,15 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveBuildState, renderLines, parseBranch, storyIdsIn, namesSlug } from './build-state.mjs';
+import {
+  resolveBuildState,
+  renderLines,
+  parseBranch,
+  branchCandidates,
+  parseWorktrees,
+  storyIdsIn,
+  namesSlug,
+} from './build-state.mjs';
 import { PHASES } from './lib/roadmap-contract.mjs';
 
 const EPIC_README = (phase = 'Building') => `---
@@ -162,7 +170,11 @@ test('the default branch, a branch naming no epic, and a detached HEAD all say "
     const detached = resolveBuildState({ root: f.root, offline: true, gh: noGh });
     assert.equal(detached.in_flight, false);
     assert.match(detached.reason, /detached HEAD/);
-    assert.deepEqual(renderLines(detached), [`No epic in flight — ${detached.reason}`]);
+    // Nothing here — but the Roadmap says the fixture's epic is in progress, so the view names it.
+    assert.deepEqual(renderLines(detached), [
+      `No epic in flight — ${detached.reason}`,
+      '  Open     Arranged-only delivery · Building · 04-shipping',
+    ]);
   } finally {
     f.done();
   }
@@ -548,6 +560,178 @@ test('codex round 3: an unlisted id in the newest story commit outranks a mixed 
     } finally {
       g.done();
     }
+  } finally {
+    f.done();
+  }
+});
+
+// ── kickoff-lean-build-view: suffixed branches, seed work, other worktrees ─────────────────────────────
+
+const SEED = (slug, type, extra = '') => `---
+title: "A ${type} called ${slug}"
+slug: ${slug}
+status: ready
+area: "09"
+type: ${type}
+priority: "x"
+appetite: S
+underwritten_by: null
+risk: low
+epic: ${extra || 'null'}
+build_order: 1
+updated: 2026-09-28
+---
+# Seed
+`;
+
+function addSeed(f, slug, type, epic) {
+  const dir = join(f.root, 'Roadmap', '00-ideas', 'seeds');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${slug}.md`), SEED(slug, type, epic));
+  f.git('add', '-A');
+  f.git('commit', '-qm', `seed ${slug}`);
+}
+
+test('branch readings: a sprint suffix may carry words after it, and docs/ is a work branch', () => {
+  assert.deepEqual(parseBranch('feat/public-monorepo-s4-licences'), { slug: 'public-monorepo', sprint: 4 });
+  assert.deepEqual(parseBranch('docs/public-monorepo-close'), {
+    slug: 'public-monorepo-close',
+    sprint: null,
+  });
+  assert.deepEqual(
+    branchCandidates('docs/foo-close').map((c) => c.slug),
+    ['foo-close', 'foo'],
+    'longest reading first'
+  );
+  assert.deepEqual(branchCandidates('feat/../etc'), [], 'no path segments in a slug');
+  assert.deepEqual(branchCandidates('release/1.2'), []);
+});
+
+test('a suffixed sprint branch and a docs/ branch both resolve to the epic', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2-parity');
+    f.commit('S2.1 — agent surface parity');
+    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.deepEqual([s.in_flight, s.epic.slug, s.sprint.n, s.story.id], [true, 'arranged-only', 2, 'S2.1']);
+    assert.equal(s.branch_match, 'prefix');
+    f.git('switch', '-qc', 'docs/arranged-only-close');
+    assert.equal(resolveBuildState({ root: f.root, offline: true, gh: noGh }).epic.slug, 'arranged-only');
+  } finally {
+    f.done();
+  }
+});
+
+test('a branch naming a seed with no epic is that bug/chore/spike — with its own heading, no story', () => {
+  const f = fixture();
+  try {
+    addSeed(f, 'checkout-typo', 'bug');
+    f.git('switch', '-qc', 'fix/checkout-typo');
+    let s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.deepEqual(
+      [s.in_flight, s.kind, s.seed.slug, s.status, s.status_source],
+      [true, 'bug', 'checkout-typo', 'ready', 'written']
+    );
+    f.commit('fix the typo');
+    s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.equal(s.status, 'Building', 'a commit on the branch is the evidence');
+    assert.deepEqual(renderLines(s), [
+      'Currently fixing',
+      '  Bug      A bug called checkout-typo    appetite S · risk LOW',
+      '  Seed     Roadmap/00-ideas/seeds/checkout-typo.md',
+      '  Status   Building',
+    ]);
+    const gh = ghWith({ number: 9, url: 'u' });
+    assert.equal(resolveBuildState({ root: f.root, gh }).status, 'In review');
+    addSeed(f, 'why-slow', 'spike');
+    f.git('switch', '-qc', 'spike/why-slow');
+    assert.equal(
+      renderLines(resolveBuildState({ root: f.root, offline: true, gh: noGh }))[0],
+      'Currently investigating'
+    );
+  } finally {
+    f.done();
+  }
+});
+
+test('a seed that carries epic: is that epic — the seed is funnel-only once scaffolded', () => {
+  const f = fixture();
+  try {
+    addSeed(f, 'arranged', 'feature', '"04-shipping/arranged-only"');
+    f.git('switch', '-qc', 'feat/arranged-s2');
+    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.deepEqual([s.kind, s.epic.slug, s.sprint.n, s.branch_match], ['epic', 'arranged-only', 2, 'seed']);
+  } finally {
+    f.done();
+  }
+});
+
+test('parseWorktrees reads git worktree list --porcelain', () => {
+  const out = parseWorktrees(
+    'worktree /r\nHEAD abc\nbranch refs/heads/main\n\nworktree /r/.claude/worktrees/x\nHEAD def\nbranch refs/heads/feat/a-s2\n\nworktree /gone\nHEAD 123\ndetached\nprunable gitdir file points to non-existent location\n'
+  );
+  assert.deepEqual(out, [
+    { path: '/r', branch: 'main', bare: false, prunable: false },
+    { path: '/r/.claude/worktrees/x', branch: 'feat/a-s2', bare: false, prunable: false },
+    { path: '/gone', branch: null, bare: false, prunable: true },
+  ]);
+});
+
+test('on main with a builder in a worktree: the view names the worktree, and the worktree names itself', () => {
+  const f = fixture();
+  const wt = mkdtempSync(join(tmpdir(), 'build-state-wt-'));
+  rmSync(wt, { recursive: true, force: true });
+  try {
+    f.git('worktree', 'add', '-q', '-b', 'feat/arranged-only-s2', wt);
+    const inWt = (...a) =>
+      execFileSync('git', a, {
+        cwd: wt,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        env: sealedEnv(),
+      });
+    writeFileSync(join(wt, 'work.txt'), 'x');
+    inWt('add', 'work.txt');
+    inWt('commit', '-qm', 'S2.1 — agent surface parity');
+
+    const main = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.equal(main.in_flight, false);
+    assert.equal(main.elsewhere.worktrees.length, 1);
+    assert.deepEqual(
+      [
+        main.elsewhere.worktrees[0].slug,
+        main.elsewhere.worktrees[0].story,
+        main.elsewhere.worktrees[0].status,
+      ],
+      ['arranged-only', 'S2.1', 'Building']
+    );
+    assert.deepEqual(main.elsewhere.open_epics, [], 'an epic shown from its worktree is not listed twice');
+    assert.deepEqual(renderLines(main).slice(1), [
+      '  Worktree Arranged-only delivery · S2.1 · Building · feat/arranged-only-s2',
+    ]);
+
+    const there = resolveBuildState({ root: wt, offline: true, gh: noGh });
+    assert.equal(there.in_flight, true);
+    assert.equal(there.elsewhere.worktrees.length, 0, 'the root is on main, so nothing else is in flight');
+    assert.equal(renderLines(there).length, 6, 'no Also line');
+  } finally {
+    try {
+      f.git('worktree', 'remove', '--force', wt);
+    } catch {}
+    rmSync(wt, { recursive: true, force: true });
+    f.done();
+  }
+});
+
+test('a shipped epic is never "open", and a worktree on it is not in flight elsewhere', () => {
+  const f = fixture();
+  try {
+    const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
+    writeFileSync(readme, EPIC_README('Shipped').replace('status: in-progress', 'status: shipped'));
+    f.git('commit', '-qam', 'ship');
+    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.deepEqual(s.elsewhere, { worktrees: [], open_epics: [] });
+    assert.deepEqual(renderLines(s), [`No epic in flight — ${s.reason}`]);
   } finally {
     f.done();
   }
