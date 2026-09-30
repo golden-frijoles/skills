@@ -1,0 +1,33 @@
+# ⚠️ In a PUBLIC repo, GitHub silently disables scheduled workflows after 60 days without repository activity.
+# Re-enable it from the Actions tab, or keep the repository active. Needs a committed `reporting` section in
+# golden-frijoles.config.json (or the legacy reporting.config.json). This is the model-free, read-only standup
+# preview: it prints deterministic signals and never posts to Telegram, writes a log, or calls a model.
+name: standup-preview
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+  # The PR CI signal reads commit statuses and check runs. Without these, on a private repo those calls fail
+  # and a red PR would read as healthy (#191 review).
+  checks: read
+  statuses: read
+
+jobs:
+  standup-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Gather and print the standup (no post, no model)
+        run: node scripts/standup.mjs --dry-run
+        env:
+          # standup.mjs checks `gh auth status` first; a runner's gh is authenticated only through GH_TOKEN.
+          GH_TOKEN: ${{ github.token }}

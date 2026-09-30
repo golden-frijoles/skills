@@ -7,6 +7,19 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-29
+
+### Added
+
+- **Routines stand up without hand-editing.** `routine-bootstrap.mjs <name>` fills a routine's project values from
+  `golden-frijoles.config.json` → `routines`, leaves the values a routine fills while running alone, and prints a
+  prompt ready to paste into `/schedule`. It refuses, naming every missing key, while any fill-in remains, and
+  refuses any placeholder its table does not classify. The seven prompts and the runbook ship in the kit; the
+  runbook names the one-hour minimum interval, the daily run cap, and the custom network environment a Telegram
+  routine needs.
+- **Cron templates for the model-free parts** (`standup.yml.example`, `build-order-sync.yml.example`), each warning
+  that GitHub silently disables a scheduled workflow after 60 days without repository activity.
+
 ## [0.8.0] - 2026-09-29
 
 ### Fixed

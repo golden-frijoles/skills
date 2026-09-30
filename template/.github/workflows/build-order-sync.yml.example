@@ -1,0 +1,25 @@
+# ⚠️ In a PUBLIC repo, GitHub silently disables scheduled workflows after 60 days without repository activity. Re-enable it from
+# the Actions tab, or keep the repository active. This is a model-free freshness check; it never regenerates,
+# commits, opens a PR, or calls a model.
+name: build-order-freshness
+
+on:
+  schedule:
+    - cron: '31 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-order-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check the derived board is fresh
+        run: node scripts/build-order.mjs --check

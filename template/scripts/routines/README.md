@@ -22,6 +22,19 @@ This repo commits the *prompts + this runbook*. **The account stand-up itself is
 the product owner** — installing the GitHub App, creating the routines from these prompts, and setting B's
 secrets/allow-list. Nothing here provisions infra or changes any account.
 
+## Stand one up
+
+Fill this project's values in `golden-frijoles.config.json` under `routines`, then render a reviewed prompt:
+
+```bash
+node scripts/routine-bootstrap.mjs <name>
+```
+
+Paste the output into `/schedule` in Claude Code (or `claude.ai/code/routines`). Scheduled routines have a
+**minimum interval of one hour** and each account has a **daily run cap**, so consolidate related work before
+adding another schedule. A routine that posts to Telegram needs a **custom network environment**: the default
+Trusted network allowlist does not include `api.telegram.org`.
+
 ## The three rules that hold for all of them
 
 1. **Advisory only — never a required check.** Every routine's output is a PR comment or a `claude/`

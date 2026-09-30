@@ -2,6 +2,8 @@
 // Each `*.prompt.md` must parse via loadPromptBody() (HTML-comment header + `---` body) into a
 // non-empty prompt — the same contract scripts/cross-review.mjs / cross-panel.mjs rely on. Free
 // coverage: caught by scripts-guard.yml's `node --test 'scripts/*.test.mjs'`, no glob change needed.
+// Fill/refusal and runtime-token behaviour belongs to routine-bootstrap.test.mjs: it exercises the same prompt
+// loader seam without duplicating a second placeholder table here.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -119,6 +119,16 @@ export const REGISTRY = Object.freeze([
     question: 'Where should standups and recaps go: Telegram (the scheduled reports post there), or print to the terminal? Slack works for test and ad-hoc messages only, not the scheduled reports. Secrets stay in .env.local.',
   },
   {
+    key: 'routines',
+    module: 'Operate',
+    // never-yet: declares the section so readSection accepts it, while `gf doctor` (which skips never-yet
+    // rows) never reports Operate unconfigured for it — its values are per-routine fill-ins that
+    // routine-bootstrap.mjs names itself when one is missing (#191 review).
+    askWhen: 'never-yet',
+    default: null,
+    question: 'Which project values should routine prompts fill before you schedule them?',
+  },
+  {
     key: 'deploy.vercelProject',
     module: 'Operate',
     askWhen: 'first-prune',
