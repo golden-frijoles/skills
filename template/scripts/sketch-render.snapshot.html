@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sketch — every-kind</title><style>
+*{box-sizing:border-box}body{margin:0;padding:24px 16px;background:#f4f4f4;color:#222;font:14px/1.45 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto}h1{font-size:15px;color:#666;font-weight:600;margin:0 0 16px}
+section{background:#fff;border:1px solid #ccc;border-radius:8px;padding:20px;margin:0 0 28px}
+header{font:12px ui-monospace,monospace;color:#777;border-bottom:1px dashed #ccc;padding-bottom:8px;margin-bottom:16px}
+.block{margin:0 0 14px}.row{display:flex;gap:10px;align-items:center}.wrap{flex-wrap:wrap}
+.title{font-size:22px;margin:0;flex:1}.button{border:1px solid #555;border-radius:6px;padding:6px 12px;background:#e6e6e6;font-weight:600}
+.answer{font-size:16px;font-style:italic;margin:0;color:#333}.note{font-size:12px;color:#777;margin:0}
+.bar{display:inline-block;height:10px;width:120px;max-width:100%;background:#ddd;border-radius:3px}.bar.short{width:60px}
+.stat{border:1px solid #ccc;border-radius:6px;padding:10px;min-width:90px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tile{border:1px solid #ccc;border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:80px}
+.more{font-size:12px;color:#777;align-self:center}
+.steps .step{display:flex;align-items:center;gap:10px}.steps .step+.step::before{content:"";width:28px;border-top:1px solid #aaa}
+.dot{display:inline-flex;width:26px;height:26px;border-radius:50%;border:1px solid #777;align-items:center;justify-content:center;font-size:12px}
+.search{flex:1;max-width:320px;border:1px solid #bbb;border-radius:6px;padding:6px 10px;color:#999}
+.pill{width:70px;height:26px;border:1px solid #bbb;border-radius:13px}
+.listbox{border:1px solid #ccc;border-radius:6px;overflow:hidden}.lrow{display:flex;border-top:1px solid #e4e4e4}
+.lrow:first-child{border-top:0}.lrow>span{flex:1;min-width:0;padding:10px;min-height:38px}
+.lhead{overflow-wrap:anywhere;background:#eee;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600}
+.empty{border:2px dashed #bbb;border-radius:8px;padding:32px;text-align:center;color:#666}
+.card{border:1px solid #bbb;border-radius:8px;padding:16px}
+.field{display:flex;flex-direction:column;gap:6px;max-width:420px}.input{height:34px;border:1px solid #aaa;border-radius:6px;background:#fafafa}
+.tabs{gap:0;border-bottom:1px solid #ccc}.tab{padding:8px 14px;color:#777}.tab.on{color:#222;border-bottom:2px solid #222;font-weight:600}
+</style></head>
+<body><main><h1>Sketch — every-kind — grey wireframe, 1 state</h1>
+<section><header>every-kind · /app/sketch/[projectSlug]</header><div class="block" data-kind="head"><div class="row"><h2 class="title">Features</h2><span class="button">+ New feature</span></div></div>
+<div class="block" data-kind="answer"><p class="answer">Which features are live, and which are &lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;dark&quot;?</p></div>
+<div class="block" data-kind="summary"><div class="row wrap"><div class="stat"><span class="bar"></span></div><div class="stat"><span class="bar"></span></div><div class="stat"><span class="bar"></span></div><div class="stat"><span class="bar"></span></div></div></div>
+<div class="block" data-kind="tiles"><div class="grid"><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><div class="tile"><span class="bar"></span><span class="bar short"></span></div><span class="more">×14</span></div></div>
+<div class="block" data-kind="toolbar"><div class="row"><span class="search">Search</span><span class="pill"></span><span class="pill"></span></div></div>
+<div class="block" data-kind="list"><div class="listbox"><div class="lrow lhead"><span>feature</span><span>state in production</span><span>type &amp; risk</span><span></span></div><div class="lrow"><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span></div><div class="lrow"><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span></div><div class="lrow"><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span><span><span class="bar"></span></span></div></div></div>
+<div class="block" data-kind="empty"><div class="empty"><span class="w">No features yet</span></div></div>
+<div class="block" data-kind="card"><div class="card"><span class="w">It&#39;s a card</span></div></div>
+<div class="block" data-kind="steps"><div class="row steps"><div class="step"><span class="dot">1</span></div><div class="step"><span class="dot">2</span></div><div class="step"><span class="dot">3</span></div></div></div>
+<div class="block" data-kind="field"><label class="field"><span class="w">Key</span><span class="input"></span></label></div>
+<div class="block" data-kind="tabs"><div class="row tabs"><span class="tab on">Value</span><span class="tab">Environments</span><span class="tab">Funnel</span></div></div>
+<div class="block" data-kind="note"><span class="bar"></span></div></section>
+</main></body></html>

@@ -7,6 +7,24 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-30
+
+### Added
+
+- **A screen is a `surface` block, and it draws itself grey.** `lib/surface.mjs` reads the ` ```surface ` blocks in a
+  seed: a state id, a route, then one line per block (`- head "Orders" action "Share your shop"`) from twelve kinds,
+  with only three facts (an action's words, a count, a list's columns). A line it cannot read fails with the file, the
+  line and the known kinds, with a guess when it is close (`lsit` → `list`). `node scripts/sketch-render.mjs <seed>`
+  turns every block into one grey wireframe page for the product owner to approve; it imports nothing but Node and the
+  parser. `validateMap` checks a project's `surface.map.json` (the twelve kinds mapped onto its own). `groom` carries
+  both.
+
+### Changed
+
+- **The seed template's screen example uses that grammar.** It shipped a YAML-ish list (`blocks:`, `- heading: …`)
+  that nothing read; the parser now refuses that shape with a pointer to the new one. The visuals rule says to render
+  every surface block and publish the page for review.
+
 ## [0.15.0] - 2026-09-30
 
 ### Changed

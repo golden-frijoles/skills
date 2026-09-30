@@ -82,17 +82,16 @@ flowchart LR
   A -- data --> S[(where it lands)]
 ```
 
-A screen, as a `surface` block — its route, the state shown, and its blocks in order, by kind, with the words that
-matter. Name each state from the ten: idle · hover · focus · pressed · loading · success · error · empty · disabled ·
-unbuilt.
+A screen, as a `surface` block — one block per state: its id, its route, then one line per block in order, by kind,
+with the words that matter. End the id with the state's name from the ten: idle · hover · focus · pressed · loading ·
+success · error · empty · disabled · unbuilt. Render it for review with
+`node scripts/sketch-render.mjs <this seed> --out <file>.html`.
 
 ```surface
+state: orders-empty
 route: /orders
-state: empty
-blocks:
-  - heading: "Orders"
-  - empty-state: "No orders yet. Your first sale shows up here."
-  - primary-action: "Share your shop"
+- head "Orders" action "Share your shop"
+- empty "No orders yet. Your first sale shows up here."
 ```
 
 ## UX heuristics & rails check

@@ -50,7 +50,7 @@ and the data flow between them, in Mermaid. After that, draw only what the ask's
 
 | The ask has… | Draw | Format |
 |---|---|---|
-| a screen or a page someone uses | wireframe: low fidelity, the words that matter | a `surface` block: route, the state shown, then the blocks in order, by kind, with their words |
+| a screen or a page someone uses | wireframe: low fidelity, the words that matter | a `surface` block per state: its id and route, then the blocks in order, by kind, with their words (below) |
 | a journey of several steps | flow | Mermaid `flowchart` |
 | a new table, record or payload | data sample: three real-looking rows | a table in the seed |
 | a lifecycle or statuses | state machine | Mermaid `stateDiagram` |
@@ -67,5 +67,33 @@ The table uses the same words Stage 3.5 routes a gap to. The route vocabulary ad
 *copy deck* (the exact words), *spike* (an experiment) and *think chain* (a trade-off reasoned in writing; answer it by
 hand until `think-skills` ships). So a routed gap usually maps to one row here.
 
-Mermaid renders on GitHub and diffs as text. A `surface` block is the format `sketch-specs` will render as a grey
-wireframe and turn into the route's state contract.
+Mermaid renders on GitHub and diffs as text.
+
+### The `surface` block
+
+One fenced block per state. `state:` is a lower-case hyphenated id; for any state but the default, end it in the
+state's name from the ten (`orders-empty`). `route:` is the path. Then one line per block, in order:
+`- <kind> ["the words"] [action "…"] [count N] [columns "a | b | …"]`.
+
+```surface
+state: orders-empty
+route: /orders
+- head "Orders" action "Share your shop"
+- empty "No orders yet. Your first sale shows up here."
+```
+
+The kinds are twelve: `head` (carries `action`) · `answer` · `summary` (`count`) · `tiles` (`count`) · `toolbar` ·
+`list` (`columns`) · `empty` · `card` · `steps` (`count`) · `field` · `tabs` · `note`. Record only what survives a
+change of data: a primary action's words, a count of tiles or stats, a list's column words. Never a value, a row
+count or a pixel. There is no `when:`: an empty or error screen is its own block with its own id.
+
+**Render every surface block and publish the page for review:**
+
+```
+node scripts/sketch-render.mjs Roadmap/00-ideas/seeds/<slug>.md --out <scratch>/<slug>-sketch.html
+```
+
+It draws a grey wireframe, one section per state, and fails with the line number and the known kinds on a line it
+cannot read. Publish that HTML (an Artifact, or wherever the product owner reviews) and link it in the seed: the
+product owner approves the picture, not the text. The plugin ships no contract gate: a project that has one can map
+the twelve kinds onto its own and check a built page against an approved block.
