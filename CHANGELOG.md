@@ -7,6 +7,17 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-09-30
+
+### Fixed
+
+- **The build view no longer throws on an engine without `$.state`.** Claude Code 2.1.278 (also the version CI
+  validates against) has no `$.state` noun, so the band's read threw on every draw and the engine logged
+  `golden-frijoles: ui.render hook skipped: threw TypeError: … evaluating '$.state.get'`. **The band needs a Claude
+  Code that has `$.state` (2.1.285 does).** On an older engine it now draws nothing and says so once under `claude
+  --debug`. Every `$.state` call goes through one tested guard (`attempt` in `hooks/build-view.mjs`).
+- **The session line's "questions waiting" count can no longer stick** if drawing the line fails mid-question.
+
 ## [0.14.0] - 2026-09-30
 
 ### Added

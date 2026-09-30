@@ -143,3 +143,26 @@ export function bandRowsFrom(text) {
     return { kind: 'note', glyph: '│', value: line.trim(), tone: 'plain' };
   });
 }
+
+// ── Engines without `$.state` (fix/build-view-no-state-at-start) ────────────────────────────────────────
+// The band reads the view from `$.state`, which the engine only has from some version after 2.1.278 (the CI
+// pin): 2.1.278 has no `state` noun at all, so `$.state.get` throws a TypeError on every draw. A render hook
+// must never throw, so every `$.state` call goes through `attempt`. It is pure — the hook passes a thunk that
+// spells `$` at its own call site — so the guard is testable here, where removing it turns a test red.
+
+/**
+ * Runs `fn` and resolves its result; when it throws (synchronously, as a missing noun does) or rejects,
+ * calls `onFail(err)` and resolves `fallback` instead. It never throws.
+ */
+export async function attempt(fn, onFail = () => {}, fallback = null) {
+  try {
+    return await fn();
+  } catch (err) {
+    try {
+      onFail(err);
+    } catch {
+      /* a failing logger must not undo the guard */
+    }
+    return fallback;
+  }
+}

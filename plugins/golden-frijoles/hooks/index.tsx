@@ -23,7 +23,7 @@
 //
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
 import type { Register } from 'claude-code';
-import { bandRowsFrom, buildStateArgv, progressOf, repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
+import { attempt, bandRowsFrom, buildStateArgv, progressOf, repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
 import {
   LOG_FILE,
   LOG_GITIGNORE,
@@ -48,6 +48,7 @@ let measured: { contextPct: number | null; fiveHourPct: number | null; sevenDayP
 let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not observable here (D8)
 let loggedVerdict: string | null = null;
 let repoRoot: string | null = null; // from turn.start's rev-parse, so the log lands at the repo root
+let warnedNoState = false; // log an engine without `$.state` once per load, not on every draw
 
 const lineNow = () => {
   const figures = { ...(measured ?? {}), questionsWaiting };
@@ -80,7 +81,9 @@ export const register: Register = (on) => {
       await $.state.set(VIEW, text || null);
     } catch (err) {
       $.ui.log(`build view: ${String(err)}`);
-      await $.state.set(VIEW, null).catch(() => {});
+      // Guarded: on an engine without `$.state` (see `attempt` in build-view.mjs) the failure above IS that, and
+      // an unguarded clear would make the engine skip this hook with an error line.
+      await attempt(() => $.state.set(VIEW, null));
     }
     return next(e);
   });
@@ -113,9 +116,10 @@ export const register: Register = (on) => {
 
   // "Questions waiting", honestly counted: the AskUserQuestion dialogs open right now (D8).
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
-    questionsWaiting += 1;
-    $.ui.status(lineNow());
+    // Everything inside the try, so the count always comes back down even if drawing the line fails.
     try {
+      questionsWaiting += 1;
+      $.ui.status(lineNow());
       return await next(e);
     } finally {
       questionsWaiting = Math.max(0, questionsWaiting - 1);
@@ -125,7 +129,19 @@ export const register: Register = (on) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e);
-    const { value } = await $.state.get(VIEW);
+    // On an engine without `$.state` (2.1.278 has none) this read throws; 0.14.0 then logged "ui.render hook
+    // skipped: threw TypeError: … evaluating '$.state.get'" on every draw. The band needs an engine with
+    // `$.state`; without one it draws nothing and says so once (`claude --debug`).
+    const read = await attempt(
+      () => $.state.get(VIEW),
+      (err) => {
+        if (warnedNoState) return;
+        warnedNoState = true;
+        $.ui.log(`build view: this engine has no $.state — the band needs a newer Claude Code (${String(err)})`);
+      },
+    );
+    if (!read) return next(e);
+    const { value } = read;
     const rows = bandRowsFrom(value ?? null);
     if (!rows.length) return next(e);
     const { Box, Text } = $.ui.resolve(e);

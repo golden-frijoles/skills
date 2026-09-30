@@ -135,3 +135,36 @@ test('progressOf / toneOf: colour and bar hints only', () => {
   assert.equal(toneOf('Shipped'), 'good');
   assert.equal(toneOf('Something else'), 'plain');
 });
+
+// ── attempt: the guard every `$.state` call goes through (fix/build-view-no-state-at-start) ─────────────
+// On an engine without `$.state` (2.1.278), `$.state.get` throws SYNCHRONOUSLY (a TypeError on undefined), and a
+// render hook that throws is skipped with an error line on every draw. These pin the guard itself; the engine
+// cannot be made to drop its own `state` noun inside `claude plugin test`.
+test('attempt resolves what fn resolves, and never calls onFail on success', async () => {
+  let failed = 0;
+  assert.deepEqual(await view.attempt(async () => ({ value: 'x', version: 1 }), () => failed++), { value: 'x', version: 1 });
+  assert.equal(failed, 0);
+});
+
+test('attempt turns a SYNCHRONOUS throw (a missing noun) into the fallback and reports it', async () => {
+  const state = undefined; // what 2.1.278 hands a hook as `$.state`
+  const seen = [];
+  const got = await view.attempt(() => state.get({}), (err) => seen.push(err));
+  assert.equal(got, null);
+  assert.equal(seen.length, 1);
+  assert.ok(seen[0] instanceof TypeError);
+});
+
+test('attempt turns a rejection into the fallback, and a failing onFail cannot undo the guard', async () => {
+  assert.equal(await view.attempt(() => Promise.reject(new Error('refused')), () => {}), null);
+  assert.equal(
+    await view.attempt(
+      () => Promise.reject(new Error('refused')),
+      () => {
+        throw new Error('logger broke');
+      },
+      'fallback',
+    ),
+    'fallback',
+  );
+});
