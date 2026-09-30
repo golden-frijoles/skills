@@ -112,7 +112,7 @@ jobs:
       - name: Claude plugin validate — the mod's hooks registration
         run: |
           # PINNED, like the cross-review families' CLIs: this is a pre-release hook API, and the only real
-          # check on index.ts. An unpinned install can validate against a contract nobody probed — and it
+          # check on index.tsx. An unpinned install can validate against a contract nobody probed — and it
           # already bit this step once: the version CI installed required a `hooks` key that 2.1.278 does
           # not. Bump the pin deliberately, after re-running the probe sessions in the sprint doc.
           if npm i -g @anthropic-ai/claude-code@2.1.278 --no-audit --no-fund; then

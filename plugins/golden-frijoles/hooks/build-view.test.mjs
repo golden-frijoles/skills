@@ -1,5 +1,5 @@
 // build-view.test.mjs — the mod's pure half (build-visualization-claude-mods S4).
-// The hook file itself is four calls on `$`; everything decidable without `$` is here, and tested.
+// The hook file only calls `$` and draws; everything decidable without `$` is here, and tested.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -78,8 +78,8 @@ test('the resolver the hook runs is the bundled copy, never a file the open repo
   }
 });
 
-test('index.ts builds its command from buildStateArgv, not from the repo root', () => {
-  const src = readFileSync(join(HERE, 'index.ts'), 'utf8');
+test('index.tsx builds its command from buildStateArgv, not from the repo root', () => {
+  const src = readFileSync(join(HERE, 'index.tsx'), 'utf8');
   assert.match(src, /buildStateArgv\(/);
   assert.doesNotMatch(src, /\/scripts\/build-state\.mjs/, 'the hook must not name a repo-relative resolver');
 });
@@ -91,4 +91,47 @@ test('the bundle exists and is the real resolver: it emits `lines` for this repo
   const stdout = execFileSync('node', [bundled, '--json', '--offline', '--repo-root', repo], { encoding: 'utf8' });
   const state = JSON.parse(stdout);
   assert.ok(Array.isArray(state.lines) && state.lines.length);
+});
+
+// ── The band (fix/build-view-band): a status row cut the view off at the right edge and drew its newlines
+// as U+FFFD. The band decorates the resolver's lines; these pin that it never adds or drops a fact.
+const { bandRowsFrom, progressOf, toneOf } = view;
+
+test('bandRowsFrom: one row per resolver line, every fact kept', () => {
+  const lines = [
+    'Currently building',
+    '  Epic     Semantic lint — Jev judges    09-platform-infra · risk LOW',
+    '  Story    S1.2 — the rule',
+    '           As a PM, I want X, so that Y.',
+    '  Progress Story 2 of 5 · Sprint 1 of 2',
+    '  Status   Building',
+    '  Also     1 more in other worktrees: feat/y',
+  ];
+  const rows = bandRowsFrom(lines.join('\n'));
+  assert.equal(rows.length, lines.length);
+  assert.deepEqual(rows.map((r) => r.kind), ['heading', 'field', 'field', 'note', 'field', 'field', 'field']);
+  for (const [i, row] of rows.entries()) {
+    const shown = row.kind === 'field' ? `${row.label} ${row.value}` : row.value;
+    assert.equal(shown.replace(/\s+/g, ' '), lines[i].trim().replace(/\s+/g, ' '), `row ${i} is its line`);
+  }
+  assert.equal(rows[1].main, 'Semantic lint — Jev judges');
+  assert.equal(rows[1].meta, '09-platform-infra · risk LOW');
+  assert.equal(rows[1].risk, 'LOW');
+  assert.equal(rows[5].tone, 'busy');
+});
+
+test('bandRowsFrom: the idle view, and nothing for no text', () => {
+  const rows = bandRowsFrom('No epic in flight — on main\n  Open     X · Verifying · 09-platform-infra');
+  assert.equal(rows[0].glyph, '◇');
+  assert.equal(rows[1].label, 'Open');
+  assert.equal(rows[1].tone, 'info');
+  for (const none of [null, undefined, '', '  \n']) assert.deepEqual(bandRowsFrom(none), []);
+});
+
+test('progressOf / toneOf: colour and bar hints only', () => {
+  assert.deepEqual(progressOf('Story 2 of 5 · Sprint 1 of 2'), { done: 1, total: 5 });
+  assert.equal(progressOf('Story ? of 5'), null);
+  assert.equal(toneOf('unknown — no README'), 'bad');
+  assert.equal(toneOf('Shipped'), 'good');
+  assert.equal(toneOf('Something else'), 'plain');
 });

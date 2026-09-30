@@ -7,6 +7,17 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-09-30
+
+### Fixed
+
+- **The build view is readable again.** It was drawn through `$.ui.status`, a single status row: the
+  resolver's lines ran together (their newlines shown as `�`) and everything past the terminal's width
+  was cut off. It is now a band above the prompt, one wrapped row per resolver line, with a glyph and a
+  colour per label (status and risk coloured by value, a progress bar from the story count). The rows
+  only decorate the resolver's own lines; no fact is added or dropped (D3). The hook module is now
+  `hooks/index.tsx`, and the plugin declares its `$.state` contract in `types/index.d.ts`.
+
 ## [0.12.0] - 2026-09-30
 
 ### Added

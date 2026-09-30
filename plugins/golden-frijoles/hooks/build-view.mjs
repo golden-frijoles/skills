@@ -75,3 +75,71 @@ export const VENDOR_BUILD_STATE = decodeURIComponent(
 export function buildStateArgv(root, script = VENDOR_BUILD_STATE) {
   return ['node', script, '--json', '--offline', '--repo-root', root || '.'];
 }
+
+// ── The band's rows (fix/build-view-band) ────────────────────────────────────────────────────────────
+// The view used to go to `$.ui.status`, a ONE-line status row: the resolver's newlines were drawn as U+FFFD
+// and everything past the terminal's width was cut off. It is now drawn as a band above the prompt, one
+// wrapped row per resolver line. These rows only DECORATE the resolver's own lines — a glyph and a tone per
+// label — and never add or drop a fact (D3): every row's `label` + `value` is its source line, trimmed.
+
+const LABEL_GLYPHS = {
+  Epic: '◆',
+  Feature: '◆',
+  Bug: '◆',
+  Spike: '◆',
+  Chore: '◆',
+  Story: '▸',
+  Seed: '❧',
+  Progress: '▰',
+  Status: '●',
+  Open: '○',
+  Also: '↳',
+};
+
+/** A tone for a status/phase word — a colour hint only; the word itself is always shown as written. */
+export function toneOf(value) {
+  const v = String(value || '').toLowerCase();
+  if (/^unknown|blocked|failed|stale/.test(v)) return 'bad';
+  if (/shipped|done|live|merged|complete/.test(v)) return 'good';
+  if (/verifying|review|smoke/.test(v)) return 'info';
+  if (/building|in progress|groom|planning|ready/.test(v)) return 'busy';
+  return 'plain';
+}
+
+/** `Story 2 of 5` → `{ done: 1, total: 5 }` (the current story is not done yet); anything else → null. */
+export function progressOf(value) {
+  const m = /Story (\d+) of (\d+)/.exec(String(value || ''));
+  if (!m) return null;
+  const total = Number(m[2]);
+  const done = Math.max(0, Math.min(total, Number(m[1]) - 1));
+  return total > 0 ? { done, total } : null;
+}
+
+/**
+ * The view text (the resolver's lines, joined) as band rows:
+ *   heading — the first line (`Currently building`, `No epic in flight — …`)
+ *   field   — `  <Label>   <value>` (the resolver pads labels to 9); `main` + `meta` split the value at the
+ *             resolver's four-space gap, `risk` is the meta's `risk X` word when there is one
+ *   note    — a continuation line (the user story), indented under the value
+ * An empty or null text gives no rows, so the band draws nothing.
+ */
+export function bandRowsFrom(text) {
+  if (typeof text !== 'string' || !text.trim()) return [];
+  return text.split('\n').map((line, i) => {
+    if (i === 0) {
+      const idle = /^No epic in flight/.test(line);
+      return { kind: 'heading', glyph: idle ? '◇' : '◆', value: line, tone: idle ? 'plain' : 'busy' };
+    }
+    const field = /^ {2}([A-Z][A-Za-z]*) +(\S.*)$/.exec(line);
+    if (field && field[1] in LABEL_GLYPHS) {
+      const [, label, value] = field;
+      const tone = label === 'Status' || label === 'Open' ? toneOf(label === 'Open' ? value.split(' · ')[1] : value) : 'plain';
+      // `title    area · risk X`: the resolver separates the meta with four spaces; drawn dim beside it.
+      const [main, ...rest] = value.split(/ {4,}/);
+      const meta = rest.join('  ') || null;
+      const risk = /risk (\w+)/.exec(meta || '')?.[1] || null;
+      return { kind: 'field', glyph: LABEL_GLYPHS[label], label, value, main, meta, risk, tone };
+    }
+    return { kind: 'note', glyph: '│', value: line.trim(), tone: 'plain' };
+  });
+}

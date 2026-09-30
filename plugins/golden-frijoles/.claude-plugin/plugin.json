@@ -1,8 +1,9 @@
 {
   "name": "golden-frijoles",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Golden Frijoles: the planning, build and operate skills (11): babysit-pr, build-order-sync, doc-hygiene, golden-frijoles, groom, live-smoke, pmo-report, prose-draft, standup-post, vercel-prune, weekly-recap.",
   "author": {
     "name": "Daniel"
-  }
+  },
+  "types": "./types/index.d.ts"
 }
