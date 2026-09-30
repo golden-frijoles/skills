@@ -87,6 +87,20 @@ export const RULES = [
     // (D6): it does not touch `ways-of-work-lean-pass` provenance, `render-ways-of-working`, or
     // Roadmap/ history — so this rule is deliberately narrow (the retired MARKETPLACE/PLUGIN identity),
     // not a bare `ways-of-work` sweep, which would also fire on the process name and a past epic's slug.
+    // compiled-prompts S1.4 (E5). `optimize/` at the monorepo root is dev-only Python (DSPy); a plugin user
+    // must never need Python. The PATH half lives in `scanPaths` below — a stray `.py` is not a text file this
+    // sweep reads. This half catches shipped CODE reaching for it; prose that merely names optimize/ is fine.
+    name: 'python or optimize/ reached a shipped script',
+    // Every way a module reaches a file (import, require, new URL(…, import.meta.url)) and every way a script
+    // starts an interpreter by name or by path. A string held in a variable first is still out of reach of a
+    // line sweep — the PATH rule and the packed-kit assertion are the backstop for that.
+    pattern:
+      /\b(?:from|import|require|URL)\s*\(?\s*['"`][^'"`]*\boptimize\/|\b(?:spawn|spawnSync|exec|execSync|execFile|execFileSync|execa)\s*\(\s*['"`](?:[^'"`]*\/)?(?:python[\d.]*|pip\d*|uv|uvx|py|pipx|conda)['"`\s]/,
+    why: 'The kit, the plugin and the skills mirror are zero-dependency Node. `optimize/` is the monorepo\'s '
+       + 'dev-only Python workspace (compiled-prompts D4): what it produces reaches the kit as a reviewed '
+       + 'data diff (a question file, a jev.config.json threshold), never as an import or a python call.',
+  },
+  {
     name: 'retired plugin identity',
     pattern: /ways-of-work@|@dobby-foundation\b|"dobby-foundation"\s*:|\bways-of-work:[a-z]|plugins\/ways-of-work|`ways-of-work` plugin|dobby-foundation marketplace|danybgoode\/dobby-foundation/,
     why: 'Names the retired marketplace/plugin identity (`ways-of-work@dobby-foundation`, '
@@ -186,6 +200,35 @@ export function scan(files, { rules = RULES, allow = ALLOW } = {}) {
   };
 }
 
+/**
+ * A shipped PATH a Python workspace would leave behind (compiled-prompts S1.4): anything under an `optimize/`
+ * directory, a `.py`/`.pyc`, or a `requirements*` file. kit-tarball.test.mjs applies the same regex to the packed
+ * kit's file list, so it lives here, once.
+ */
+export const OPTIMIZE_PATH =
+  /(^|\/)optimize\/|\.(?:pyc?|pyi|ipynb)$|(^|\/)(?:requirements[^/]*|pyproject\.toml|uv\.lock|Pipfile(?:\.lock)?|setup\.py|\.python-version)$/;
+
+/** Every file under `dir`, text or not — the path rule must see the files the text sweep skips. */
+function walkAll(dir, out = []) {
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    const full = join(dir, name);
+    // kit/dist is the kit's build output (gitignored, rebuilt by build-kit) — only THAT dist, never any directory so named.
+    if (name === '.git' || name === 'node_modules' || relative(repoRoot, full) === join('kit', 'dist')) continue;
+    if (statSync(full).isDirectory()) walkAll(full, out);
+    else out.push(full);
+  }
+  return out;
+}
+
+/** Pure: the shipped paths that are Python or optimize/ residue. `rels` are repo-relative, `/`-separated. */
+export const scanPaths = (rels) => rels.filter((r) => OPTIMIZE_PATH.test(r));
+
 // ── The CLI half ─────────────────────────────────────────────────────────────────────────────
 // Guarded, so the test above can import `scan` without the module walking the tree and calling
 // process.exit() out from under the test runner.
@@ -205,7 +248,17 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
     })
   );
 
-  if (!violations.length && !stale.length) {
+  // The path rule sweeps the WHOLE skills tree, not only SCAN_ROOTS: every file here is mirrored to
+  // golden-frijoles/skills, and that mirror is exactly what E5 promises carries no Python.
+  const pythonPaths = scanPaths(walkAll(repoRoot).map((abs) => relative(repoRoot, abs).split('\\').join('/')));
+  if (pythonPaths.length) {
+    console.error(`\ncheck-plugin-leaks: ${pythonPaths.length} Python / optimize/ file(s) in what ships.\n`);
+    for (const p of pythonPaths) console.error(`    ${p}`);
+    console.error('\n  optimize/ is dev-only Python at the monorepo root (compiled-prompts D4); it never ships in the');
+    console.error('  plugin, the kit or the template. Move the file out, or make its output a reviewed data file.\n');
+  }
+
+  if (!violations.length && !stale.length && !pythonPaths.length) {
     console.log(`check-plugin-leaks: clean (${targets.length} files scanned, ${ALLOW.length} deliberate matches allowed).`);
     process.exit(0);
   }

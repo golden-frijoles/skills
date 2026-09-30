@@ -20,7 +20,8 @@ build_order: null    # integer position in the ONE global build sequence — the
 > **Area:** {{MACRO}} · **Risk:** {{RISK}} · **Class:** {{TYPE}} · **Scope seed:** [`00-ideas/seeds/{{SLUG}}.md`](../../00-ideas/seeds/{{SLUG}}.md)
 <!-- Class (above) is the Stage-2 classification: Feature, Spike, Bug, or Chore — see SKILL.md's
      Stage 2 table; sourced from scaffold-epic.mjs's --type flag (a fixed 4-value enum, not free
-     text — a longer description belongs in ## Why, not here).
+     text — a longer description belongs in the Why section below, not here; this comment never names
+     that heading literally, so an edit anchored on it cannot land inside the comment).
      Optional: if this epic was ALSO tagged with an archetype at grooming (see spike-role-archetypes.md),
      append " · **Archetype:** <Prototyper|Builder|Sweeper|Grower|Maintainer>" after Class. Omit entirely
      for the Builder default — untagged is fine.

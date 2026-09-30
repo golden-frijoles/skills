@@ -37,6 +37,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { jevContext } from './jev.mjs';
+import { loadQuestions, wireQuestion } from './jev-questions.mjs';
 
 /** Codex CLI version last observed producing a real, structured review. Bump after a verified run. */
 export const CODEX_VERIFIED = '0.154.0';
@@ -304,35 +305,14 @@ export const RE_REVIEW_NOTE =
 /** Reviewer replies are truncated to this for Jev (the 32k-token state budget), with a note. */
 export const REVIEW_STATE_CHARS = 60_000;
 
-export const REVIEW_QUESTIONS = {
-  // Wording MEASURED, not guessed — on the 76 labelled review fixtures in jev-eval.fixtures.json (2026-09-23,
-  // jev-1.13.0), at real ≥ 0.85 / not-real ≤ 0.15. "Is this a genuine review?" scored a real prose finding
-  // 0.73. "Does it contain an assessment of a code change?" decided only 38/76, because terse clean verdicts
-  // ("Clean.", "Blocking: None.") sat in the uncertain band. This wording, which names the terse verdicts
-  // and the failure shapes, decided 74/76 and got all 74 right (the regex alone: 66/76). Re-measure with
-  // `node scripts/jev-eval.mjs --live` before changing a word of it.
-  is_real_review: {
-    type: 'noul',
-    instructions:
-      'This is the output of an automated code reviewer. Did the reviewer deliver a verdict on the change?',
-    criteria: {
-      true: 'Yes: it reports at least one finding about the code, OR it states a verdict that there is nothing to fix — e.g. "Clean.", "No findings.", "Blocking: None. Should-fix: None.", "Diff looks clean." A short clean verdict counts, and boilerplate footers after it do not change that.',
-      false:
-        'No: the reviewer did not finish or never started — empty severity headings, a timeout or "analysis incomplete" note, a quota, rate-limit, login or HTTP error, a CLI banner or help text, a preamble or plan saying what it will do, or a raw tool-call transcript.',
-    },
-  },
-  severity: {
-    type: 'choice',
-    instructions: 'What is the most severe finding this review reports?',
-    criteria: {
-      blocking:
-        'At least one finding the reviewer says must be fixed before merge (a bug, a broken contract, a security hole).',
-      should_fix: 'Nothing blocking, but at least one finding the reviewer says should be fixed.',
-      nit: 'Only minor or stylistic remarks.',
-      clean: 'No findings: the reviewer says the change is clean, or reports nothing to fix.',
-    },
-  },
-};
+// The questions are DATA (compiled-prompts D2): `lib/jev-questions/review.json`, each with its measurement beside it.
+// Their wording was measured, not guessed: "Is this a genuine review?" scored a real prose finding 0.73, and
+// "Does it contain an assessment of a code change?" left terse clean verdicts ("Clean.", "Blocking: None.") in the
+// uncertain band; naming the terse verdicts and the failure shapes fixed both (2026-09-23). A recording pins the
+// wording by hash, so an edit fails `node scripts/jev-eval.mjs` until `--live` re-measures it.
+export const REVIEW_QUESTIONS = Object.fromEntries(
+  loadQuestions('review').map((q) => [q.id, wireQuestion(q)])
+);
 
 /**
  * The state Jev sees: the reply, or — when it would not fit — its HEAD and TAIL with a note between. The tail

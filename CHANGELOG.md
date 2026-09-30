@@ -7,6 +7,24 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-30
+
+### Changed
+
+- **Every Jev question is data.** The review guard's, the prose guard's and intent-match's questions now live in
+  `scripts/lib/jev-questions/{review,prose,intent}.json`, in the exact shape Jev receives, each with a `measured`
+  block beside it (model, date, how many it decided, how many of those were right). The guards read them through
+  `lib/jev-questions.mjs`. The move is byte-identical, so every verdict is unchanged. The kit ships the three files.
+
+### Added
+
+- **A recording remembers its wording.** Each `jev-eval.fixtures.json` recording stamps a hash of every question it
+  answered. Edit one word of a question and `node scripts/jev-eval.mjs` fails, naming the question and `run --live`,
+  where it used to replay the old answers green. The existing recordings were stamped without a Jev call.
+- **A leak guard for Python.** `check-plugin-leaks` fails on any `optimize/`, `.py` or `requirements*` path in the
+  mirrored tree and on a shipped script that imports `optimize/` or spawns `python`. `kit-tarball` asserts the
+  same on the packed kit. The kit stays zero-dependency Node.
+
 ## [0.14.1] - 2026-09-30
 
 ### Fixed

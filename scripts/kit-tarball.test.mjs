@@ -13,6 +13,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { stageKit } from './build-kit.mjs';
+import { OPTIMIZE_PATH } from './check-plugin-leaks.mjs';
 
 // git exports GIT_DIR & co. into hooks, and from a worktree they point at the REAL repo (LEARNINGS, 2026-09-23).
 function sealedEnv() {
@@ -87,6 +88,43 @@ test('the packed kit, installed in a stranger repo, runs build-order from a subd
 
   const missing = spawnSync(bin, ['--root', join(repo, 'nope'), 'build-order'], { encoding: 'utf8', env: sealedEnv() });
   assert.equal(missing.status, 2, 'a --root that does not exist is refused, not guessed');
+});
+
+// compiled-prompts D9 + S1.4: the Jev questions are DATA the guards read at import time (not an import edge, so
+// declared by hand), and `optimize/` is dev-only Python a plugin user must never receive. Both are properties of
+// the TARBALL, so both are asserted on the packed file list — and the guards are loaded from the INSTALLED package,
+// the one place a missing JSON would throw.
+
+test('the packed kit carries the Jev question files and nothing from optimize/ or Python', { skip: !hasNpm && 'npm not found — could not look' }, () => {
+  const kitDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stage-')));
+  stageKit(kitDir);
+  const packDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-pack-')));
+  const pack = spawnSync('npm', ['pack', '--json', '--pack-destination', packDir, kitDir], { encoding: 'utf8', env: sealedEnv() });
+  assert.equal(pack.status, 0, pack.stderr);
+  const files = JSON.parse(pack.stdout)[0].files.map((f) => f.path);
+  for (const f of ['lib/jev-questions.mjs', 'lib/jev-questions/review.json', 'lib/jev-questions/prose.json', 'lib/jev-questions/intent.json'])
+    assert.ok(files.includes(`dist/${f}`), `the packed kit lacks dist/${f}`);
+  assert.deepEqual(files.filter((f) => OPTIMIZE_PATH.test(f)), [], 'optimize/ or Python reached the kit');
+
+  const tools = realpathSync(mkdtempSync(join(tmpdir(), 'kit-tools-')));
+  const tgz = readdirSync(packDir).find((f) => f.endsWith('.tgz'));
+  const install = spawnSync('npm', ['install', '--offline', '--no-audit', '--no-fund', '--prefix', tools, join(packDir, tgz)], { encoding: 'utf8', env: sealedEnv() });
+  assert.equal(install.status, 0, install.stderr);
+  const lib = join(tools, 'node_modules', '@golden-frijoles', 'kit', 'dist', 'lib');
+  const load = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', `const p = await import(${JSON.stringify(join(lib, 'prose-guard.mjs'))}); const r = await import(${JSON.stringify(join(lib, 'review-guard.mjs'))}); console.log(p.PROSE_FAMILIES.length, Object.keys(r.REVIEW_QUESTIONS).join())`],
+    { encoding: 'utf8', env: sealedEnv() }
+  );
+  assert.equal(load.status, 0, load.stderr);
+  assert.equal(load.stdout.trim(), '4 is_real_review,severity');
+});
+
+test('OPTIMIZE_PATH names the paths a Python workspace would leave, and not the kit\'s own names', () => {
+  for (const bad of ['dist/optimize/refit.py', 'optimize/README.md', 'dist/x.py', 'dist/x.pyc', 'dist/requirements.lock'])
+    assert.ok(OPTIMIZE_PATH.test(bad), bad);
+  for (const ok of ['dist/lib/jev-questions/prose.json', 'dist/jev-eval.mjs', 'dist/optimizer-notes.md'])
+    assert.ok(!OPTIMIZE_PATH.test(ok), ok);
 });
 
 // distribute-what-we-use S2.1: the kickoff's review/session commands run from the PACKED kit, not a

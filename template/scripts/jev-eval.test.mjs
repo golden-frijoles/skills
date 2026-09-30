@@ -283,6 +283,73 @@ test('--rail intent is accepted; a misspelt set is still refused', async () => {
   assert.match(err, /review, prose, lint, intent/);
 });
 
+// ── compiled-prompts D3: a recording answers for the WORDING that produced it ─────────────────────────────────
+const shared = () => JSON.parse(readFileSync(FIXTURES_PATH, 'utf8'));
+
+test('every committed review, prose and intent recording is stamped with the wording it answered', () => {
+  const f = shared();
+  for (const set of ['review', 'prose', 'intent'])
+    for (const fx of f[set])
+      if (Object.keys(fx.recorded?.answers ?? {}).length)
+        assert.ok(fx.recorded.questionHashes, `${set}/${fx.id} has answers but no wording stamp`);
+});
+
+test('one changed word of a question fails offline replay, naming the question and "run --live"', async () => {
+  const rails = await loadRails();
+  const fixtures = shared();
+  const reworded = (set, id, edit) => {
+    const fx = fixtures[set].find((x) => x.recorded.questionHashes?.[id]);
+    assert.ok(fx, `a ${set} fixture that asked ${id}`);
+    return { fx, stale: rails[set].stale({ ...fx, recorded: { ...fx.recorded, questionHashes: edit(fx) } }) };
+  };
+  // The stamp in the recording no longer matches the live wording: exactly what editing the question produces.
+  for (const [set, id] of [
+    ['review', 'is_real_review'],
+    ['prose', 'live'],
+    ['intent', 'coverage_in'],
+  ]) {
+    const { fx } = reworded(set, id, (x) => x.recorded.questionHashes);
+    assert.equal(rails[set].stale(fx), null, `${set}/${fx.id} replays clean as committed`);
+    const { stale } = reworded(set, id, (x) => ({ ...x.recorded.questionHashes, [id]: 'another-wording' }));
+    assert.equal(stale, `recorded against another wording of ${id} — run --live`);
+  }
+});
+
+test('a real edit to the wording is caught through evaluate(), not only by the hook', async () => {
+  const prose = await import('./lib/prose-guard.mjs');
+  const family = prose.PROSE_FAMILIES.find((f) => f.key === 'live');
+  const original = family.question;
+  try {
+    family.question = original.replace('SWITCHED ON', 'TURNED ON');
+    const { failures } = await evaluate({
+      fixtures: { prose: shared().prose.slice(0, 5) },
+      rails: await loadRails(),
+      config: loadJevConfig({ root: repoRoot() }),
+    });
+    assert.ok(failures.length > 0);
+    assert.ok(failures.every((m) => /recorded against another wording of live — run --live$/.test(m)));
+  } finally {
+    family.question = original;
+  }
+});
+
+test('an unstamped recording is stale; a recording with no answers has nothing to pin', async () => {
+  const rails = await loadRails();
+  const fx = shared().review[0];
+  assert.match(
+    rails.review.stale({ ...fx, recorded: { model: fx.recorded.model, answers: fx.recorded.answers } }),
+    /no wording stamp for is_real_review — run --live/
+  );
+  assert.equal(rails.prose.stale({ id: 'h', recorded: { model: 'jev-1.13.0', answers: {} } }), null);
+});
+
+test('--live stamps what it recorded: the prose stamp names each FAMILY once, not each sentence', async () => {
+  const rails = await loadRails();
+  const extra = rails.prose.recordExtra({}, { s0_live: {}, s1_live: {}, s0_fix: {} });
+  assert.deepEqual(Object.keys(extra.questionHashes), ['fix', 'live']);
+  assert.match(extra.questionHashes.live, /^[0-9a-f]{16}$/);
+});
+
 // ── semantic-lint D8 (amended after the fresh review of #200): lint coverage is per CONFIGURED rule ──────────
 test("lint coverage: an undefined rule's fixtures FAIL (never skip green); a configured rule under the floor fails", async () => {
   const { parseLintRules } = await import('./semantic-lint.mjs');

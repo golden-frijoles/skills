@@ -1,0 +1,77 @@
+{
+  "$comment": "The prose rail's four family questions (compiled-prompts D2). `instructions` is the question Jev is asked about each sentence; lib/prose-guard.mjs wraps it as { sentence, question } and keeps the evidence gates (which family is skipped) in code. `id` is the family key the recordings use (`s<unit>_<id>`); `code` is the finding it raises. A recording pins each question by hash (D3).",
+  "questions": [
+    {
+      "id": "fix",
+      "code": "unsupported-fix-claim",
+      "type": "noul",
+      "instructions": "Does `sentence` claim that the change being reported FIXED, resolved, closed, patched, prevented or eliminated a specific bug, vulnerability or problem — as an accomplished outcome of this change?",
+      "criteria": {
+        "true": "It asserts this change fixed, resolved, prevented, removed or closed a specific defect or risk (any tense or phrasing, including \"…, eliminating X\", \"X no longer happens\", \"won't get stuck anymore\").",
+        "false": "It only describes a check, test or process that detects or catches mistakes; or it describes what the change adds; or it mentions a past incident as context; or it denies a fix."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 51,
+        "decided": 51,
+        "right": 50,
+        "how": "offline replay of the 51 labelled prose fixtures (of 163) whose evidence let this family be asked, through judgeProse at claim ≥ 0.8; decided = Jev answered (no regex fallback); right = the draft raises unsupported-fix-claim exactly when its label does."
+      }
+    },
+    {
+      "id": "beneficiary",
+      "code": "invented-beneficiary",
+      "type": "noul",
+      "instructions": "Does `sentence` claim that end users of the product — customers, users, merchants, sellers, buyers, shoppers, tenants, clients, subscribers, or \"the people buying from us\" — gain, notice or experience something because of this change?",
+      "criteria": {
+        "true": "It says or implies a named group of end users benefits, notices, gets or can do something because of this change.",
+        "false": "No end-user group is claimed to benefit: \"everyone\"/\"anyone\"/\"nobody\" used only to describe availability; a statement that nobody can use it yet; or it says end users are NOT affected / would see nothing / the work is internal."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 22,
+        "decided": 22,
+        "right": 22,
+        "how": "offline replay of the 22 labelled prose fixtures (of 163) whose evidence let this family be asked, through judgeProse at claim ≥ 0.8; decided = Jev answered (no regex fallback); right = the draft raises invented-beneficiary exactly when its label does."
+      }
+    },
+    {
+      "id": "live",
+      "code": "flag-state-claim",
+      "type": "noul",
+      "instructions": "Does `sentence` claim that a capability has been SWITCHED ON for real use — its release state, not its behaviour? Examples of such claims: \"is live\", \"went live\", \"is now enabled\", \"is rolled out to everyone\", \"is now available\", \"is running in production\", \"the switch has been flipped\", \"X can now do Y\" (a newly usable capability), \"as of this morning people can…\".",
+      "criteria": {
+        "true": "It states as fact that something is on / live / released / available for use now.",
+        "false": "It only describes what a change does or how something behaves (\"now groups\", \"now checks\", \"no longer breaks\", \"now caught in seconds\", \"benefit from\", \"validates\", \"won't get stuck\"); or it claims a fix or a benefit without claiming a release state; or it says the thing is NOT live, dark, off, or not yet available."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 147,
+        "decided": 147,
+        "right": 128,
+        "how": "offline replay of the 147 labelled prose fixtures (of 163) whose evidence let this family be asked, through judgeProse at claim ≥ 0.8; decided = Jev answered (no regex fallback); right = the draft raises flag-state-claim exactly when its label does."
+      }
+    },
+    {
+      "id": "commitment",
+      "code": "invented-commitment",
+      "type": "noul",
+      "instructions": "Does `sentence` state a deadline, a due date, a scheduled date, or a sign-off or approval owed by some time (today, tomorrow, a weekday, next week, end of day…)?",
+      "criteria": {
+        "true": "It binds something to a future time: \"by Friday\", \"due tomorrow\", \"sign-off is owed before the demo\", \"will ship next week\".",
+        "false": "No future time is attached: past facts, or something owed with no date."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 147,
+        "decided": 147,
+        "right": 145,
+        "how": "offline replay of the 147 labelled prose fixtures (of 163) whose evidence let this family be asked, through judgeProse at claim ≥ 0.8; decided = Jev answered (no regex fallback); right = the draft raises invented-commitment exactly when its label does."
+      }
+    }
+  ]
+}

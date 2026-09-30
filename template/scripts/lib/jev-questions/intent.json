@@ -1,0 +1,87 @@
+{
+  "$comment": "intent-match's question sets (intent-match D13, moved here by compiled-prompts D7). `{item}` (and `{gap}` for route) is filled in by intent-match.mjs with the backticked state path; the item's text is in the state, never in the question. A recording pins each question by hash (D3).",
+  "questions": [
+    {
+      "id": "coverage_in",
+      "type": "noul",
+      "instructions": "`pitch` is a plan written in answer to a request. `{item}` is one thing the requester asked for. Does the plan deliver it — is there a part, story, decision or acceptance check in `pitch` that satisfies it, even in different words?",
+      "criteria": {
+        "true": "Yes: something the plan proposes to build, decide, write or check delivers this requirement, fully or in substance.",
+        "false": "No: the plan does not deliver it — it is missing, only restated as background or as the problem, deferred to later work, cut, or listed as out of scope."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 17,
+        "decided": 16,
+        "right": 16,
+        "how": "offline replay of the 17 labelled coverage_in items in jev-eval.fixtures.json's intent set through judgeItem; decided = P ≤ 0.2 or ≥ 0.8; right = decided and the yes/no at 0.5 matches the label."
+      }
+    },
+    {
+      "id": "coverage_out",
+      "type": "noul",
+      "instructions": "`{item}` is an acceptance check from the plan in `pitch`. `claims` lists what the requester asked for. Is this check there because of the request: does it test something a claim asks for, or a detail of how the plan delivers it, or a call the plan records the requester making?",
+      "criteria": {
+        "true": "Yes: it tests something a claim asks for, or a detail of delivering it (a limit, an error message, a format, a step), or a decision the plan says the requester made.",
+        "false": "No: it tests a feature or outcome that no claim asks for and no recorded decision of the requester explains, so it is scope the plan added on its own."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 8,
+        "decided": 6,
+        "right": 6,
+        "how": "offline replay of the 8 labelled coverage_out items in jev-eval.fixtures.json's intent set through judgeItem; decided = P ≤ 0.2 or ≥ 0.8; right = decided and the yes/no at 0.5 matches the label."
+      }
+    },
+    {
+      "id": "clarity",
+      "type": "score",
+      "instructions": "`{item}` is an acceptance check from the plan in `pitch`. Could two builders, working separately, test it the same way and agree whether it passes?",
+      "criteria": [
+        "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+        "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+        "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+        "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+      ],
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 12,
+        "decided": 10,
+        "right": 10,
+        "how": "offline replay of the 12 labelled clarity items in jev-eval.fixtures.json's intent set through judgeItem; decided = P ≤ 0.2 or ≥ 0.8; right = decided and the yes/no at 0.5 matches the label."
+      }
+    },
+    {
+      "id": "agreement",
+      "type": "noul",
+      "instructions": "`plan` is the architecture lock a builder wrote for this work. `reading` is what a second reader, given only the pitch, says they would build, would not build, and would ask first. Would the two of them build the same thing?",
+      "criteria": {
+        "true": "Yes: the reading describes the same product and the same scope as the plan; the differences are wording, order, or detail the plan already settles.",
+        "false": "No: the reading would build something the plan does not, leave out something the plan builds, or its first question exposes a decision the plan has not made."
+      },
+      "measured": null,
+      "unmeasured": "No labelled set of reader replies exists yet (intent-match D16); its answer is one advisory signal among five."
+    },
+    {
+      "id": "route",
+      "type": "choice",
+      "instructions": "`{item}` is a gap between the request and the plan in `pitch`: {gap}. Which ONE artifact, made next, would close this gap fastest?",
+      "criteria": {
+        "copy_deck": "The exact words a person will read (labels, messages, names, an email) are what is missing or unclear.",
+        "wireframe": "A screen or page someone uses: what is on it, in what order, and what they can do there.",
+        "flow": "A journey of several steps: the order of the steps and the branches between them.",
+        "data_sample": "A new record, table, file or payload: three real-looking rows would settle what it holds.",
+        "state_machine": "A lifecycle: the statuses something moves through and what moves it from one to the next.",
+        "sequence": "Calls between services, background work or retries: who calls whom, in what order, and what happens on failure.",
+        "container_diagram": "A new repo, package, service or deploy boundary: what runs where and what talks to what.",
+        "spike": "A technical unknown: nobody knows yet whether or how it can be done, and a short experiment would answer it.",
+        "think_chain": "A judgement or trade-off that needs reasoning through in writing, which none of the other artifacts would settle."
+      },
+      "measured": null,
+      "unmeasured": "A route is a suggestion for the next artifact and never part of the score, so it has no labels (intent-match D15)."
+    }
+  ]
+}

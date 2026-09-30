@@ -13,7 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scan, RULES, ALLOW } from './check-plugin-leaks.mjs';
+import { scan, scanPaths, RULES, ALLOW } from './check-plugin-leaks.mjs';
 
 const file = (text, rel = 'template/AGENTS.md') => [{ rel, text }];
 const names = (result) => result.violations.map((v) => v.rule.name);
@@ -148,4 +148,59 @@ test('every rule carries a name and a remedy, because the failure output is the 
 
 test('lines are matched trimmed, so indentation never hides a leak', () => {
   assert.equal(scan(file('        DEFAULT_FLAGS'), { allow: [] }).violations.length, 1);
+});
+
+// ── compiled-prompts S1.4: nothing from optimize/ or Python in what ships ─────────────────────────────
+const PY = 'python or optimize/ reached a shipped script';
+
+test('a shipped script importing from optimize/ or spawning python fails the guard', () => {
+  for (const line of [
+    "import { fit } from '../../optimize/refit.mjs';",
+    "const m = await import('../optimize/wording.mjs');",
+    "spawnSync('python3', ['optimize/refit.py']);",
+    'execFileSync("python", ["x.py"]);',
+    "spawn('uv', ['run', 'refit.py']);",
+    "const m = require('../optimize/a.cjs');",
+    "const u = new URL('../optimize/a.mjs', import.meta.url);",
+    "spawnSync('/usr/bin/python3', ['x']);",
+    "spawnSync('py', ['-3', 'x']);",
+    "execFileSync('python3.12', ['x']);",
+  ])
+    assert.deepEqual(names(scan(file(line, 'template/scripts/jev-eval.mjs'), { allow: [] })), [PY], line);
+});
+
+test('prose that merely names optimize/ or Python is not a leak', () => {
+  for (const line of [
+    'Re-measure a wording with `node optimize/wording.mjs` in the monorepo.',
+    'The kit never needs Python.',
+    "import { loadQuestions } from './lib/jev-questions.mjs';",
+    "spawnSync('pyright-langserver');",
+    'The plugin never spawns `python3`.',
+  ])
+    assert.deepEqual(names(scan(file(line), { allow: [] })), [], line);
+});
+
+test('scanPaths names every Python or optimize/ file among the shipped paths, and only those', () => {
+  assert.deepEqual(
+    scanPaths([
+      'template/scripts/optimize/refit.py',
+      'plugins/golden-frijoles/skills/groom/helper.py',
+      'template/__pycache__/x.pyc',
+      'kit/requirements.lock',
+      'template/pyproject.toml',
+      'template/uv.lock',
+      'template/notes.ipynb',
+      'template/scripts/lib/jev-questions/prose.json',
+      'template/scripts/optimizer.mjs',
+    ]),
+    [
+      'template/scripts/optimize/refit.py',
+      'plugins/golden-frijoles/skills/groom/helper.py',
+      'template/__pycache__/x.pyc',
+      'kit/requirements.lock',
+      'template/pyproject.toml',
+      'template/uv.lock',
+      'template/notes.ipynb',
+    ]
+  );
 });

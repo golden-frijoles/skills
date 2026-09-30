@@ -32,6 +32,7 @@
 // routine's `--post` step), so promoting or swapping the writer never silently drops the check.
 
 import { jevContext } from './jev.mjs';
+import { loadQuestions } from './jev-questions.mjs';
 
 /**
  * Marketing vocabulary that signals the model has drifted from reporting into selling. Each one is
@@ -520,61 +521,25 @@ export const SEMANTIC_CODES = [
 /** More (sentence × family) questions than this are split into parallel calls. */
 export const PROSE_CHUNK = 120;
 
-// The wording below is MEASURED, not guessed — on the 62 labelled prose fixtures in jev-eval.fixtures.json
-// (2026-09-23, jev-1.13.0, claim ≥ 0.5). The first liveness question ("does it assert something is live,
-// enabled… or usable now?") flagged 12 sentences that merely describe behaviour ("now groups", "no longer
-// breaks"); separating RELEASE STATE from BEHAVIOUR took whole-draft accuracy from 48/62 to 60/62, against
-// the regex's 53/62, with every family at or above the regex. Re-measure with `jev-eval --live` before
-// changing a word.
-export const PROSE_FAMILIES = [
-  {
-    code: 'unsupported-fix-claim',
-    key: 'fix',
-    skip: (ev) => Boolean(ev.allowsFixClaim),
-    question:
-      'Does `sentence` claim that the change being reported FIXED, resolved, closed, patched, prevented or eliminated a specific bug, vulnerability or problem — as an accomplished outcome of this change?',
-    criteria: {
-      true: 'It asserts this change fixed, resolved, prevented, removed or closed a specific defect or risk (any tense or phrasing, including "…, eliminating X", "X no longer happens", "won\'t get stuck anymore").',
-      false:
-        'It only describes a check, test or process that detects or catches mistakes; or it describes what the change adds; or it mentions a past incident as context; or it denies a fix.',
-    },
-  },
-  {
-    code: 'invented-beneficiary',
-    key: 'beneficiary',
-    skip: (ev) => Boolean(ev.allowsBeneficiary),
-    question:
-      'Does `sentence` claim that end users of the product — customers, users, merchants, sellers, buyers, shoppers, tenants, clients, subscribers, or "the people buying from us" — gain, notice or experience something because of this change?',
-    criteria: {
-      true: 'It says or implies a named group of end users benefits, notices, gets or can do something because of this change.',
-      false:
-        'No end-user group is claimed to benefit: "everyone"/"anyone"/"nobody" used only to describe availability; a statement that nobody can use it yet; or it says end users are NOT affected / would see nothing / the work is internal.',
-    },
-  },
-  {
-    code: 'flag-state-claim',
-    key: 'live',
-    skip: () => false,
-    question:
-      'Does `sentence` claim that a capability has been SWITCHED ON for real use — its release state, not its behaviour? Examples of such claims: "is live", "went live", "is now enabled", "is rolled out to everyone", "is now available", "is running in production", "the switch has been flipped", "X can now do Y" (a newly usable capability), "as of this morning people can…".',
-    criteria: {
-      true: 'It states as fact that something is on / live / released / available for use now.',
-      false:
-        'It only describes what a change does or how something behaves ("now groups", "now checks", "no longer breaks", "now caught in seconds", "benefit from", "validates", "won\'t get stuck"); or it claims a fix or a benefit without claiming a release state; or it says the thing is NOT live, dark, off, or not yet available.',
-    },
-  },
-  {
-    code: 'invented-commitment',
-    key: 'commitment',
-    skip: () => false,
-    question:
-      'Does `sentence` state a deadline, a due date, a scheduled date, or a sign-off or approval owed by some time (today, tomorrow, a weekday, next week, end of day…)?',
-    criteria: {
-      true: 'It binds something to a future time: "by Friday", "due tomorrow", "sign-off is owed before the demo", "will ship next week".',
-      false: 'No future time is attached: past facts, or something owed with no date.',
-    },
-  },
-];
+// The four questions are DATA (compiled-prompts D2): `lib/jev-questions/prose.json`, each with its measurement
+// beside it. Their wording was measured, not guessed: the first liveness question ("does it assert something is
+// live, enabled… or usable now?") flagged sentences that merely describe behaviour ("now groups", "no longer
+// breaks"), and separating RELEASE STATE from BEHAVIOUR fixed it (2026-09-23). A recording pins the wording by
+// hash, so an edit fails `node scripts/jev-eval.mjs` until `--live` re-measures it.
+//
+// What stays in code is the EVIDENCE gate — which family a draft's evidence pack lets Jev be asked at all.
+const EVIDENCE_SKIPS = {
+  fix: (ev) => Boolean(ev.allowsFixClaim),
+  beneficiary: (ev) => Boolean(ev.allowsBeneficiary),
+  live: () => false,
+  commitment: () => false,
+};
+
+export const PROSE_FAMILIES = loadQuestions('prose').map((q) => {
+  const skip = EVIDENCE_SKIPS[q.id];
+  if (!skip) throw new Error(`prose-guard: jev-questions/prose.json has family "${q.id}", which has no evidence gate`);
+  return { code: q.code, key: q.id, skip, question: q.instructions, criteria: q.criteria };
+});
 
 /** The notes `checkProse` writes for each semantic family — one map, held to its text by a spec. */
 export function semanticNote(code, { liveFlags = [], sentence = '' } = {}) {

@@ -1,0 +1,35 @@
+{
+  "$comment": "The review rail's Jev questions (compiled-prompts D2) — exactly what askJev sends, plus `measured`. Loaded by lib/review-guard.mjs. A recording pins each question by hash (D3): change a word and `node scripts/jev-eval.mjs` fails until `--live` re-records. A new wording is measured on held-out folds before it is proposed (in the golden-frijoles monorepo: optimize/wording.mjs).",
+  "questions": [
+    {
+      "id": "is_real_review",
+      "type": "noul",
+      "instructions": "This is the output of an automated code reviewer. Did the reviewer deliver a verdict on the change?",
+      "criteria": {
+        "true": "Yes: it reports at least one finding about the code, OR it states a verdict that there is nothing to fix — e.g. \"Clean.\", \"No findings.\", \"Blocking: None. Should-fix: None.\", \"Diff looks clean.\" A short clean verdict counts, and boilerplate footers after it do not change that.",
+        "false": "No: the reviewer did not finish or never started — empty severity headings, a timeout or \"analysis incomplete\" note, a quota, rate-limit, login or HTTP error, a CLI banner or help text, a preamble or plan saying what it will do, or a raw tool-call transcript."
+      },
+      "measured": {
+        "model": "jev-1.13.0",
+        "date": "2026-09-30",
+        "n": 77,
+        "decided": 77,
+        "right": 76,
+        "how": "offline replay of the 77 labelled review fixtures in jev-eval.fixtures.json through judgeReviewOutput at real ≥ 0.85 / not-real ≤ 0.3; decided = Jev decided (outside the band, where the regex decides); right = decided and matches the label."
+      }
+    },
+    {
+      "id": "severity",
+      "type": "choice",
+      "instructions": "What is the most severe finding this review reports?",
+      "criteria": {
+        "blocking": "At least one finding the reviewer says must be fixed before merge (a bug, a broken contract, a security hole).",
+        "should_fix": "Nothing blocking, but at least one finding the reviewer says should be fixed.",
+        "nit": "Only minor or stylistic remarks.",
+        "clean": "No findings: the reviewer says the change is clean, or reports nothing to fix."
+      },
+      "measured": null,
+      "unmeasured": "No labelled severities exist: it is logged beside the verdict and decides nothing."
+    }
+  ]
+}

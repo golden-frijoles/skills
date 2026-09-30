@@ -16,8 +16,10 @@
 //                                             --limit is refused without --live and never touches the file.
 //                                             It still needs `jev.egress` true and TYPESAFE_API_KEY.
 //
-// Why offline replay exists: a model bump, a threshold change or an edit to a judge's decide logic must
-// show up as a red CI run, not as a quietly different verdict on the next PR. Why --live exists: the
+// Why offline replay exists: a model bump, a threshold change, an edit to a judge's decide logic or to a
+// question's WORDING must show up as a red CI run, not as a quietly different verdict on the next PR. Each
+// recording stamps the hash of every question it answered (compiled-prompts D3); a stamp that no longer matches
+// the live wording fails replay, naming the question. Why --live exists: the
 // recordings are only as current as the model that produced them — run it before bumping `model`.
 //
 // The rot guard: a rail in `shadow` past `shadowExpires` fails this script, so shadow cannot quietly become
@@ -38,6 +40,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSection } from './lib/config.mjs';
 import { loadJevConfig, parseJevConfig, RAILS, readApiKey, repoRoot } from './lib/jev.mjs';
+import { questionHash } from './lib/jev-questions.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const FIXTURES_PATH = join(__dirname, 'jev-eval.fixtures.json');
@@ -145,6 +148,32 @@ const sortedCodes = (findings) =>
   [...new Set((findings ?? []).map((f) => f.code).filter((c) => SEMANTIC_CODES.includes(c)))].sort();
 
 /**
+ * A recording answers for the WORDING that produced it, not only the model (compiled-prompts D3) — the guard the
+ * lint rail already had, for every set. `hashes` maps question id → `questionHash`; `idsOf(answers, fx)` names the
+ * questions a recording holds answers for. A recording with answers but no stamp is stale too: it cannot prove
+ * which wording it answered.
+ */
+export function wordingHooks(hashes, idsOf) {
+  return {
+    stale: (fx) => {
+      for (const id of idsOf(fx.recorded?.answers ?? {}, fx)) {
+        const pinned = fx.recorded?.questionHashes?.[id];
+        if (!pinned) return `recording has no wording stamp for ${id} — run --live`;
+        if (pinned !== hashes[id]) return `recorded against another wording of ${id} — run --live`;
+      }
+      return null;
+    },
+    recordExtra: (fx, answers) => ({
+      questionHashes: Object.fromEntries(idsOf(answers, fx).map((id) => [id, hashes[id]])),
+    }),
+  };
+}
+
+/** Prose answers are keyed `s<unit>_<family key>`; the question is the family. */
+const proseIds = (answers) =>
+  [...new Set(Object.keys(answers).map((id) => /^s\d+_(.+)$/.exec(id)?.[1] ?? id))].sort();
+
+/**
  * The rails this harness can evaluate. Each judge is looked up by name so a rail whose judge has not
  * landed yet is SKIPPED loudly instead of failing the import.
  */
@@ -153,6 +182,10 @@ export async function loadRails({ lintRules = [] } = {}) {
   const review = await import('./lib/review-guard.mjs');
   if (typeof review.judgeReviewOutput === 'function')
     rails.review = {
+      ...wordingHooks(
+        Object.fromEntries(Object.entries(review.REVIEW_QUESTIONS).map(([id, q]) => [id, questionHash(q)])),
+        (answers) => Object.keys(answers).sort()
+      ),
       run: (fx, deps) => review.judgeReviewOutput(fx.text, {}, deps),
       regex: (fx) => review.assertReviewOutput(fx.text).ok,
       predicted: (d) => d.ok,
@@ -162,6 +195,15 @@ export async function loadRails({ lintRules = [] } = {}) {
   const prose = await import('./lib/prose-guard.mjs');
   if (typeof prose.judgeProse === 'function')
     rails.prose = {
+      ...wordingHooks(
+        Object.fromEntries(
+          prose.PROSE_FAMILIES.map((f) => [
+            f.key,
+            questionHash({ type: 'noul', instructions: f.question, criteria: f.criteria }),
+          ])
+        ),
+        proseIds
+      ),
       run: (fx, deps) => prose.judgeProse(fx.draft, fx.evidence ?? {}, deps),
       regex: (fx) => sortedCodes(prose.checkProse(fx.draft, fx.evidence ?? {}).findings),
       predicted: (d) => sortedCodes(d.findings),
@@ -171,6 +213,11 @@ export async function loadRails({ lintRules = [] } = {}) {
   const intent = await import('./intent-match.mjs');
   if (typeof intent.judgeItem === 'function')
     rails.intent = {
+      // One question per fixture (`fx.question`); its answer id is `<prefix>_<item>`, so the fixture names it.
+      ...wordingHooks(
+        Object.fromEntries(Object.entries(intent.INTENT_QUESTIONS).map(([id, q]) => [id, questionHash(q)])),
+        (answers, fx) => (Object.keys(answers).length ? [fx.question] : [])
+      ),
       run: (fx, deps) => intent.judgeItem(fx, deps),
       regex: null, // no deterministic rule to compare with — the score has none (C2)
       predicted: (d) => d.value,
@@ -307,7 +354,11 @@ export async function evaluate({
       if (live) {
         // A draft the judge needed no answers for (e.g. a heading-only unit, which is never asked about) is
         // recorded as answered by the pinned model with no answers — replaying it asks nothing.
-        fx.recorded = { model: sink.model ?? cfg.model, answers: sink.answers, ...(rail.recordExtra?.(fx) ?? {}) };
+        fx.recorded = {
+          model: sink.model ?? cfg.model,
+          answers: sink.answers,
+          ...(rail.recordExtra?.(fx, sink.answers) ?? {}),
+        };
         fx.decision = summary;
       } else if (!same(summary, fx.decision)) {
         failures.push(

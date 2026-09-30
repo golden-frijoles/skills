@@ -44,6 +44,7 @@ import {
   STATE_CHAR_BUDGET,
 } from './lib/jev.mjs';
 import { needSetting } from './lib/config.mjs';
+import { loadQuestions, wireQuestion } from './lib/jev-questions.mjs';
 
 export const EXIT_SCORED = 0;
 export const EXIT_USAGE = 1;
@@ -73,90 +74,18 @@ export const ROUTES = Object.freeze({
 });
 
 /**
- * EVERY question this script (and the reader at the lock) asks Jev, in one object (D13), so `compiled-prompts` can
- * move it to a data file unchanged. `{item}` is replaced by the backticked state path of the claim or criterion
- * being asked about (`claims.c3`, `criteria.a2`) — the item's text is in the state, never in the question.
- *
- * MEASURED, not guessed (D15) — on the 37 labelled items of jev-eval's `intent` set (2026-09-29, jev-1.13.0; five
- * pitches, two of them anonymised from a consuming project). "Right" = the yes/no at 0.5 matches the label;
- * "decided" = the answer sits at P ≤ 0.2 or ≥ 0.8. Re-measure with `node scripts/jev-eval.mjs --live --rail intent`
- * before changing a word:
- *   coverage_in   17 items · 17 right · 16 decided, all right.
- *   coverage_out   8 items ·  8 right ·  6 decided, all right. The first wording ("does this check trace back to a
- *                 claim?") was also 8/8 right but decided only 4: a check on a DETAIL of a claim (a field's
- *                 validation) sat at 0.47–0.51. Naming "a detail of how the plan delivers it" fixed that.
- *   clarity       12 items · 12 right · 10 decided, all right (score ÷ 3, split at 0.5).
- *   route         not measured: a route is a suggestion for the next artifact, never part of the score.
- * Re-running the same request moved one clarity answer across the 0.8 line (0.79 ↔ 0.81): "decided" counts are ±1.
+ * EVERY question this script (and the reader at the lock) asks Jev (D13) — now DATA in `lib/jev-questions/intent.json`
+ * (compiled-prompts D7), each with its measurement beside it. `{item}` is replaced by the backticked state path of the
+ * claim or criterion being asked about (`claims.c3`, `criteria.a2`) — the item's text is in the state, never in the
+ * question. Wording history worth keeping: coverage_out's first wording ("does this check trace back to a claim?") was
+ * as right but decided only 4 of 8 — a check on a DETAIL of a claim sat at 0.47–0.51 until the question named "a
+ * detail of how the plan delivers it". Re-running one request moved a clarity answer across 0.8 (0.79 ↔ 0.81), so
+ * "decided" counts are ±1. A recording pins the wording by hash: re-measure with
+ * `node scripts/jev-eval.mjs --live --rail intent` after changing a word.
  */
-export const INTENT_QUESTIONS = Object.freeze({
-  coverage_in: {
-    type: 'noul',
-    instructions:
-      '`pitch` is a plan written in answer to a request. `{item}` is one thing the requester asked for. Does the plan deliver it — is there a part, story, decision or acceptance check in `pitch` that satisfies it, even in different words?',
-    criteria: {
-      true: 'Yes: something the plan proposes to build, decide, write or check delivers this requirement, fully or in substance.',
-      false:
-        'No: the plan does not deliver it — it is missing, only restated as background or as the problem, deferred to later work, cut, or listed as out of scope.',
-    },
-  },
-  coverage_out: {
-    type: 'noul',
-    instructions:
-      '`{item}` is an acceptance check from the plan in `pitch`. `claims` lists what the requester asked for. Is this check there because of the request: does it test something a claim asks for, or a detail of how the plan delivers it, or a call the plan records the requester making?',
-    criteria: {
-      true: 'Yes: it tests something a claim asks for, or a detail of delivering it (a limit, an error message, a format, a step), or a decision the plan says the requester made.',
-      false:
-        'No: it tests a feature or outcome that no claim asks for and no recorded decision of the requester explains, so it is scope the plan added on its own.',
-    },
-  },
-  clarity: {
-    type: 'score',
-    instructions:
-      '`{item}` is an acceptance check from the plan in `pitch`. Could two builders, working separately, test it the same way and agree whether it passes?',
-    criteria: [
-      'No: it states an aim or a quality ("works well", "is clear", "feels fast") with nothing anyone could observe.',
-      'Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.',
-      'Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.',
-      'Yes: it names the action, where to do it and the exact result to observe, so two testers would agree.',
-    ],
-  },
-  agreement: {
-    // Asked by intent-reader.mjs at the architecture lock (D16), once per epic, only when `intent.reader` is on.
-    // Not measured: there is no labelled set of reader replies yet. Its answer is one signal among five, advisory.
-    type: 'noul',
-    instructions:
-      '`plan` is the architecture lock a builder wrote for this work. `reading` is what a second reader, given only the pitch, says they would build, would not build, and would ask first. Would the two of them build the same thing?',
-    criteria: {
-      true: 'Yes: the reading describes the same product and the same scope as the plan; the differences are wording, order, or detail the plan already settles.',
-      false:
-        'No: the reading would build something the plan does not, leave out something the plan builds, or its first question exposes a decision the plan has not made.',
-    },
-  },
-  route: {
-    type: 'choice',
-    instructions:
-      '`{item}` is a gap between the request and the plan in `pitch`: {gap}. Which ONE artifact, made next, would close this gap fastest?',
-    criteria: {
-      copy_deck:
-        'The exact words a person will read (labels, messages, names, an email) are what is missing or unclear.',
-      wireframe: 'A screen or page someone uses: what is on it, in what order, and what they can do there.',
-      flow: 'A journey of several steps: the order of the steps and the branches between them.',
-      data_sample:
-        'A new record, table, file or payload: three real-looking rows would settle what it holds.',
-      state_machine:
-        'A lifecycle: the statuses something moves through and what moves it from one to the next.',
-      sequence:
-        'Calls between services, background work or retries: who calls whom, in what order, and what happens on failure.',
-      container_diagram:
-        'A new repo, package, service or deploy boundary: what runs where and what talks to what.',
-      spike:
-        'A technical unknown: nobody knows yet whether or how it can be done, and a short experiment would answer it.',
-      think_chain:
-        'A judgement or trade-off that needs reasoning through in writing, which none of the other artifacts would settle.',
-    },
-  },
-});
+export const INTENT_QUESTIONS = Object.freeze(
+  Object.fromEntries(loadQuestions('intent').map((q) => [q.id, wireQuestion(q)]))
+);
 
 // ── Parsing the seed (D9) ─────────────────────────────────────────────────────────────────────────────────────
 
