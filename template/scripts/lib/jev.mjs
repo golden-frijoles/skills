@@ -136,7 +136,10 @@ export function loadJevConfig({ root = repoRoot(), read = readFileSync, exists =
   });
   // Absent everywhere → the defaults (every rail off). A PRESENT legacy file holding JSON null is malformed: the
   // parser throws.
-  if (!present) return parseJevConfig({});
+  // No config at all is UNANSWERED, not "yes" (distribute-what-we-use D7). parseJevConfig({}) keeps
+  // egress:true for a legacy FILE that never mentions it, but a stranger with no file has told us nothing,
+  // and D12's promise is that nothing leaves the machine before an explicit `egress: true`.
+  if (!present) return parseJevConfig({ egress: null });
   // D12: a section that never gives egress a non-null value is UNANSWERED, never `true`. readSection treats a
   // `null` in golden-frijoles.config.json as unset, so without this a new-file `egress: null` (or a migrated
   // template config) reached parseJevConfig as a MISSING key and became `true` — sending with nobody's yes
@@ -147,7 +150,7 @@ export function loadJevConfig({ root = repoRoot(), read = readFileSync, exists =
 }
 
 /** Parse `KEY=value` lines. Enough for .env.local; quotes stripped. */
-function envFileValue(text, key) {
+export function envFileValue(text, key) {
   for (const line of String(text).split('\n')) {
     const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
     if (m && m[1] === key) return m[2].trim().replace(/^(['"])(.*)\1$/, '$2') || null;
@@ -183,10 +186,12 @@ export function readApiKey({
  */
 export function effectiveMode(config, rail, { key } = {}) {
   const configured = config.rails[rail].mode;
-  if (configured === 'off') return { mode: 'off', configured, why: 'configured off' };
-  // Unanswered (D12): distinct from a deliberate `false` so the caller can ask once instead of
-  // staying silently off forever. `unanswered: true` is jevContext's cue to fire the D11 protocol.
+  // Unanswered (D12) is decided FIRST, before the rail's mode: every rail defaults to `off`, so checking
+  // the mode first made the ask unreachable for exactly the user it was written for (D7). Distinct from a
+  // deliberate `false` so the caller can ask once instead of staying silently off forever;
+  // `unanswered: true` is jevContext's cue to fire the D11 protocol. Nothing is sent either way.
   if (config.egress === null) return { mode: 'off', configured, why: 'egress not answered', unanswered: true };
+  if (configured === 'off') return { mode: 'off', configured, why: 'configured off' };
   if (!config.egress) return { mode: 'off', configured, why: 'egress disabled (jev.egress: false)' };
   if (!key) return { mode: 'off', configured, why: 'no TYPESAFE_API_KEY' };
   return { mode: configured, configured, why: `configured ${configured}` };

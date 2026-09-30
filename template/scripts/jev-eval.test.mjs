@@ -7,9 +7,12 @@ import {
   evaluate,
   expiredShadowRails,
   FIXTURES_PATH,
+  liveRefusal,
   loadRails,
   MIN_FIXTURES,
+  parseLimit,
   replayAsk,
+  run,
 } from './jev-eval.mjs';
 import { loadJevConfig, parseJevConfig, repoRoot } from './lib/jev.mjs';
 
@@ -115,4 +118,102 @@ test('evaluate live refuses unless egress is true: null (unanswered) and false n
     );
     assert.equal(asked, 0, `egress ${egress}: nothing asked`);
   }
+});
+
+// ── --limit: the setup proof (distribute-what-we-use S3.2) ────────────────────────────────────────────
+const proofRail = {
+  run: async (fx, deps) => ({
+    ok: (await deps.ask({ questions: { [fx.id]: {} } })).answers[fx.id].noul > 0.5,
+    decider: 'jev',
+  }),
+  regex: () => false,
+  predicted: (d) => d.ok,
+  expected: (fx) => fx.label,
+  summary: (d) => ({ ok: d.ok, decider: d.decider }),
+};
+const proofFixtures = () => ({
+  review: Array.from({ length: 6 }, (_, i) => ({
+    id: `f${i}`,
+    label: true,
+    recorded: { model: 'old', answers: {} },
+    decision: null,
+  })),
+});
+function harness({ config = parseJevConfig({ egress: true }), key = 'k' } = {}) {
+  const h = { out: '', err: '', asked: [], written: 0 };
+  h.io = {
+    config,
+    fixtures: proofFixtures(),
+    rails: { review: proofRail },
+    key: () => key,
+    makeAsk: () => async ({ questions }) => {
+      h.asked.push(...Object.keys(questions));
+      return {
+        ok: true,
+        answers: Object.fromEntries(Object.keys(questions).map((id) => [id, { type: 'noul', noul: 0.9 }])),
+        model: config.model,
+      };
+    },
+    writeFixtures: () => (h.written += 1),
+    stdout: (t) => (h.out += t),
+    stderr: (t) => (h.err += t),
+    today: '2026-09-29',
+  };
+  return h;
+}
+
+test('--live --limit: asks Jev for only the first n fixtures, reports agreement, writes nothing', async () => {
+  const h = harness();
+  const code = await run(['--live', '--limit', '2'], h.io);
+  assert.equal(code, 0);
+  assert.deepEqual(h.asked, ['f0', 'f1'], 'only the first two fixtures reached Jev');
+  assert.equal(h.written, 0, 'a partial run never rewrites the committed recordings');
+  assert.match(h.out, /nothing written/);
+  assert.match(h.out, /review: 2 labelled · jev 100\.0%/);
+});
+
+test('--live without --limit still asks every fixture and rewrites the recordings', async () => {
+  const h = harness();
+  assert.equal(await run(['--live'], h.io), 1, 'the thin fixture set still fails the coverage floor');
+  const big = harness();
+  big.io.fixtures.review = Array.from({ length: MIN_FIXTURES }, (_, i) => ({ id: `g${i}`, label: true }));
+  assert.equal(await run(['--live'], big.io), 0);
+  assert.equal(big.asked.length, MIN_FIXTURES);
+  assert.equal(big.written, 1);
+});
+
+test('--live --limit with no key: exits 2 with ONE line naming TYPESAFE_API_KEY and .env.local, asks nothing', async () => {
+  const h = harness({ key: null });
+  assert.equal(await run(['--live', '--limit', '3'], h.io), 2);
+  assert.equal(h.err.trim().split('\n').length, 1);
+  assert.match(h.err, /TYPESAFE_API_KEY/);
+  assert.match(h.err, /\.env\.local/);
+  assert.deepEqual(h.asked, []);
+});
+
+test('--live --limit with egress not true (null or false): refused before the key is even read', async () => {
+  for (const egress of [null, false]) {
+    const h = harness({ config: parseJevConfig({ egress }) });
+    let keyRead = false;
+    h.io.key = () => ((keyRead = true), 'k');
+    assert.equal(await run(['--live', '--limit', '3'], h.io), 2);
+    assert.match(h.err, /jev\.egress is/);
+    assert.match(h.err, /config set jev\.egress true/);
+    assert.equal(keyRead, false);
+    assert.deepEqual(h.asked, []);
+  }
+});
+
+test('--limit is refused without --live, and a malformed n is refused', async () => {
+  assert.equal(await run(['--limit', '3'], harness().io), 2);
+  for (const bad of ['0', '-1', 'x', '1.5', undefined])
+    assert.ok(parseLimit(['--live', '--limit', bad])?.error, `limit ${bad}`);
+  assert.equal(parseLimit(['--live']), null);
+  assert.equal(parseLimit(['--limit', '10']), 10);
+});
+
+test('liveRefusal: egress is checked before the key', () => {
+  assert.match(liveRefusal(parseJevConfig({ egress: null }), () => null), /egress/);
+  assert.match(liveRefusal(parseJevConfig({ egress: true }), () => null), /TYPESAFE_API_KEY/);
+  assert.equal(liveRefusal(parseJevConfig({ egress: true }), () => 'k'), null);
 });

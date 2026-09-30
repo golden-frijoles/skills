@@ -116,7 +116,7 @@ export const REGISTRY = Object.freeze([
     module: 'Operate',
     askWhen: 'first-report',
     default: null,
-    question: 'Where should standups and recaps go (Telegram, Slack, or print to the terminal)? Secrets stay in .env.local.',
+    question: 'Where should standups and recaps go: Telegram (the scheduled reports post there), or print to the terminal? Slack works for test and ad-hoc messages only, not the scheduled reports. Secrets stay in .env.local.',
   },
   {
     key: 'deploy.vercelProject',

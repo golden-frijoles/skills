@@ -7,6 +7,23 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-29
+
+### Fixed
+
+- **A stranger with no Jev config is asked before anything is sent.** Two bugs made the ask unreachable: no config at
+  all loaded as `egress: true`, and a rail's default `off` mode was checked before egress. An unanswered egress now
+  asks once (non-blocking) whatever the rail mode, and nothing is sent before an explicit `egress: true`.
+
+### Added
+
+- **Jev setup route** in the umbrella skill: the egress answer first, the TypeSafe signup, the key in `.env.local`,
+  then `jev-eval --live --limit 10` as proof — which asks only 10 fixtures per rail and writes nothing.
+- **Notify setup route** and `notify-setup.mjs`: `--chat-id` reads the bot's chats and, when there are none, tells a
+  set webhook from an unmessaged bot and names group privacy; `--test` sends one message to Telegram and/or Slack.
+  `slack-notify.mjs` ships in the template. The `reporting.destination` question offers only what a sender exists for
+  (the scheduled reports post to Telegram; Slack is test and ad-hoc).
+
 ## [0.7.0] - 2026-09-29
 
 ### Added

@@ -413,3 +413,58 @@ test('loadJevConfig: a section that never mentions egress is unanswered too; an 
   writeFileSync(join(dir, 'jev.config.json'), JSON.stringify({ egress: true, rails: { review: { mode: 'jev' } } }));
   assert.equal(loadJevConfig({ root: dir }).egress, true, 'a consumer committed true: unchanged');
 });
+
+// ── distribute-what-we-use S3.1 (D7): the stranger with NO config is asked, and nothing is sent ─────────
+// Two bugs made D12's ask dead code for exactly that user: (1) no config at all loaded as
+// parseJevConfig({}), whose egress defaults to TRUE; (2) effectiveMode returned "configured off" (every
+// rail's default) before it ever looked at egress. Observed failing on the code before this fix.
+test('D7: no config at all → egress is UNANSWERED (null), not true', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'jev-none-'));
+  assert.equal(loadJevConfig({ root: dir }).egress, null);
+});
+
+test('D7: no config at all → the first guarded run asks once, stays off, and never calls fetch', () => {
+  _resetAsked();
+  const dir = mkdtempSync(join(tmpdir(), 'jev-none-'));
+  const writes = [];
+  let fetches = 0;
+  const ctx = jevContext('review', {
+    root: dir,
+    key: 'k',
+    fetch: async () => {
+      fetches += 1;
+      throw new Error('must not send before egress: true');
+    },
+    write: (s) => writes.push(s),
+  });
+  assert.equal(ctx.mode, 'off');
+  assert.equal(writes.length, 1, 'GF-NEEDS-SETTING jev.egress is emitted');
+  assert.equal(JSON.parse(writes[0].slice('GF-NEEDS-SETTING '.length)).key, 'jev.egress');
+  assert.equal(fetches, 0);
+  _resetAsked();
+});
+
+test('D7: egress unanswered + a rail left at its default "off" still asks (the default mode never hides it)', () => {
+  _resetAsked();
+  const writes = [];
+  const ctx = jevContext('prose', {
+    config: parseJevConfig({ egress: null }),
+    key: 'k',
+    root: mkdtempSync(join(tmpdir(), 'jev-')),
+    write: (s) => writes.push(s),
+  });
+  assert.equal(ctx.mode, 'off');
+  assert.equal(writes.length, 1);
+  _resetAsked();
+});
+
+test('D7: egress:false never asks and never sends, whatever the rail mode', () => {
+  for (const mode of ['off', 'jev']) {
+    const ctx = jevContext('review', {
+      config: parseJevConfig({ egress: false, rails: { review: mode === 'jev' ? { mode } : {} } }),
+      key: 'k',
+      write: () => assert.fail('egress:false must never emit GF-NEEDS-SETTING'),
+    });
+    assert.equal(ctx.mode, 'off');
+  }
+});

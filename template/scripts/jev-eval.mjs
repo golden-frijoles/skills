@@ -8,6 +8,13 @@
 //   node scripts/jev-eval.mjs --live          re-ask Jev for every fixture, REWRITE the recordings, and print
 //                                             accuracy against the labels — regex vs Jev, per rail/family.
 //   node scripts/jev-eval.mjs --rail prose    limit to one rail.
+//   node scripts/jev-eval.mjs --live --limit 10
+//                                             the SETUP PROOF: ask Jev for only the first n fixtures of each
+//                                             rail, print per-rail agreement with the labels, and WRITE
+//                                             NOTHING. A partial run must never rewrite the committed
+//                                             recordings (they would then cover n fixtures, not all), so
+//                                             --limit is refused without --live and never touches the file.
+//                                             It still needs `jev.egress` true and TYPESAFE_API_KEY.
 //
 // Why offline replay exists: a model bump, a threshold change or an edit to a judge's decide logic must
 // show up as a red CI run, not as a quietly different verdict on the next PR. Why --live exists: the
@@ -165,7 +172,15 @@ const evalConfig = (base, rail) =>
  * Evaluate. Returns { failures, report, fixtures } — pure over its deps apart from the judge calls.
  * live=false replays recordings; live=true re-asks through deps.ask and rewrites them.
  */
-export async function evaluate({ fixtures, rails, config, live = false, ask = null, only = null }) {
+export async function evaluate({
+  fixtures,
+  rails,
+  config,
+  live = false,
+  ask = null,
+  only = null,
+  limit = null,
+}) {
   // Replay forces egress on (evalConfig) because it sends nothing. LIVE sends every fixture to TypeSafe, so it needs
   // the project's explicit yes: `egress: true`, never null (unanswered) or false (D12; cross-review of #50 — the
   // CLI refused this, but a caller of this export did not).
@@ -177,7 +192,7 @@ export async function evaluate({ fixtures, rails, config, live = false, ask = nu
   const report = {};
   for (const [name, rail] of Object.entries(rails)) {
     if (only && only !== name) continue;
-    const cases = fixtures[name] ?? [];
+    const cases = limit == null ? (fixtures[name] ?? []) : (fixtures[name] ?? []).slice(0, limit);
     const cfg = evalConfig(config, name);
     const tally = { n: cases.length, jevRight: 0, regexRight: 0, disagreements: 0, families: {} };
     for (const fx of cases) {
@@ -249,63 +264,101 @@ export function formatReport(report) {
   return lines.join('\n');
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
+/** The one line that refuses a live run, or null when it may go. Egress first, and the key is not even read until the yes is in. */
+export function liveRefusal(config, getKey) {
+  if (config.egress !== true)
+    // false: no text leaves this machine; null: nobody has said yes yet (D12). `--live` sends fixtures.
+    return `jev-eval --live: jev.egress is ${JSON.stringify(config.egress)}, not true — refusing to send fixtures to Jev. Say yes with \`gf-kit config set jev.egress true\` first.`;
+  if (!getKey())
+    return 'jev-eval --live needs TYPESAFE_API_KEY: put TYPESAFE_API_KEY=… in .env.local (or the environment).';
+  return null;
+}
+
+/** Pure — `--limit <n>` as a positive integer, null when absent, or { error } when malformed. */
+export function parseLimit(argv) {
+  const ix = argv.indexOf('--limit');
+  if (ix < 0) return null;
+  const n = Number(argv[ix + 1]);
+  if (!/^\d+$/.test(argv[ix + 1] ?? '') || n < 1) return { error: '--limit needs a positive whole number' };
+  return n;
+}
+
+/**
+ * The CLI, with every side effect injected so a spec can watch it: returns the exit code. `io` carries
+ * { root, config, fixtures, rails, key, makeAsk, writeFixtures, stdout, stderr, today }.
+ */
+export async function run(argv, io = {}) {
+  const { config, fixtures, rails, stdout, stderr } = io;
   const live = argv.includes('--live');
   const railIx = argv.indexOf('--rail');
   const only = railIx >= 0 ? argv[railIx + 1] : null;
   if (railIx >= 0 && !RAILS.includes(only)) {
-    process.stderr.write(`jev-eval: --rail must be one of ${RAILS.join(', ')}\n`);
-    process.exit(2);
+    stderr(`jev-eval: --rail must be one of ${RAILS.join(', ')}\n`);
+    return 2;
   }
-  const root = repoRoot();
-  const config = loadJevConfig({ root });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const expired = expiredShadowRails(config, today);
-
-  const fixtures = JSON.parse(readFileSync(FIXTURES_PATH, 'utf8'));
-  const rails = await loadRails();
+  const limit = parseLimit(argv);
+  if (limit?.error) {
+    stderr(`jev-eval: ${limit.error}\n`);
+    return 2;
+  }
+  if (limit != null && !live) {
+    stderr('jev-eval: --limit only makes sense with --live (a setup proof against real Jev).\n');
+    return 2;
+  }
+  const expired = expiredShadowRails(config, io.today ?? new Date().toISOString().slice(0, 10));
   for (const name of ['review', 'prose'])
-    if (!rails[name]) process.stdout.write(`${name}: no judge in this checkout yet — skipped\n`);
+    if (!rails[name]) stdout(`${name}: no judge in this checkout yet — skipped\n`);
 
   let ask = null;
-  if (live && config.egress !== true) {
-    // false: no text leaves this machine; null: nobody has said yes yet (D12). `--live` sends every fixture.
-    process.stderr.write(
-      `jev-eval --live: jev.egress is ${JSON.stringify(config.egress)}, not true — refusing to send fixtures to Jev. ` +
-        'Say yes with `gf-kit config set jev.egress true` first.\n'
-    );
-    process.exit(2);
-  }
   if (live) {
-    const key = readApiKey({ root });
-    if (!key) {
-      process.stderr.write('jev-eval --live needs TYPESAFE_API_KEY (env or .env.local).\n');
-      process.exit(2);
+    const refusal = liveRefusal(config, io.key);
+    if (refusal) {
+      stderr(`${refusal}\n`);
+      return 2;
     }
-    const { askJev } = await import('./lib/jev.mjs');
-    ask = (req) => askJev(req, { key, model: config.model });
+    ask = io.makeAsk({ key: io.key(), model: config.model });
   }
 
-  const { failures, report } = await evaluate({ fixtures, rails, config, live, ask, only });
-  failures.push(...coverageFailures(fixtures, rails));
+  const { failures, report } = await evaluate({ fixtures, rails, config, live, ask, only, limit });
+  // A partial run is not held to the per-rail fixture floor: that floor is about the committed set.
+  if (limit == null) failures.push(...coverageFailures(fixtures, rails));
   const n = Object.values(report).reduce((s, t) => s + t.n, 0);
-  if (live && failures.length) {
-    process.stderr.write('jev-eval --live: failures below — the recordings were NOT rewritten.\n');
-  } else if (live) {
-    writeFileSync(FIXTURES_PATH, `${JSON.stringify(fixtures, null, 2)}\n`);
-    process.stdout.write(`live: re-scored ${n} fixtures against ${config.model}; recordings rewritten.\n`);
-  } else {
-    process.stdout.write(`offline: ${n - failures.length}/${n} fixtures match recordings\n`);
-  }
-  process.stdout.write(`${formatReport(report)}\n`);
-  for (const f of failures) process.stderr.write(`✗ ${f}\n`);
-  for (const e of expired)
-    process.stderr.write(
-      `✗ rails.${e.rail} is in shadow ${e.why} (${e.shadowExpires}) — promote it to jev or set it off.\n`
+  if (live && limit != null) {
+    stdout(
+      `live proof: asked Jev for the first ${limit} fixture(s) of each rail (${n} scored) against ${config.model}; ` +
+        'nothing written — the committed recordings are untouched.\n'
     );
-  if (failures.length || expired.length) process.exit(1);
+  } else if (live && failures.length) {
+    stderr('jev-eval --live: failures below — the recordings were NOT rewritten.\n');
+  } else if (live) {
+    io.writeFixtures(fixtures);
+    stdout(`live: re-scored ${n} fixtures against ${config.model}; recordings rewritten.\n`);
+  } else {
+    stdout(`offline: ${n - failures.length}/${n} fixtures match recordings\n`);
+  }
+  stdout(`${formatReport(report)}\n`);
+  for (const f of failures) stderr(`✗ ${f}\n`);
+  for (const e of expired)
+    stderr(`✗ rails.${e.rail} is in shadow ${e.why} (${e.shadowExpires}) — promote it to jev or set it off.\n`);
+  return failures.length || expired.length ? 1 : 0;
+}
+
+async function main() {
+  const root = repoRoot();
+  const { askJev } = await import('./lib/jev.mjs');
+  const code = await run(process.argv.slice(2), {
+    root,
+    config: loadJevConfig({ root }),
+    fixtures: JSON.parse(readFileSync(FIXTURES_PATH, 'utf8')),
+    rails: await loadRails(),
+    key: () => readApiKey({ root }),
+    makeAsk: ({ key, model }) => (req) => askJev(req, { key, model }),
+    writeFixtures: (fx) => writeFileSync(FIXTURES_PATH, `${JSON.stringify(fx, null, 2)}\n`),
+    stdout: (t) => process.stdout.write(t),
+    stderr: (t) => process.stderr.write(t),
+    today: new Date().toISOString().slice(0, 10),
+  });
+  if (code) process.exit(code);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
