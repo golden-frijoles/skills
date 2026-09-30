@@ -7,6 +7,20 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-30
+
+### Added
+
+- **The close question** (intent-match S3). `templates/RETROSPECTIVE.md` gains `_Intent: yes | mostly | no_`: did we
+  build what the product owner meant? `epic-dod` gains a sixth item, `intent-answered`: an epic whose README or seed
+  carries a numeric `intent_match:` needs the line answered with one word; an unscored epic passes, so no epic closed
+  before the score existed is failed retroactively. The template's own `yes | mostly | no` never counts.
+- **`intent-outcomes.mjs`**: one row per scored epic across any repos on the Roadmap layout (`--repo`, repeatable):
+  the score (README, seed, or the repo's `Roadmap/00-ideas/intent-backfill.json`), the answer from the retro, whether
+  the ask was a proxy, and corrections derived from files — stories added since the README's first commit, dated
+  amendments, disproved scope. The footer counts answered epics against the 20 the calibration waits for. An
+  unreadable repo or a malformed backfill record is "could not look" (exit 2), never a smaller table.
+
 ## [0.11.0] - 2026-09-30
 
 ### Added

@@ -16,6 +16,9 @@
 //   sprints-merged   every sprint cites ≥1 PR/commit, ≥1 citation VERIFIES as merged, none verifies unmerged
 //   retro-written    RETROSPECTIVE.md exists with a real `_Closed: YYYY-MM-DD_` (not the `<date>` stub)
 //   branch-deleted   no `feat|fix|chore/<slug>` (or `-<suffix>`) branch left on origin
+//   intent-answered  a SCORED epic (its README or seed carries a numeric `intent_match:`) says in its retro whether we
+//                    built what was meant: `_Intent: yes_`, `_mostly_` or `_no_` (intent-match D17). An unscored
+//                    epic passes — no epic closed before the score existed is failed retroactively.
 //
 // ── Three states, never two ────────────────────────────────────────────────────────────────────────
 // Each item is `pass`, `fail` or `unavailable` (gh unauthenticated, a citation into a repo this checkout
@@ -50,7 +53,26 @@ export const ITEMS = [
   'sprints-merged',
   'retro-written',
   'branch-deleted',
+  'intent-answered',
 ];
+
+/** A numeric `intent_match:` is what makes an epic "scored" (intent-match D17). `null`, absent or a typo is not. */
+export const intentScore = (fm) =>
+  /^\d{1,3}$/.test(String(fm?.intent_match ?? '')) && Number(fm.intent_match) <= 100
+    ? Number(fm.intent_match)
+    : null;
+
+/**
+ * The retro's answer: a line that is EXACTLY `_Intent: yes_` · `_mostly_` · `_no_`, or null. HTML comments are
+ * stripped first and the match is anchored to its own line: an unanchored match read the template's own guidance
+ * ("e.g. `_Intent: mostly_`") as an answer, so every scaffolded retro passed unanswered (fresh review of #198). The
+ * template's `yes | mostly | no` is not one either.
+ */
+export function intentAnswer(retro) {
+  const text = String(retro ?? '').replace(/<!--[\s\S]*?-->/g, '');
+  const m = /^_Intent:\s*(yes|mostly|no)\s*_\s*$/im.exec(text);
+  return m ? m[1].toLowerCase() : null;
+}
 
 /** Frontmatter keys → values (flat, comment-stripped). */
 export function frontmatter(text) {
@@ -149,6 +171,7 @@ export function evaluate({
   externalDocs = null,
   bareRefsRepo = null,
   bareRefsNote = 'bareRefsRepo is not set',
+  seed = null,
 }) {
   const fm = frontmatter(readme);
   const items = {};
@@ -270,6 +293,20 @@ export function evaluate({
       ? { state: 'fail', detail: `still on origin: ${left.join(', ')}` }
       : { state: 'pass', detail: 'no feature branch left' };
   }
+
+  const score = intentScore(fm) ?? intentScore(frontmatter(seed ?? ''));
+  const answer = intentAnswer(retro);
+  items['intent-answered'] =
+    score == null
+      ? { state: 'pass', detail: 'not scored (no intent_match) — not required' }
+      : answer
+        ? { state: 'pass', detail: `scored ${score}; answered: ${answer}${from}` }
+        : retro == null && external
+          ? { state: externalState, detail: externalDetail }
+          : {
+              state: 'fail',
+              detail: `scored epic (intent_match: ${score}) — the retrospective needs \`_Intent: yes | mostly | no_\` answered with one word: did we build what was meant?`,
+            };
 
   // Exemptions: an exempted failure passes with its reason; an exemption on a passing item is STALE.
   const epicExemptions = exemptions.filter((e) => e.epic === slug);
@@ -478,6 +515,9 @@ function main() {
     bareRefsNote,
     sprints,
     retro: existsSync(retroPath) ? readFileSync(retroPath, 'utf8') : null,
+    seed: existsSync(join(REPO, 'Roadmap', '00-ideas', 'seeds', `${slug}.md`))
+      ? readFileSync(join(REPO, 'Roadmap', '00-ideas', 'seeds', `${slug}.md`), 'utf8')
+      : null,
     verified,
     branches,
     aliases,

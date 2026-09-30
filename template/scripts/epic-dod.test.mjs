@@ -7,6 +7,8 @@ import {
   evaluate,
   frontmatter,
   isRealClosedDate,
+  intentAnswer,
+  intentScore,
   ITEMS,
   fetchExternal,
   parseTreeUrl,
@@ -395,4 +397,103 @@ test('a failed git fetch makes commit ancestry UNAVAILABLE, never merged or unme
     },
   });
   assert.equal(out.get('commit:deadbeef1'), 'unavailable');
+});
+
+// ── intent-answered (intent-match S3.1, D17): a SCORED epic must say whether we built what was meant ─────────
+
+const SCORED_README = '---\nstatus: shipped\nslug: demo\nintent_match: 84   # advisory\n---\n# Epic\n';
+const SCORED_SEED = '---\nslug: demo\nintent_match: 89\n---\n# Seed\n';
+
+test('intent-answered: an unscored epic passes — older epics are never failed retroactively', () => {
+  const r = evaluate(closedEpic);
+  assert.equal(r.items['intent-answered'].state, 'pass');
+  assert.match(r.items['intent-answered'].detail, /not scored/);
+  const nullScore = evaluate({
+    ...closedEpic,
+    readme: README_SHIPPED.replace('slug: demo', 'slug: demo\nintent_match: null'),
+    seed: '---\nintent_match: null\n---\n',
+  });
+  assert.equal(nullScore.items['intent-answered'].state, 'pass');
+});
+
+test('intent-answered: a scored epic without the _Intent:_ line fails and names the missing line', () => {
+  for (const scored of [{ readme: SCORED_README }, { seed: SCORED_SEED }]) {
+    const r = evaluate({ ...closedEpic, ...scored });
+    assert.equal(r.ok, false);
+    assert.equal(r.items['intent-answered'].state, 'fail');
+    assert.match(r.items['intent-answered'].detail, /_Intent: yes \| mostly \| no_/);
+  }
+});
+
+test('intent-answered: the template placeholder is not an answer; yes, mostly and no are', () => {
+  const placeholder = evaluate({
+    ...closedEpic,
+    readme: SCORED_README,
+    retro: `${RETRO_REAL}_Intent: yes | mostly | no_\n`,
+  });
+  assert.equal(placeholder.items['intent-answered'].state, 'fail');
+  for (const a of ['yes', 'mostly', 'no', 'Mostly']) {
+    const r = evaluate({ ...closedEpic, readme: SCORED_README, retro: `${RETRO_REAL}_Intent: ${a}_\n` });
+    assert.equal(r.items['intent-answered'].state, 'pass', a);
+    assert.match(r.items['intent-answered'].detail, new RegExp(a.toLowerCase()));
+    assert.equal(r.ok, true);
+  }
+});
+
+test('intent-answered: a scored epic with no retrospective fails, and unreadable external docs are unavailable', () => {
+  assert.equal(
+    evaluate({ ...closedEpic, readme: SCORED_README, retro: null }).items['intent-answered'].state,
+    'fail'
+  );
+  const external = evaluate({
+    ...closedEpic,
+    readme: SCORED_README.replace(
+      'slug: demo',
+      'slug: demo\nsprints_in: https://github.com/o/r/tree/main/Roadmap/x/demo'
+    ),
+    sprints: [],
+    retro: null,
+    externalDocs: null,
+  });
+  assert.equal(external.items['intent-answered'].state, 'unavailable');
+});
+
+test('ITEMS: intent-answered is the sixth derived item', () => {
+  assert.deepEqual(ITEMS, [
+    'readme-shipped',
+    'sprints-ticked',
+    'sprints-merged',
+    'retro-written',
+    'branch-deleted',
+    'intent-answered',
+  ]);
+});
+
+test('intent-answered: the REAL groom retro template, as scaffolded, is unanswered (fresh review of #198)', async (t) => {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const rel = ['plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'RETROSPECTIVE.md'];
+  // From scripts/, skills/scripts/ or skills/template/scripts/; a consumer's copy has none of them.
+  const tpl = [
+    join(here, '..', 'skills', ...rel),
+    join(here, '..', ...rel),
+    join(here, '..', '..', ...rel),
+  ].find((p) => existsSync(p));
+  if (!tpl) return t.skip('groom template not in this checkout');
+  const text = readFileSync(tpl, 'utf8').replace('<date>', '2026-09-30');
+  assert.equal(intentAnswer(text), null, 'the template, guidance comment included, is not an answer');
+  const r = evaluate({ ...closedEpic, readme: SCORED_README, retro: text });
+  assert.equal(r.items['intent-answered'].state, 'fail');
+  const answered = text.replace(/^_Intent: yes \| mostly \| no_$/m, '_Intent: no_');
+  assert.equal(intentAnswer(answered), 'no');
+});
+
+test('intent-answered: an answer inside a comment, or mid-sentence, is not an answer; a score over 100 is not a score', () => {
+  assert.equal(intentAnswer('<!-- e.g. `_Intent: mostly_` -->'), null);
+  assert.equal(intentAnswer('Write it like `_Intent: yes_` below.'), null);
+  assert.equal(intentAnswer('_Closed: 2026-09-30_\n_Intent: Yes_ \n'), 'yes');
+  assert.equal(intentScore({ intent_match: '150' }), null);
+  assert.equal(intentScore({ intent_match: '100' }), 100);
 });
