@@ -7,7 +7,7 @@
 //                                             recording, and fail if any rail is in shadow past its expiry.
 //   node scripts/jev-eval.mjs --live          re-ask Jev for every fixture, REWRITE the recordings, and print
 //                                             accuracy against the labels — regex vs Jev, per rail/family.
-//   node scripts/jev-eval.mjs --rail prose    limit to one rail.
+//   node scripts/jev-eval.mjs --rail prose    limit to one rail (or to `intent`, the intent-match question set).
 //   node scripts/jev-eval.mjs --live --limit 10
 //                                             the SETUP PROOF: ask Jev for only the first n fixtures of each
 //                                             rail, print per-rail agreement with the labels, and WRITE
@@ -23,6 +23,10 @@
 // The rot guard: a rail in `shadow` past `shadowExpires` fails this script, so shadow cannot quietly become
 // the permanent "regex and Jev both" the product owner ruled out.
 //
+// The `intent` set (intent-match D15, C2) is evaluated here beside the rails without being one: it measures the
+// wording of intent-match's questions on labelled items, and there is no regex to compare it with, no mode and no
+// threshold. Its report adds how many answers were DECIDED (P ≤ 0.2 or ≥ 0.8) and how many of those were right.
+//
 // Zero deps — Node 18+.
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -37,6 +41,10 @@ export const FIXTURES_PATH = join(__dirname, 'jev-eval.fixtures.json');
 export const MAX_SHADOW_DAYS = 21;
 /** A judge that exists must be proven on at least this many labelled cases (S1.4 acceptance). */
 export const MIN_FIXTURES = 30;
+/** What this harness evaluates: the Jev rails, plus intent-match's question set (not a rail — C2). */
+export const EVAL_SETS = [...RAILS, 'intent'];
+/** An intent answer counts as DECIDED when it sits this far from 0.5 — the band the report counts separately. */
+export const DECIDED_MARGIN = 0.3;
 
 const addDays = (ymd, n) =>
   new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -65,7 +73,7 @@ export function expiredShadowRails(config, today) {
  */
 export function coverageFailures(fixtures, rails) {
   const out = [];
-  for (const name of RAILS) {
+  for (const name of EVAL_SETS) {
     const n = (fixtures[name] ?? []).length;
     if (!rails[name] && n)
       out.push(`${name}: ${n} fixture(s) but no judge to replay them — was the judge renamed?`);
@@ -144,6 +152,15 @@ export async function loadRails() {
       expected: (fx) => [...fx.label].sort(),
       summary: (d) => ({ codes: sortedCodes(d.findings), decider: d.decider }),
     };
+  const intent = await import('./intent-match.mjs');
+  if (typeof intent.judgeItem === 'function')
+    rails.intent = {
+      run: (fx, deps) => intent.judgeItem(fx, deps),
+      regex: null, // no deterministic rule to compare with — the score has none (C2)
+      predicted: (d) => d.value,
+      expected: (fx) => fx.label,
+      summary: (d) => ({ value: d.value, p: d.p, decider: d.decider }),
+    };
   return rails;
 }
 
@@ -193,8 +210,10 @@ export async function evaluate({
   for (const [name, rail] of Object.entries(rails)) {
     if (only && only !== name) continue;
     const cases = limit == null ? (fixtures[name] ?? []) : (fixtures[name] ?? []).slice(0, limit);
-    const cfg = evalConfig(config, name);
+    // Only a rail has a config entry to force on; the intent set reads nothing from it (C2).
+    const cfg = RAILS.includes(name) ? evalConfig(config, name) : config;
     const tally = { n: cases.length, jevRight: 0, regexRight: 0, disagreements: 0, families: {} };
+    if (!rail.regex) Object.assign(tally, { regexRight: null, disagreements: null, decided: 0, decidedRight: 0 });
     for (const fx of cases) {
       const sink = { answers: {}, model: null, errors: [] };
       const deps = {
@@ -232,8 +251,15 @@ export async function evaluate({
       }
       const expected = rail.expected(fx);
       const jevRight = same(rail.predicted(decision), expected);
-      const regexRight = same(rail.regex(fx), expected);
       tally.jevRight += jevRight;
+      if (!rail.regex) {
+        if (typeof decision.p === 'number' && Math.abs(decision.p - 0.5) >= DECIDED_MARGIN) {
+          tally.decided++;
+          tally.decidedRight += jevRight;
+        }
+        continue;
+      }
+      const regexRight = same(rail.regex(fx), expected);
       tally.regexRight += regexRight;
       tally.disagreements += !same(rail.predicted(decision), rail.regex(fx));
       if (name === 'prose')
@@ -255,6 +281,12 @@ const pct = (a, n) => (n ? `${((100 * a) / n).toFixed(1)}%` : 'n/a');
 export function formatReport(report) {
   const lines = [];
   for (const [rail, t] of Object.entries(report)) {
+    if (t.regexRight === null) {
+      lines.push(
+        `${rail}: ${t.n} labelled · jev ${pct(t.jevRight, t.n)} · decided ${t.decided}/${t.n}, ${t.decidedRight} right · no deterministic rule`
+      );
+      continue;
+    }
     lines.push(
       `${rail}: ${t.n} labelled · jev ${pct(t.jevRight, t.n)} · regex ${pct(t.regexRight, t.n)} · ${t.disagreements} disagreement(s)`
     );
@@ -292,8 +324,8 @@ export async function run(argv, io = {}) {
   const live = argv.includes('--live');
   const railIx = argv.indexOf('--rail');
   const only = railIx >= 0 ? argv[railIx + 1] : null;
-  if (railIx >= 0 && !RAILS.includes(only)) {
-    stderr(`jev-eval: --rail must be one of ${RAILS.join(', ')}\n`);
+  if (railIx >= 0 && !EVAL_SETS.includes(only)) {
+    stderr(`jev-eval: --rail must be one of ${EVAL_SETS.join(', ')}\n`);
     return 2;
   }
   const limit = parseLimit(argv);

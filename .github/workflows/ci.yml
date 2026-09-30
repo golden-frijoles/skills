@@ -243,9 +243,15 @@ jobs:
           cmp scripts/epic-dod.mjs template/scripts/epic-dod.mjs
           cmp Roadmap/WAYS-OF-WORKING.template.md template/Roadmap/WAYS-OF-WORKING.template.md
           node scripts/render-ways-of-working.mjs --check
-          # The budget counts HAND-WRITTEN lines: the generated kit:start…kit:end run rule is identical in every skill.
-          test "$(sed '/kit:start/,/kit:end/d' plugins/golden-frijoles/skills/groom/SKILL.md | wc -l)" -le 220 \
-            || { echo "groom SKILL.md is over its 220-line budget — move reference material to references/" >&2; exit 1; }
+          # The budget counts HAND-WRITTEN PROSE: the generated kit:start…kit:end run rule is identical in every skill,
+          # and the frontmatter's `requires_scripts:` list is a declaration check-skill-scripts FORCES to match the import
+          # closure — counting it made an accurate declaration spend the prose budget (intent-match S1, #196). The limit
+          # moved 220 → 210 in the same change, so the ceiling is exactly as strict as before; only what is counted moved.
+          # awk drops only a `requires_scripts:` key and the indented `  - `/`  #` lines under it, and only while inside
+          # the opening frontmatter. A malformed fence can at worst drop such a list again, never an ordinary prose line,
+          # so the count cannot fail open by more than a list (the old sed range could swallow the whole body).
+          test "$(awk 'NR==1 && /^---$/ {fm=1; print; next} fm && /^---$/ {fm=0} fm && /^requires_scripts:/ {skip=1; next} fm && skip && /^  [-#]/ {next} {skip=0; print}' plugins/golden-frijoles/skills/groom/SKILL.md | sed '/kit:start/,/kit:end/d' | wc -l)" -le 210 \
+            || { echo "groom SKILL.md is over its 210-line prose budget — move reference material to references/" >&2; exit 1; }
 
       - name: foundation board generator is the template's, and the board is fresh
         run: |

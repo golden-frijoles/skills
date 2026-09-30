@@ -247,6 +247,9 @@ test('readApiKey: env wins, else .env.local at the root', () => {
   writeFileSync(join(dir, '.env.local'), 'OTHER=1\nTYPESAFE_API_KEY="abc"\n');
   assert.equal(readApiKey({ env: {}, root: dir, cwd: dir }), 'abc');
   assert.equal(readApiKey({ env: { TYPESAFE_API_KEY: 'env' }, root: dir, cwd: dir }), 'env');
+  // Set but empty is "no key", never a fall-through to the .env.local key the person just blanked.
+  assert.equal(readApiKey({ env: { TYPESAFE_API_KEY: '' }, root: dir, cwd: dir }), null);
+  assert.equal(readApiKey({ env: { TYPESAFE_API_KEY: '  ' }, root: dir, cwd: dir }), null);
 });
 
 test('logDecision: one JSONL line with the contract fields, text truncated at 4k', () => {

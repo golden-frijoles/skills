@@ -7,6 +7,26 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-29
+
+### Added
+
+- **`intent-match.mjs`: how well a groomed pitch captured the ask** (intent-match S1). It reads a seed's verbatim ask,
+  its numbered claims, its teach-back answer and its acceptance list, asks Jev one question per item, and prints four
+  components (coverage in, coverage out, clarity, teach-back), a total labelled **uncalibrated**, a placeholder band
+  and, for each gap, the one artifact that would close it (a Jev Choice over copy deck, wireframe, flow, data sample,
+  state machine, sequence, container diagram, spike, think chain). Advisory: it never gates anything. With no
+  `TYPESAFE_API_KEY`, or `jev.egress` not `true`, or a pitch over Jev's budget, it prints "could not look" and no
+  number, and exits 2. `--write` records `intent_match:` and an `## Intent match` section in the seed. Ships in the
+  kit through groom.
+- **`jev-eval` measures the intent questions**: an `intent` set of 37 labelled items, recorded live against
+  `jev-1.13.0` (37/37 right, 32 decided), evaluated beside the rails without being one.
+
+### Fixed
+
+- **`TYPESAFE_API_KEY=` (set but empty) now means "no key".** It used to fall through to the key in `.env.local`, so
+  blanking the variable for one command quietly used the key anyway.
+
 ## [0.9.0] - 2026-09-29
 
 ### Added

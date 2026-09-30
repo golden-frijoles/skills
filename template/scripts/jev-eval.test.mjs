@@ -7,6 +7,7 @@ import {
   evaluate,
   expiredShadowRails,
   FIXTURES_PATH,
+  formatReport,
   liveRefusal,
   loadRails,
   MIN_FIXTURES,
@@ -216,4 +217,37 @@ test('liveRefusal: egress is checked before the key', () => {
   assert.match(liveRefusal(parseJevConfig({ egress: null }), () => null), /egress/);
   assert.match(liveRefusal(parseJevConfig({ egress: true }), () => null), /TYPESAFE_API_KEY/);
   assert.equal(liveRefusal(parseJevConfig({ egress: true }), () => 'k'), null);
+});
+
+// ── The intent set (intent-match D15, C2): evaluated beside the rails, never one of them ────────────────────────
+
+test('the intent set is loaded, replayed and held to the fixture floor, without being a Jev rail', async () => {
+  const { RAILS } = await import('./lib/jev.mjs');
+  const { EVAL_SETS } = await import('./jev-eval.mjs');
+  assert.ok(!RAILS.includes('intent'), 'intent must not become a rail: parseJevConfig would have to accept a mode for it');
+  assert.ok(EVAL_SETS.includes('intent'));
+  const rails = await loadRails();
+  assert.equal(rails.intent.regex, null);
+  assert.match(coverageFailures({ intent: [{}] }, { intent: rails.intent })[0], new RegExp(`intent: only 1 .*≥${MIN_FIXTURES}`));
+  assert.match(coverageFailures({ intent: [{}] }, {})[0], /no judge to replay them/);
+});
+
+test('intent report: decided and right are counted, and there is no regex column to be read as 0%', async () => {
+  const fixtures = JSON.parse(readFileSync(FIXTURES_PATH, 'utf8'));
+  const rails = await loadRails();
+  const { report, failures } = await evaluate({ fixtures, rails: { intent: rails.intent }, config: loadJevConfig() });
+  assert.deepEqual(failures, []);
+  const t = report.intent;
+  assert.equal(t.regexRight, null);
+  assert.ok(t.decided <= t.n && t.decidedRight <= t.decided);
+  assert.match(formatReport(report), /^intent: \d+ labelled · jev [\d.]+% · decided \d+\/\d+, \d+ right · no deterministic rule$/m);
+  assert.doesNotMatch(formatReport(report), /intent:.*regex/);
+});
+
+test('--rail intent is accepted; a misspelt set is still refused', async () => {
+  const io = { config: loadJevConfig(), fixtures: { intent: [] }, rails: {}, stdout: () => {}, stderr: () => {}, today: '2026-09-29' };
+  assert.notEqual(await run(['--rail', 'intent'], io), 2);
+  let err = '';
+  assert.equal(await run(['--rail', 'intnet'], { ...io, stderr: (t) => (err += t) }), 2);
+  assert.match(err, /review, prose, intent/);
 });

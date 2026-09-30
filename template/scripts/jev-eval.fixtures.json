@@ -7867,5 +7867,1395 @@
         "decider": "jev"
       }
     }
+  ],
+  "intent": [
+    {
+      "id": "perf-probe-coverage_in-c1",
+      "question": "coverage_in",
+      "item": "c1",
+      "label": true,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c1": {
+            "type": "noul",
+            "noul": 0.97
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.97,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-coverage_in-c2",
+      "question": "coverage_in",
+      "item": "c2",
+      "label": true,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c2": {
+            "type": "noul",
+            "noul": 0.96
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.96,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-coverage_in-c3",
+      "question": "coverage_in",
+      "item": "c3",
+      "label": false,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c3": {
+            "type": "noul",
+            "noul": 0.05
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.05,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-coverage_in-c4",
+      "question": "coverage_in",
+      "item": "c4",
+      "label": true,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c4": {
+            "type": "noul",
+            "noul": 0.71
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.71,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-clarity-a1",
+      "question": "clarity",
+      "item": "a1",
+      "label": true,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a1": {
+            "type": "score",
+            "score": 2.38,
+            "confidence": 0.61,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.62,
+              "3": 0.38
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.793,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-clarity-a3",
+      "question": "clarity",
+      "item": "a3",
+      "label": false,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a3": {
+            "type": "score",
+            "score": 0.1,
+            "confidence": 0.9,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0.91,
+              "1": 0.09,
+              "2": 0,
+              "3": 0
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.033,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-coverage_out-a1",
+      "question": "coverage_out",
+      "item": "a1",
+      "label": true,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a1": {
+            "type": "noul",
+            "noul": 0.93
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.93,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "perf-probe-coverage_out-a4",
+      "question": "coverage_out",
+      "item": "a4",
+      "label": false,
+      "source": "golden-frijoles seed perf-probe-target-allowlist (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed — bound where a smoke probe may point\n\n## Problem\n\n`perf-probe.mjs` takes `baseUrl` from config, checks only for an `http(s)` prefix, and then follows `/_next/static/…`\nasset URLs the returned HTML names. A PR that edits the config could point a runner at an internal address\n(`169.254.169.254`).\n\n## Rough shape\n\nRefuse link-local, loopback and private ranges unless the project opts in, and fetch assets only from the\n`baseUrl`'s own origin. Tests for each refusal.\n\n## Acceptance criteria\n- `node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.\n- An asset URL on another origin is not fetched, and the report lists it as skipped.\n- The probe is robust.\n- The probe's report gains a p95 latency chart per route.",
+      "claims": {
+        "c1": "A smoke probe refuses to point at internal addresses such as the cloud metadata IP.",
+        "c2": "Assets are only fetched from the probed site itself.",
+        "c3": "Every refusal is posted to the security channel in Slack.",
+        "c4": "A project can still probe localhost when it deliberately chooses to."
+      },
+      "criteria": {
+        "a1": "`node scripts/perf-probe.mjs` with `baseUrl: http://169.254.169.254` exits non-zero and names the refused range.",
+        "a2": "An asset URL on another origin is not fetched, and the report lists it as skipped.",
+        "a3": "The probe is robust.",
+        "a4": "The probe's report gains a p95 latency chart per route."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a4": {
+            "type": "noul",
+            "noul": 0.19
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.19,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-coverage_in-c1",
+      "question": "coverage_in",
+      "item": "c1",
+      "label": true,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c1": {
+            "type": "noul",
+            "noul": 0.85
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.85,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-coverage_in-c2",
+      "question": "coverage_in",
+      "item": "c2",
+      "label": true,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c2": {
+            "type": "noul",
+            "noul": 0.96
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.96,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-coverage_in-c3",
+      "question": "coverage_in",
+      "item": "c3",
+      "label": false,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c3": {
+            "type": "noul",
+            "noul": 0.07
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.07,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-clarity-a1",
+      "question": "clarity",
+      "item": "a1",
+      "label": true,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a1": {
+            "type": "score",
+            "score": 2.93,
+            "confidence": 0.93,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.07,
+              "3": 0.93
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.977,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-clarity-a2",
+      "question": "clarity",
+      "item": "a2",
+      "label": false,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a2": {
+            "type": "score",
+            "score": 0.8,
+            "confidence": 0.66,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0.27,
+              "1": 0.66,
+              "2": 0.07,
+              "3": 0
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.267,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-clarity-a3",
+      "question": "clarity",
+      "item": "a3",
+      "label": true,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a3": {
+            "type": "score",
+            "score": 2.98,
+            "confidence": 0.98,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.02,
+              "3": 0.98
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.993,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "board-links-coverage_out-a1",
+      "question": "coverage_out",
+      "item": "a1",
+      "label": true,
+      "source": "golden-frijoles seed board-link-depth (trimmed; acceptance list added for the fixture)",
+      "pitch": "# Seed: the board's epic links resolve one folder too high\n\n## Problem\n\n`scripts/build-order.mjs` renders each epic link as `../../${doc_link without \"Roadmap/\"}`. `BUILD-ORDER.md` lives at\n`Roadmap/00-ideas/`, so `../../` resolves to the repo root, and every epic link on the board 404s on GitHub (37\nlinks). Seed links (`seeds/<slug>.md`) are fine.\n\n## Sketch\n\n- Change the one expression to `../${…}` and regenerate. Add a test that resolves every rendered link against the\n  filesystem, so the link depth can't regress.\n- The same generator ships in the kit and in the template. Fix it at the source (the template), then sync the copies.\n\n## Acceptance criteria\n- Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.\n- The board looks right.\n- After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0).",
+      "claims": {
+        "c1": "Every epic link on the board opens that epic's page on GitHub.",
+        "c2": "A test stops the link depth from breaking again.",
+        "c3": "The board also shows each epic's last-merged date."
+      },
+      "criteria": {
+        "a1": "Every link in the regenerated `BUILD-ORDER.md` resolves to a file that exists; the new test walks them all and fails on the first that does not.",
+        "a2": "The board looks right.",
+        "a3": "After the fix, the template's `build-order.mjs` and this repo's copy are byte-identical (`cmp` exits 0)."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a1": {
+            "type": "noul",
+            "noul": 0.86
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.86,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_in-c1",
+      "question": "coverage_in",
+      "item": "c1",
+      "label": true,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c1": {
+            "type": "noul",
+            "noul": 0.94
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.94,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_in-c2",
+      "question": "coverage_in",
+      "item": "c2",
+      "label": true,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c2": {
+            "type": "noul",
+            "noul": 0.95
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.95,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_in-c3",
+      "question": "coverage_in",
+      "item": "c3",
+      "label": false,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c3": {
+            "type": "noul",
+            "noul": 0.05
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.05,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_in-c4",
+      "question": "coverage_in",
+      "item": "c4",
+      "label": false,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c4": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.04,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-clarity-a2",
+      "question": "clarity",
+      "item": "a2",
+      "label": true,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a2": {
+            "type": "score",
+            "score": 2.4,
+            "confidence": 0.6,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.6,
+              "3": 0.4
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.8,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-clarity-a4",
+      "question": "clarity",
+      "item": "a4",
+      "label": false,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a4": {
+            "type": "score",
+            "score": 0.09,
+            "confidence": 0.91,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0.91,
+              "1": 0.09,
+              "2": 0,
+              "3": 0
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.03,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_out-a2",
+      "question": "coverage_out",
+      "item": "a2",
+      "label": true,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a2": {
+            "type": "noul",
+            "noul": 0.9
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.9,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "cli-coverage_out-a5",
+      "question": "coverage_out",
+      "item": "a5",
+      "label": false,
+      "source": "golden-frijoles seed golden-frijoles-cli (trimmed: problem, shape, a subset of the acceptance list, one added)",
+      "pitch": "# Seed: gf — a CLI so an agent can operate Golden Frijoles\n\n## Problem\n\nThe kill-switch story can't be completed by an agent. Every `risk: high` epic must ship behind a flag, and the story\nmandates \"create it in every env\" — but there is no command for that, so the step waits for a human to click in the\nconsole. The MCP connector is read-only and scoped to one project. Consumers hand-roll the gap: one project wrote a\n200-line admin-API wrapper because there was no CLI.\n\n## Shape\n\nA small Node CLI, `gf`, published to npm: `login`, `whoami`, `init`, `flags create|kill|get`, `doctor`, each with\n`--json`. The MCP connector stays read-only this epic; its gap is written down as a parity table, not built.\n\n## Acceptance criteria\n0. On a machine with only Node installed, one command installs `gf` and `gf --version` prints.\n1. `gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.\n2. `gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.\n3. The CLI feels native to developers.\n4. `gf` ships a live terminal dashboard of flag evaluations.",
+      "claims": {
+        "c1": "An agent can create a kill-switch flag in every environment without a human clicking anything.",
+        "c2": "The CLI runs on a machine that only has Node installed.",
+        "c3": "The MCP connector gains write tools, so an agent can change flags through it.",
+        "c4": "CLI usage is billed per seat."
+      },
+      "criteria": {
+        "a1": "On a machine with only Node installed, one command installs `gf` and `gf --version` prints.",
+        "a2": "`gf flags create <key> --kill-switch --all-envs` creates the flag enabled in every environment and the console shows it; a partial failure prints which environments succeeded and exits non-zero.",
+        "a3": "`gf doctor` diagnoses each of: no credentials, expired credentials, wrong project, unreachable API, an out-of-date CLI.",
+        "a4": "The CLI feels native to developers.",
+        "a5": "`gf` ships a live terminal dashboard of flag evaluations."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a5": {
+            "type": "noul",
+            "noul": 0.24
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.24,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_in-c1",
+      "question": "coverage_in",
+      "item": "c1",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c1": {
+            "type": "noul",
+            "noul": 0.95
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.95,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_in-c2",
+      "question": "coverage_in",
+      "item": "c2",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c2": {
+            "type": "noul",
+            "noul": 0.97
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.97,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_in-c3",
+      "question": "coverage_in",
+      "item": "c3",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c3": {
+            "type": "noul",
+            "noul": 0.05
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.05,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_in-c4",
+      "question": "coverage_in",
+      "item": "c4",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c4": {
+            "type": "noul",
+            "noul": 0.06
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.06,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-clarity-a1",
+      "question": "clarity",
+      "item": "a1",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a1": {
+            "type": "score",
+            "score": 2.63,
+            "confidence": 0.63,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.36,
+              "3": 0.64
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.877,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-clarity-a2",
+      "question": "clarity",
+      "item": "a2",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a2": {
+            "type": "score",
+            "score": 2.76,
+            "confidence": 0.76,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.24,
+              "3": 0.76
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.92,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-clarity-a3",
+      "question": "clarity",
+      "item": "a3",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a3": {
+            "type": "score",
+            "score": 0.55,
+            "confidence": 0.45,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0.54,
+              "1": 0.36,
+              "2": 0.1,
+              "3": 0
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.183,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_out-a2",
+      "question": "coverage_out",
+      "item": "a2",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a2": {
+            "type": "noul",
+            "noul": 0.76
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.76,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "low-stock-coverage_out-a4",
+      "question": "coverage_out",
+      "item": "a4",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — low-stock alerts for sellers\n\n## Problem\n\nSellers find out a product has sold out when a buyer complains. They want warning before it happens.\n\n## Bill of materials (What / Why)\n| What | Why |\n|---|---|\n| A per-product stock threshold on the product edit page | each product sells at its own pace |\n| A nightly job that finds variants below their threshold and emails the seller one digest | one message a day, not a flood |\n\n## Scope\n**In v1:** email only. **Out of v1 (no-gos):** WhatsApp or SMS alerts; hiding sold-out items automatically.\n\n## Acceptance criteria\n- When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.\n- The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.\n- Alerts are timely.\n- The shop admin receives a weekly revenue digest by email.",
+      "claims": {
+        "c1": "A seller hears about a product before it runs out.",
+        "c2": "The seller sets how low is \"low\" separately for each product.",
+        "c3": "Alerts arrive on WhatsApp.",
+        "c4": "Sold-out products disappear from the shop on their own."
+      },
+      "criteria": {
+        "a1": "When a variant's stock drops below its threshold, the next nightly run emails the seller one message listing that variant and its current count.",
+        "a2": "The threshold field accepts whole numbers from 0 to 999 and rejects anything else with an inline error under the field.",
+        "a3": "Alerts are timely.",
+        "a4": "The shop admin receives a weekly revenue digest by email."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a4": {
+            "type": "noul",
+            "noul": 0.16
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.16,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "gift-cards-coverage_in-c1",
+      "question": "coverage_in",
+      "item": "c1",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — pay with a gift card\n\n## Problem\n\nBuyers holding a gift card can't use it online; support redeems them by hand.\n\n## Shape\n\nA \"Gift card\" field at checkout. The code is checked, its balance applied to the order, and any remainder is paid the\nusual way. Gift cards are still issued by the shop admin in the back office; selling them as a product is out of v1.\n\n## Acceptance criteria\n- Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.\n- Checkout is intuitive.",
+      "claims": {
+        "c1": "A buyer can pay part of an order with a gift card.",
+        "c2": "Shoppers can buy gift cards in the shop as a product."
+      },
+      "criteria": {
+        "a1": "Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.",
+        "a2": "Checkout is intuitive."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c1": {
+            "type": "noul",
+            "noul": 0.97
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.97,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "gift-cards-coverage_in-c2",
+      "question": "coverage_in",
+      "item": "c2",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — pay with a gift card\n\n## Problem\n\nBuyers holding a gift card can't use it online; support redeems them by hand.\n\n## Shape\n\nA \"Gift card\" field at checkout. The code is checked, its balance applied to the order, and any remainder is paid the\nusual way. Gift cards are still issued by the shop admin in the back office; selling them as a product is out of v1.\n\n## Acceptance criteria\n- Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.\n- Checkout is intuitive.",
+      "claims": {
+        "c1": "A buyer can pay part of an order with a gift card.",
+        "c2": "Shoppers can buy gift cards in the shop as a product."
+      },
+      "criteria": {
+        "a1": "Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.",
+        "a2": "Checkout is intuitive."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "in_c2": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.04,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "gift-cards-clarity-a1",
+      "question": "clarity",
+      "item": "a1",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — pay with a gift card\n\n## Problem\n\nBuyers holding a gift card can't use it online; support redeems them by hand.\n\n## Shape\n\nA \"Gift card\" field at checkout. The code is checked, its balance applied to the order, and any remainder is paid the\nusual way. Gift cards are still issued by the shop admin in the back office; selling them as a product is out of v1.\n\n## Acceptance criteria\n- Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.\n- Checkout is intuitive.",
+      "claims": {
+        "c1": "A buyer can pay part of an order with a gift card.",
+        "c2": "Shoppers can buy gift cards in the shop as a product."
+      },
+      "criteria": {
+        "a1": "Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.",
+        "a2": "Checkout is intuitive."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a1": {
+            "type": "score",
+            "score": 2.93,
+            "confidence": 0.93,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.07,
+              "3": 0.93
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.977,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "gift-cards-clarity-a2",
+      "question": "clarity",
+      "item": "a2",
+      "label": false,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — pay with a gift card\n\n## Problem\n\nBuyers holding a gift card can't use it online; support redeems them by hand.\n\n## Shape\n\nA \"Gift card\" field at checkout. The code is checked, its balance applied to the order, and any remainder is paid the\nusual way. Gift cards are still issued by the shop admin in the back office; selling them as a product is out of v1.\n\n## Acceptance criteria\n- Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.\n- Checkout is intuitive.",
+      "claims": {
+        "c1": "A buyer can pay part of an order with a gift card.",
+        "c2": "Shoppers can buy gift cards in the shop as a product."
+      },
+      "criteria": {
+        "a1": "Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.",
+        "a2": "Checkout is intuitive."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "clar_a2": {
+            "type": "score",
+            "score": 0.23,
+            "confidence": 0.77,
+            "legend": {
+              "0": "No: it states an aim or a quality (\"works well\", \"is clear\", \"feels fast\") with nothing anyone could observe.",
+              "1": "Barely: it names what to look at, but not what counts as passing, so two testers would likely disagree.",
+              "2": "Mostly: it names an action and an outcome but leaves one thing to judgement, such as a threshold, a wording or which case to try.",
+              "3": "Yes: it names the action, where to do it and the exact result to observe, so two testers would agree."
+            },
+            "probabilities": {
+              "0": 0.78,
+              "1": 0.22,
+              "2": 0,
+              "3": 0
+            }
+          }
+        }
+      },
+      "decision": {
+        "value": false,
+        "p": 0.077,
+        "decider": "jev"
+      }
+    },
+    {
+      "id": "gift-cards-coverage_out-a1",
+      "question": "coverage_out",
+      "item": "a1",
+      "label": true,
+      "source": "consuming project A — a seed paraphrased and anonymised (C7)",
+      "pitch": "# Pitch — pay with a gift card\n\n## Problem\n\nBuyers holding a gift card can't use it online; support redeems them by hand.\n\n## Shape\n\nA \"Gift card\" field at checkout. The code is checked, its balance applied to the order, and any remainder is paid the\nusual way. Gift cards are still issued by the shop admin in the back office; selling them as a product is out of v1.\n\n## Acceptance criteria\n- Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.\n- Checkout is intuitive.",
+      "claims": {
+        "c1": "A buyer can pay part of an order with a gift card.",
+        "c2": "Shoppers can buy gift cards in the shop as a product."
+      },
+      "criteria": {
+        "a1": "Paying a 500 MXN order with a card worth 200 MXN applies 200 and asks for 300 by the usual payment method; the card's balance becomes 0.",
+        "a2": "Checkout is intuitive."
+      },
+      "recorded": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "out_a1": {
+            "type": "noul",
+            "noul": 0.86
+          }
+        }
+      },
+      "decision": {
+        "value": true,
+        "p": 0.86,
+        "decider": "jev"
+      }
+    }
   ]
 }

@@ -158,7 +158,12 @@ export function envFileValue(text, key) {
   return null;
 }
 
-/** The API key: env first, then `.env.local` at the repo root, then the cwd. null when none. */
+/**
+ * The API key: env first, then `.env.local` at the repo root, then the cwd. null when none. A variable that is SET
+ * but empty (`TYPESAFE_API_KEY= node scripts/…`) means "no key" and stops the lookup: that is how a person turns Jev
+ * off for one command, and falling through to `.env.local` made the command quietly use the key they had just
+ * blanked (intent-match S1 smoke, 2026-09-29).
+ */
 export function readApiKey({
   env = process.env,
   root = repoRoot(),
@@ -166,7 +171,7 @@ export function readApiKey({
   read = readFileSync,
   exists = existsSync,
 } = {}) {
-  if (env.TYPESAFE_API_KEY) return env.TYPESAFE_API_KEY;
+  if (env.TYPESAFE_API_KEY !== undefined) return env.TYPESAFE_API_KEY.trim() || null;
   for (const dir of [root, cwd]) {
     const p = join(dir, '.env.local');
     if (!exists(p)) continue;
