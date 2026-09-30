@@ -90,7 +90,9 @@ jobs:
           node --test \
             plugins/golden-frijoles/skills/groom/emit-kickoff.test.mjs \
             plugins/golden-frijoles/skills/groom/emit-epic-kickoff.test.mjs \
-            plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs
+            plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs \
+            plugins/golden-frijoles/skills/groom/session-budget.test.mjs \
+            plugins/golden-frijoles/skills/groom/session-line.test.mjs
 
       # ── The build view mod (build-visualization-claude-mods S4) ─────────────────────────────
       # Its pure half: the cache decision and the status text. The hook file itself is four calls on `$`
@@ -180,6 +182,9 @@ jobs:
           test -f /tmp/skills-a/groom.skill
           unzip -t /tmp/skills-a/groom.skill
           unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/SKILL.md'
+          # session-budget D6: Cowork reaches the budget line through $GROOM, so the archive must carry it whole.
+          unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/session-line.mjs'
+          unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/session-budget.mjs'
           for f in /tmp/skills-a/*.skill; do
             cmp "$f" "/tmp/skills-b/$(basename "$f")" \
               || { echo "pack-skills is not reproducible: $f" >&2; exit 1; }

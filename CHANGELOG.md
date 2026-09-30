@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-30
+
+### Added
+
+- **The session budget line.** Under the prompt in Claude Code: `Session 48% · 5h 23% · 7d 9% → keep going`,
+  from the engine's own `session.measure` figures, turning to **checkpoint** (context ≥ 60%, or 3+ questions
+  waiting) or **hand off** (context ≥ 80%, or the 5-hour limit ≥ 90%). A figure the engine does not have yet is
+  left out, never shown as 0%. It advises and never compacts, clears or ends anything. Each verdict change is
+  logged to `.golden-frijoles/session-budget.jsonl`, which ignores itself in git.
+- **Groom prints the same line at each approval gate** (`session-line.mjs`), for Cowork, which cannot see
+  its own context: asks open, questions waiting, gates passed, "context: not measured here", and the verdict
+  from the same thresholds (`THRESHOLDS` in `groom/session-budget.mjs`, the one table).
+
+### Changed
+
+- **The agy pin is 1.2.14** (`cross-agent-cli.mjs`, both copies): the doctor's live probe was green on the
+  primary and fallback models.
+- **"One deep ask per approval gate; keep going while the budget line says so"** replaces "one deep ask per
+  run" in groom, and "a fresh session per sprint" in WAYS-OF-WORKING and LEARNINGS. The old rules were set
+  for earlier models; the product owner's decision bandwidth is the binding constraint now.
+
 ## [0.13.0] - 2026-09-30
 
 ### Added

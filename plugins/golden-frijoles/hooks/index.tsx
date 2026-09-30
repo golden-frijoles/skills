@@ -15,9 +15,23 @@
 // terminal's right edge. `turn.start` writes the text to `$.state`; the `AbovePrompt` render hook reads it,
 // so a write redraws the band and nothing else.
 //
+// THE SESSION LINE (session-budget D2/D8): `session.measure` pushes the engine's own figures after each turn;
+// `sessionVerdict()` — the SAME function groom's Cowork line uses, imported from the groom skill — turns them
+// into keep going / checkpoint / hand off, drawn on `$.ui.status` (one row under the prompt, free since the
+// band moved off it). It advises and never acts: nothing here compacts, clears or ends a session (D5). Each
+// verdict CHANGE appends a row to `.golden-frijoles/session-budget.jsonl`, ignored by its own `.gitignore` (D7).
+//
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
 import type { Register } from 'claude-code';
 import { bandRowsFrom, buildStateArgv, progressOf, repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
+import {
+  LOG_FILE,
+  LOG_GITIGNORE,
+  budgetRow,
+  figuresFromMeasure,
+  sessionLine,
+  sessionVerdict,
+} from '../skills/groom/session-budget.mjs';
 
 const STORE_KEY = 'golden-frijoles/build-view';
 const VIEW = { plugin: 'golden-frijoles', key: 'buildView' } as const;
@@ -28,6 +42,18 @@ const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', bad: 'red', p
 const RISK_COLORS = { LOW: 'green', MEDIUM: 'yellow', HIGH: 'red' } as const;
 const LABEL_WIDTH = 12; // glyph + space + the longest label (`Progress`) + gap
 
+// The session line's inputs. Module variables on purpose: a hot reload starts them over, which at worst
+// logs one repeated verdict row and hides the line until the next measurement — never a wrong figure.
+let measured: { contextPct: number | null; fiveHourPct: number | null; sevenDayPct: number | null } | null = null;
+let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not observable here (D8)
+let loggedVerdict: string | null = null;
+let repoRoot: string | null = null; // from turn.start's rev-parse, so the log lands at the repo root
+
+const lineNow = () => {
+  const figures = { ...(measured ?? {}), questionsWaiting };
+  return sessionLine(figures, sessionVerdict(figures)) ?? undefined;
+};
+
 export const register: Register = (on) => {
   on('turn.start', async ($, e, next) => {
     try {
@@ -35,6 +61,7 @@ export const register: Register = (on) => {
         timeoutMs: GIT_TIMEOUT_MS,
       });
       const facts = repoFactsFrom(head.stdout, head.exitCode);
+      repoRoot = facts.root;
       const cached = await $.store.get(STORE_KEY);
       if (!shouldRefresh(cached, facts.key)) {
         $.ui.log(`build view: cached (${facts.key})`);
@@ -56,6 +83,44 @@ export const register: Register = (on) => {
       await $.state.set(VIEW, null).catch(() => {});
     }
     return next(e);
+  });
+
+  on('session.measure', async ($, e, next) => {
+    try {
+      measured = figuresFromMeasure(e);
+      const figures = { ...measured, questionsWaiting };
+      const verdict = sessionVerdict(figures);
+      $.ui.status(sessionLine(figures, verdict) ?? undefined);
+      // Only at a known repo root (D7): with no git root — a session outside a repo, or a hot reload before the
+      // next turn.start — the line still draws but nothing is written into whatever directory the session is in.
+      if (repoRoot && verdict.verdict !== loggedVerdict && sessionLine(figures, verdict)) {
+        // $.fs has no append: read + write the whole (small — one row per verdict change) file. Hooks for this
+        // event run one at a time, so this session never races itself; a SECOND session or the Cowork CLI
+        // writing the same file in the same instant can lose one row — accepted for a local, advisory log.
+        const dir = `${repoRoot}/`;
+        if (!(await $.fs.exists(`${dir}${LOG_GITIGNORE.path}`))) await $.fs.write(`${dir}${LOG_GITIGNORE.path}`, LOG_GITIGNORE.text);
+        const path = `${dir}${LOG_FILE}`;
+        const prior = (await $.fs.exists(path)) ? String(await $.fs.read(path)) : '';
+        const row = budgetRow({ at: Date.now(), surface: 'claude-code', figures, verdict });
+        await $.fs.write(path, `${prior}${prior && !prior.endsWith('\n') ? '\n' : ''}${row}\n`);
+        loggedVerdict = verdict.verdict;
+      }
+    } catch (err) {
+      $.ui.log(`session line: ${String(err)}`);
+    }
+    return next(e);
+  });
+
+  // "Questions waiting", honestly counted: the AskUserQuestion dialogs open right now (D8).
+  on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
+    questionsWaiting += 1;
+    $.ui.status(lineNow());
+    try {
+      return await next(e);
+    } finally {
+      questionsWaiting = Math.max(0, questionsWaiting - 1);
+      $.ui.status(lineNow());
+    }
   });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

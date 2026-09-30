@@ -159,6 +159,9 @@ one-liner + why + date shape.
   non-state-mutating and lock that with a test.
 
 ## Working efficiently
-- **Running a whole multi-sprint epic in one session is the main context-cost driver.** The durable
-  state (the plan file, sprint docs, team memory) makes re-entry cheap by design — compact at each
-  sprint/PR boundary, and for big epics consider a fresh session per sprint.
+- **Session length is set by a measured line, not a stamina rule.** A whole epic in one session is the
+  main context-cost driver, and the durable state (the plan file, sprint docs, team memory) makes
+  re-entry cheap by design — so checkpoint or hand off when the budget line says so (its thresholds
+  live in one table, `THRESHOLDS` in groom's `session-budget.mjs`), not per sprint. Groom's twin rule is "one deep ask
+  per approval gate". *(Sharpened 2026-09-30, session-budget: "fresh session per sprint" was set for
+  earlier models.)*

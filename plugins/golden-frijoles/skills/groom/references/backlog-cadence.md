@@ -12,15 +12,15 @@ Loaded on demand from `SKILL.md` Stage 9. Moved here verbatim (ways-of-work-lean
 > groom** — one deep Definition-of-Ready groom for the front-of-queue epic plus a portfolio pass that
 > seeds/resequences the rest of the funnel.* The skill was the stale half. Reconciled here.
 >
-> The discipline that does **not** change is **one *deep* ask per run** (Stage 0). What batches is the
+> **Updated (2026-09-30, session-budget): one deep ask per approval gate; keep going while the budget line says so.** The old
+> "one deep ask per run" was set for earlier models; the binding constraint now is the product owner's
+> decision bandwidth. Each deep ask still stops at its own approval gate; what batches besides is the
 > funnel bookkeeping — sequencing, appetite, lane, and a light scope pass on items that aren't at the
-> front yet. Deep-groom later items when they *reach* the front.
+> front yet.
 >
-> **The compaction call belongs to the agent, not the calendar.** A single-session groom that has
-> produced several scaffolded epics is exactly the shape LEARNINGS warns about under *Working
-> efficiently*. Say out loud when the session should compact or hand to a fresh one — the durable
-> state (seeds, epic docs, the bets file) makes re-entry cheap by design, which is what makes calling
-> it early free.
+> **The compaction call is measured, not guessed.** Each gate ends with the budget line (`SKILL.md`
+> Stage 7.1: `session-line.mjs`): keep going, checkpoint, or hand off. The durable state (seeds, epic
+> docs, the bets file) makes re-entry cheap by design, which is what makes handing off early free.
 
 The cadence:
 
@@ -28,8 +28,9 @@ The cadence:
    by dependency/leverage), and **persist it in the seed frontmatter** (`build_order` = the integer
    sequence; `priority` = the wave it's slated for) — that's the SSOT the board sorts by.
    `BUILD-ORDER.md` is **generated** from it (`node scripts/build-order.mjs`); never hand-edit the board.
-2. **One deep groom per run, plus a portfolio pass over the rest.** Deep-groom the front-of-queue item
-   to full Definition of Ready; for the others, set sequence, appetite, lane and enough scope to be
+2. **One deep ask per approval gate, plus a portfolio pass over the rest.** Deep-groom the front-of-queue
+   item to full Definition of Ready and its gate; take the next one in the same session while the budget
+   line says keep going. For items not near the front, set sequence, appetite, lane and enough scope to be
    bettable — then stop. A seed that is deep-groomed months before it is built is a seed that will be
    re-groomed anyway.
 3. **Let a seed's own words reclassify it.** A raw seed that says "a spike is the honest first move"
@@ -40,7 +41,7 @@ The cadence:
    yet placed — so the next betting table is a three-line decision rather than a fresh groom. The
    board shows it under *scaffolded, not started*, which is the truthful bucket. Only `status: queued`
    hard-requires an `appetite:`.
-5. **At the end of every groom run, do BOTH:**
+5. **When the budget line says hand off (or the queue is done), do BOTH:**
    - Emit the **Claude Code build/investigation handoff** for each item groomed to scaffold (Stage 8).
    - **Regenerate the board** (`node scripts/build-order.mjs`) so the groomed items move bucket from the
      frontmatter change — never hand-tick it — and emit a **next-session Cowork handoff prompt** for the
