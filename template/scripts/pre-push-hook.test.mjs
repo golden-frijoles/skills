@@ -17,7 +17,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -124,6 +124,45 @@ test('pre-push: a branch DELETION carries no paths and gates nothing', () => {
   const r = runHook({ dir, stdin: `refs/heads/x ${zero} refs/heads/gone ${after}\n` });
   assert.equal(r.code, 0, `a deletion must not be gated:\n${r.out}`);
   assert.doesNotMatch(r.out, /BUILD-ORDER/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+// semantic-lint D5/C6. The stub is written AFTER the pushed commit and left untracked: the hook runs what is in the
+// working tree, and keeping scripts/ out of the pushed range keeps the BLOCKING scripts/ tests out of scope, so the
+// only thing that can fail here is the lint itself.
+function withLintStub(dir) {
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  writeFileSync(
+    join(dir, 'scripts', 'semantic-lint.mjs'),
+    "import { writeFileSync } from 'node:fs';\nwriteFileSync('lint-args.json', JSON.stringify(process.argv.slice(2)));\nprocess.exit(3);\n"
+  );
+  return () => JSON.parse(readFileSync(join(dir, 'lint-args.json'), 'utf8'));
+}
+
+test('pre-push: semantic-lint gets exactly the pushed range, and a failing lint never fails the push', () => {
+  const { dir, before, after } = repoTouching('apps/web/app/api/x/route.ts');
+  const args = withLintStub(dir);
+  const r = runHook({ dir, stdin: `refs/heads/x ${after} refs/heads/x ${before}\n` });
+  assert.equal(r.code, 0, `a lint that exits 3 blocked the push:\n${r.out}`);
+  assert.deepEqual(args(), ['--range', `${before}...${after}`]);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('pre-push: a NEW branch is linted from origin/main, the same range the gate uses', () => {
+  const zero = '0'.repeat(40);
+  const { dir, after } = repoTouching('apps/web/x.ts');
+  const args = withLintStub(dir);
+  assert.equal(runHook({ dir, stdin: `refs/heads/x ${after} refs/heads/x ${zero}\n` }).code, 0);
+  assert.deepEqual(args(), ['--range', `origin/main...${after}`]);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('pre-push: a deletion-only push lints NOTHING — no fallback to a branch nobody pushed', () => {
+  const zero = '0'.repeat(40);
+  const { dir, after } = repoTouching('apps/web/x.ts');
+  withLintStub(dir);
+  assert.equal(runHook({ dir, stdin: `refs/heads/x ${zero} refs/heads/gone ${after}\n` }).code, 0);
+  assert.throws(() => readFileSync(join(dir, 'lint-args.json')), /ENOENT/, 'the lint ran on a deletion-only push');
   rmSync(dir, { recursive: true, force: true });
 });
 

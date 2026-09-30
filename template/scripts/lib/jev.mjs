@@ -34,7 +34,7 @@ import { needSetting, readSection } from './config.mjs';
 export const JEV_ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 export const DEFAULT_MODEL = 'jev-1.13.0';
 export const MODES = ['off', 'shadow', 'jev'];
-export const RAILS = ['review', 'prose'];
+export const RAILS = ['review', 'prose', 'lint'];
 
 /** 32k tokens covers state + the longest question. ~4 chars/token, with headroom for the question. */
 export const STATE_CHAR_BUDGET = 110_000;
@@ -53,10 +53,18 @@ export const DEFAULT_CONFIG = Object.freeze({
     // thresholds are the MEASURED ones (jev-semantic-guards S5.2, sprint-5.md), not the pitch's starting guesses.
     review: { mode: 'off', thresholds: { real: 0.85, notReal: 0.3 }, shadowExpires: null },
     prose: { mode: 'off', thresholds: { claim: 0.8 }, shadowExpires: null },
+    // semantic-lint D3: `default` plus one optional key per rule id (see LINT_THRESHOLD_KEY below).
+    lint: { mode: 'off', thresholds: { default: 0.8 }, shadowExpires: null },
   },
 });
 
 export class JevConfigError extends Error {}
+
+/**
+ * The lint rail's threshold keys are OPEN — `default` or any rule id — because rules are data (semantic-lint D3/D4):
+ * a new rule must not need a code change here to get its own threshold. Every other rail's keys stay a closed set.
+ */
+export const LINT_THRESHOLD_KEY = /^[a-z0-9][a-z0-9-]*$/;
 
 const isUnit = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
 
@@ -105,10 +113,21 @@ export function parseJevConfig(json) {
       throw new JevConfigError(`jev.config.json: rails.${name}.mode must be one of ${MODES.join(' | ')}`);
     if (r.thresholds !== undefined && !isObj(r.thresholds))
       throw new JevConfigError(`jev.config.json: rails.${name}.thresholds must be an object`);
-    refuseUnknown(r.thresholds ?? {}, Object.keys(d.thresholds), `rails.${name}.thresholds`);
+    if (name === 'lint') {
+      const bad = Object.keys(r.thresholds ?? {}).filter((k) => !LINT_THRESHOLD_KEY.test(k));
+      if (bad.length)
+        throw new JevConfigError(
+          `jev.config.json: rails.lint.thresholds: ${bad.join(', ')} is not \`default\` or a rule id (a-z, 0-9, -)`
+        );
+    } else refuseUnknown(r.thresholds ?? {}, Object.keys(d.thresholds), `rails.${name}.thresholds`);
     const thresholds = { ...d.thresholds, ...(r.thresholds ?? {}) };
     for (const [k, v] of Object.entries(thresholds))
       if (!isUnit(v)) throw new JevConfigError(`jev.config.json: rails.${name}.thresholds.${k} must be 0…1`);
+    // lint raises at p ≥ t and clears at p ≤ 1 − t (semantic-lint D2): below 0.5 those bands overlap, and one
+    // answer would be both a finding and a pass.
+    if (name === 'lint')
+      for (const [k, v] of Object.entries(thresholds))
+        if (v < 0.5) throw new JevConfigError(`jev.config.json: rails.lint.thresholds.${k} must be 0.5…1`);
     if (name === 'review' && thresholds.notReal >= thresholds.real)
       throw new JevConfigError('jev.config.json: rails.review.thresholds.notReal must be below .real');
     const shadowExpires = r.shadowExpires ?? null;

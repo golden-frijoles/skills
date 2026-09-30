@@ -49,16 +49,19 @@ fi
 zero=0000000000000000000000000000000000000000
 stdin_seen=0
 changed=''
+lint_ranges=''
 while read -r _local_ref local_sha _remote_ref remote_sha; do
   [ -z "$local_sha" ] && continue
   stdin_seen=1
   [ "$local_sha" = "$zero" ] && continue                      # branch deletion — carries no paths
   if [ "$remote_sha" = "$zero" ] || [ -z "$remote_sha" ]; then
-    range=$(git diff --name-only "origin/main...$local_sha" 2>/dev/null)
+    base=origin/main
   else
-    range=$(git diff --name-only "$remote_sha...$local_sha" 2>/dev/null)
+    base=$remote_sha
   fi
+  range=$(git diff --name-only "$base...$local_sha" 2>/dev/null)
   changed=$(printf '%s\n%s' "$changed" "$range")
+  lint_ranges="$lint_ranges --range $base...$local_sha"   # the same range, for semantic-lint (ADVISORY, below)
 done
 
 if [ "$stdin_seen" -eq 0 ]; then
@@ -110,6 +113,18 @@ if [ "$fail" -ne 0 ]; then
 fi
 
 # ── ADVISORY — never blocks (this section always falls through to exit 0) ────────────────────────
+
+# semantic-lint: each rule in golden-frijoles.config.json → lint.rules selects candidate hunks, and Jev judges only
+# those (off until jev.config.json → rails.lint says otherwise, and silent about egress while off). `|| true` keeps it
+# out of the exit code by construction; no stdin ranges (a manual run) → it reads @{upstream}...HEAD itself. But git DID
+# hand us refs and none carried code (a deletion-only push) → nothing was pushed, so nothing is linted: falling back to
+# @{upstream} there would judge — and send — a branch nobody pushed (fresh review of #200).
+if [ -f scripts/semantic-lint.mjs ] && { [ -n "$lint_ranges" ] || [ "$stdin_seen" -eq 0 ]; }; then
+  # $lint_ranges is unquoted on purpose: a list of `--range <base>...<sha>` words, none containing a space.
+  # shellcheck disable=SC2086
+  node scripts/semantic-lint.mjs $lint_ranges >&2 || true
+fi
+
 # TEMPLATE FILL-IN — mirror your CI's typecheck/build job here for earlier feedback:
 #
 #   echo "pre-push: type-checking..." >&2

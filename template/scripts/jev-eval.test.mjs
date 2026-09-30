@@ -147,14 +147,16 @@ function harness({ config = parseJevConfig({ egress: true }), key = 'k' } = {}) 
     fixtures: proofFixtures(),
     rails: { review: proofRail },
     key: () => key,
-    makeAsk: () => async ({ questions }) => {
-      h.asked.push(...Object.keys(questions));
-      return {
-        ok: true,
-        answers: Object.fromEntries(Object.keys(questions).map((id) => [id, { type: 'noul', noul: 0.9 }])),
-        model: config.model,
-      };
-    },
+    makeAsk:
+      () =>
+      async ({ questions }) => {
+        h.asked.push(...Object.keys(questions));
+        return {
+          ok: true,
+          answers: Object.fromEntries(Object.keys(questions).map((id) => [id, { type: 'noul', noul: 0.9 }])),
+          model: config.model,
+        };
+      },
     writeFixtures: () => (h.written += 1),
     stdout: (t) => (h.out += t),
     stderr: (t) => (h.err += t),
@@ -214,9 +216,18 @@ test('--limit is refused without --live, and a malformed n is refused', async ()
 });
 
 test('liveRefusal: egress is checked before the key', () => {
-  assert.match(liveRefusal(parseJevConfig({ egress: null }), () => null), /egress/);
-  assert.match(liveRefusal(parseJevConfig({ egress: true }), () => null), /TYPESAFE_API_KEY/);
-  assert.equal(liveRefusal(parseJevConfig({ egress: true }), () => 'k'), null);
+  assert.match(
+    liveRefusal(parseJevConfig({ egress: null }), () => null),
+    /egress/
+  );
+  assert.match(
+    liveRefusal(parseJevConfig({ egress: true }), () => null),
+    /TYPESAFE_API_KEY/
+  );
+  assert.equal(
+    liveRefusal(parseJevConfig({ egress: true }), () => 'k'),
+    null
+  );
 });
 
 // ── The intent set (intent-match D15, C2): evaluated beside the rails, never one of them ────────────────────────
@@ -224,30 +235,77 @@ test('liveRefusal: egress is checked before the key', () => {
 test('the intent set is loaded, replayed and held to the fixture floor, without being a Jev rail', async () => {
   const { RAILS } = await import('./lib/jev.mjs');
   const { EVAL_SETS } = await import('./jev-eval.mjs');
-  assert.ok(!RAILS.includes('intent'), 'intent must not become a rail: parseJevConfig would have to accept a mode for it');
+  assert.ok(
+    !RAILS.includes('intent'),
+    'intent must not become a rail: parseJevConfig would have to accept a mode for it'
+  );
   assert.ok(EVAL_SETS.includes('intent'));
   const rails = await loadRails();
   assert.equal(rails.intent.regex, null);
-  assert.match(coverageFailures({ intent: [{}] }, { intent: rails.intent })[0], new RegExp(`intent: only 1 .*≥${MIN_FIXTURES}`));
+  assert.match(
+    coverageFailures({ intent: [{}] }, { intent: rails.intent })[0],
+    new RegExp(`intent: only 1 .*≥${MIN_FIXTURES}`)
+  );
   assert.match(coverageFailures({ intent: [{}] }, {})[0], /no judge to replay them/);
 });
 
 test('intent report: decided and right are counted, and there is no regex column to be read as 0%', async () => {
   const fixtures = JSON.parse(readFileSync(FIXTURES_PATH, 'utf8'));
   const rails = await loadRails();
-  const { report, failures } = await evaluate({ fixtures, rails: { intent: rails.intent }, config: loadJevConfig() });
+  const { report, failures } = await evaluate({
+    fixtures,
+    rails: { intent: rails.intent },
+    config: loadJevConfig(),
+  });
   assert.deepEqual(failures, []);
   const t = report.intent;
   assert.equal(t.regexRight, null);
   assert.ok(t.decided <= t.n && t.decidedRight <= t.decided);
-  assert.match(formatReport(report), /^intent: \d+ labelled · jev [\d.]+% · decided \d+\/\d+, \d+ right · no deterministic rule$/m);
+  assert.match(
+    formatReport(report),
+    /^intent: \d+ labelled · jev [\d.]+% · decided \d+\/\d+, \d+ right · no deterministic rule$/m
+  );
   assert.doesNotMatch(formatReport(report), /intent:.*regex/);
 });
 
 test('--rail intent is accepted; a misspelt set is still refused', async () => {
-  const io = { config: loadJevConfig(), fixtures: { intent: [] }, rails: {}, stdout: () => {}, stderr: () => {}, today: '2026-09-29' };
+  const io = {
+    config: loadJevConfig(),
+    fixtures: { intent: [] },
+    rails: {},
+    stdout: () => {},
+    stderr: () => {},
+    today: '2026-09-29',
+  };
   assert.notEqual(await run(['--rail', 'intent'], io), 2);
   let err = '';
   assert.equal(await run(['--rail', 'intnet'], { ...io, stderr: (t) => (err += t) }), 2);
-  assert.match(err, /review, prose, intent/);
+  assert.match(err, /review, prose, lint, intent/);
+});
+
+// ── semantic-lint D8 (amended after the fresh review of #200): lint coverage is per CONFIGURED rule ──────────
+test("lint coverage: an undefined rule's fixtures FAIL (never skip green); a configured rule under the floor fails", async () => {
+  const { parseLintRules } = await import('./semantic-lint.mjs');
+  const rule = {
+    id: 'rule-a',
+    source: 'a rule',
+    severity: 'nit',
+    globs: ['**'],
+    patterns: ['x'],
+    question: { instructions: 'q', criteria: { true: 't', false: 'f' } },
+  };
+  const fx = (r, n) => Array.from({ length: n }, (_, i) => ({ id: `${r}-${i}`, rule: r }));
+  const lintOnly = (f, r) => coverageFailures(f, r).filter((m) => m.startsWith('lint'));
+  const none = await loadRails({ lintRules: [] });
+  assert.deepEqual(lintOnly({ lint: [] }, none), [], 'no rules and no fixtures (the template) is clean');
+  assert.match(
+    lintOnly({ lint: fx('rule-a', 30) }, none).join('\n'),
+    /"rule-a", which this project's lint config does not define/
+  );
+  const one = await loadRails({ lintRules: parseLintRules({ rules: [rule] }) });
+  assert.match(
+    lintOnly({ lint: fx('rule-a', 29) }, one).join('\n'),
+    /lint\/rule-a: only 29 labelled fixture\(s\); a rule needs ≥30/
+  );
+  assert.deepEqual(lintOnly({ lint: fx('rule-a', 30) }, one), []);
 });

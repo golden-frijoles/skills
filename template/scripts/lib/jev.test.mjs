@@ -158,6 +158,9 @@ for (const [name, json, expect] of [
   ['inverted review band', { rails: { review: { thresholds: { real: 0.1, notReal: 0.9 } } } }, /below/],
   ['shadow without expiry', { rails: { review: { mode: 'shadow' } } }, /shadow must expire/],
   ['egress not boolean', { egress: 'yes' }, /egress/],
+  ['a lint threshold key that is not a rule id', { rails: { lint: { thresholds: { 'Rule 1': 0.8 } } } }, /not `default` or a rule id/],
+  ['a lint threshold below 0.5 (raise and clear would overlap)', { rails: { lint: { thresholds: { default: 0.4 } } } }, /0\.5…1/],
+  ['a rule-id threshold key on a rail that is not lint', { rails: { prose: { thresholds: { 'rule-1': 0.8 } } } }, /unknown key/],
 ]) {
   test(`parseJevConfig: ${name} throws — a malformed config is never silently off`, () => {
     assert.throws(
@@ -166,6 +169,14 @@ for (const [name, json, expect] of [
     );
   });
 }
+
+test('parseJevConfig: the lint rail is off by default, and takes a threshold per rule id (semantic-lint D3)', () => {
+  assert.deepEqual(parseJevConfig({}).rails.lint, { mode: 'off', thresholds: { default: 0.8 }, shadowExpires: null });
+  const c = parseJevConfig({
+    rails: { lint: { mode: 'shadow', thresholds: { 'rule-1': 0.7 }, shadowExpires: '2026-10-14' } },
+  });
+  assert.deepEqual(c.rails.lint.thresholds, { default: 0.8, 'rule-1': 0.7 });
+});
 
 test('loadJevConfig: a missing file is the defaults; an unparseable one throws', () => {
   const dir = mkdtempSync(join(tmpdir(), 'jev-'));

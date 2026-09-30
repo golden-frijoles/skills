@@ -44,6 +44,7 @@ export const SECTIONS = Object.freeze([
   'spend',
   'routines',
   'intent',
+  'lint',
 ]);
 
 /**

@@ -40,13 +40,65 @@ export function parseLog(text) {
   return { rows, bad };
 }
 
+/** A semantic-lint decision: `rail: 'lint:<rule id>'`. */
+export const isLint = (r) => typeof r?.rail === 'string' && /^lint:[a-z0-9][a-z0-9-]*$/.test(r.rail);
+
+export const LINT_OUTCOMES = ['raise', 'uncertain', 'clear', 'not-checked'];
+
+/**
+ * The shadow report for semantic-lint (C5): per rule, how many candidates were raised, uncertain, cleared or not
+ * checked, and the raised/uncertain ones to label. There is no regex verdict to agree with — the selector only picks —
+ * so the owed promote/tune/drop decision reads these counts and the labels. A row with no known outcome is not
+ * evidence and is dropped, never counted as clear. Pure.
+ */
+export function summarizeLint(rows) {
+  const out = {};
+  const toLabel = [];
+  for (const r of rows.filter(isLint)) {
+    const o = r.evidence?.outcome;
+    if (!LINT_OUTCOMES.includes(o)) continue;
+    const s = (out[r.rail] ??= { n: 0, raise: 0, uncertain: 0, clear: 0, 'not-checked': 0 });
+    s.n++;
+    s[o]++;
+    if (o === 'raise' || o === 'uncertain')
+      toLabel.push({ rail: r.rail, outcome: o, p: r.confidence, file: r.evidence?.file ?? null, text: r.text });
+  }
+  return { summary: out, toLabel };
+}
+
+export function renderLint({ summary, toLabel }) {
+  if (!Object.keys(summary).length) return '';
+  const lines = [
+    '## Semantic lint',
+    '',
+    '| rule | candidates | raise | uncertain | clear | not checked |',
+    '|---|---|---|---|---|---|',
+  ];
+  for (const [rail, s] of Object.entries(summary))
+    lines.push(
+      `| ${rail} | ${s.n} | ${pct(s.raise, s.n)} | ${pct(s.uncertain, s.n)} | ${pct(s.clear, s.n)} | ${pct(s['not-checked'], s.n)} |`
+    );
+  lines.push('', '### Raised or uncertain — label these', '', toLabel.length ? '| rule | outcome | p | file | excerpt | label: |' : '_None._');
+  if (toLabel.length) lines.push('|---|---|---|---|---|---|');
+  for (const c of toLabel)
+    lines.push(
+      `| ${c.rail} | ${c.outcome} | ${c.p} | ${c.file} | ${String(c.text ?? '').replace(/\s+/g, ' ').replace(/\|/g, '\\|').slice(0, 90)} | |`
+    );
+  return lines.join('\n');
+}
+
 /** One row per (rail, text): a replayed backtest must not count twice. The newest entry wins. Pure. */
 export function dedupe(rows) {
   const by = new Map();
   // One key per thing judged: a comment URL whether it came from the backtest (`backtest:<url>`) or a marker
   // (`marker:<url>`), else the text hash. Keying on the raw source counted one comment twice (PR #39).
+  // A lint row's source is `<file>@<sha>`, which two hunks of one file share and one hunk re-pushed does not: the file
+  // plus the hunk's own hash is the thing judged (semantic-lint C5) — the hash alone merged identical windows in two
+  // files (fresh review of #200).
   const key = (r) =>
-    `${r.rail}:${r.source ? String(r.source).replace(/^(?:backtest|marker):/, '') : r.textHash}`;
+    isLint(r)
+      ? `${r.rail}:${r.evidence?.file ?? ''}:${r.textHash}`
+      : `${r.rail}:${r.source ? String(r.source).replace(/^(?:backtest|marker):/, '') : r.textHash}`;
   // Newest by timestamp, not by input order: several --log files and markers arrive in any order (codex, #192).
   const byTime = [...rows].sort((a, b) => String(a.ts ?? '').localeCompare(String(b.ts ?? '')));
   for (const r of byTime) by.set(key(r), r);
@@ -220,7 +272,7 @@ async function main() {
   }
   for (const repo of all('--repo')) rows.push(...markerRows(harvest(repo)));
   // Only rows that are decisions of a known rail count; `{}` or a foreign line is not evidence (codex, #192).
-  rows = dedupe(rows.filter((r) => r && (r.rail === 'review' || r.rail === 'prose')));
+  rows = dedupe(rows.filter((r) => r && (r.rail === 'review' || r.rail === 'prose' || isLint(r))));
   // No decisions is not a report: a missing log must never read as a completed, all-clear one (codex, PR #39).
   if (!rows.length) {
     process.stderr.write('jev-report: no decisions found in any --log or --repo — nothing to report.\n');
@@ -229,6 +281,8 @@ async function main() {
   const thresholds = { review: config.rails.review.thresholds, prose: config.rails.prose.thresholds };
   const report = summarize(rows, thresholds);
   process.stdout.write(`${render(report)}\n`);
+  const lint = renderLint(summarizeLint(rows));
+  if (lint) process.stdout.write(`\n${lint}\n`);
   if (bad) process.stderr.write(`(${bad} malformed log line(s) skipped)\n`);
   const jsonIx = argv.indexOf('--json');
   if (jsonIx >= 0)

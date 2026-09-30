@@ -153,6 +153,16 @@ export const REGISTRY = Object.freeze([
     question: 'At the architecture lock, ask one other model family (codex, agy or vibe) to read the pitch and score whether it would build the same thing? Off by default; any failure is skipped.',
   },
   {
+    // semantic-lint D4: the rules the lint rail's selectors run (id, globs, allowlist, patterns, question). never-yet,
+    // like `routines`: it declares the section so `config get/set` accept it, and `gf doctor` (which skips never-yet
+    // rows and prints one line per MODULE) never reports Build unconfigured because a project has no lint rules.
+    key: 'lint.rules',
+    module: 'Build',
+    askWhen: 'never-yet',
+    default: null,
+    question: 'Which rules should semantic-lint check on every push (selectors plus one question each for Jev)?',
+  },
+  {
     key: 'spend.telemetry',
     module: 'Spend',
     askWhen: 'never-yet',

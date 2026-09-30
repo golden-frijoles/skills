@@ -1,7 +1,7 @@
 // jev-report.test.mjs — the agreement report and the labelling round-trip (jev-semantic-guards S5.1).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendLabels, classify, dedupe, markerRows, parseLog, render, summarize } from './jev-report.mjs';
+import { appendLabels, classify, dedupe, markerRows, parseLog, render, renderLint, summarize, summarizeLint } from './jev-report.mjs';
 import { jevMarker } from './lib/review-guard.mjs';
 
 const T = { review: { real: 0.85, notReal: 0.3 }, prose: { claim: 0.8 } };
@@ -139,4 +139,40 @@ test('monitoring after the flip (codex, #192): could-not-look markers count, off
 
 test('a marker with no known mode is not evidence (codex, #40)', () => {
   assert.equal(markerRows([{ url: 'a', body: 'x\n<!-- jev:{"noul":null} -->' }]).length, 0);
+});
+
+// ── semantic-lint C5: the lint rows get their own report ────────────────────────────────────────
+
+const lintRow = (outcome, { hash = outcome, p = 0.5, ts = '2026-10-01T00:00:00Z', file = 'apps/web/x.ts' } = {}) => ({
+  rail: 'lint:rule-1',
+  mode: 'shadow',
+  decider: outcome === 'not-checked' ? 'not-checked' : 'jev',
+  confidence: outcome === 'not-checked' ? null : p,
+  textHash: hash,
+  text: `hunk ${hash}`,
+  source: `${file}@abc`,
+  evidence: { file, outcome },
+  ts,
+});
+
+test('summarizeLint: counts every outcome per rule, lists raised + uncertain to label, drops rows with no outcome', () => {
+  const rows = [lintRow('raise', { p: 0.93 }), lintRow('uncertain', { p: 0.6 }), lintRow('clear'), lintRow('not-checked'),
+    { ...lintRow('clear', { hash: 'x' }), evidence: {} }, { rail: 'review', confidence: 0.9 }];
+  const { summary, toLabel } = summarizeLint(rows);
+  assert.deepEqual(summary, { 'lint:rule-1': { n: 4, raise: 1, uncertain: 1, clear: 1, 'not-checked': 1 } });
+  assert.deepEqual(toLabel.map((c) => [c.outcome, c.p]), [['raise', 0.93], ['uncertain', 0.6]]);
+  assert.match(renderLint({ summary, toLabel }), /\| lint:rule-1 \| 4 \| 25\.0% \| 25\.0% \| 25\.0% \| 25\.0% \|/);
+  assert.equal(renderLint(summarizeLint([])), '', 'no lint rows, no section');
+});
+
+test('dedupe: one lint row per hunk — two hunks of one file both count, one hunk re-pushed counts once', () => {
+  const rows = dedupe([
+    lintRow('clear', { hash: 'a', ts: '2026-10-01T00:00:00Z' }),
+    lintRow('raise', { hash: 'b', ts: '2026-10-01T00:00:01Z' }),
+    lintRow('raise', { hash: 'a', ts: '2026-10-02T00:00:00Z' }),
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((r) => r.textHash === 'a').evidence.outcome, 'raise', 'the newest decision wins');
+  assert.equal(dedupe([lintRow('clear', { hash: 'a' }), lintRow('clear', { hash: 'a', file: 'apps/web/y.ts' })]).length, 2,
+    'the same window in two files is two decisions');
 });
