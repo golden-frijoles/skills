@@ -7,6 +7,26 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-29
+
+### Added
+
+- **The epic kickoff's commands ship in the kit.** `review-route.mjs`, `cross-review.mjs` with its prompts and a
+  default `review-config.json`, `lib/review-guard.mjs`, `cross-agent-doctor.mjs`, `session-resume.mjs`,
+  `session-note.mjs` and `build-state.mjs` are in the closure, so a repo with only the plugin gets a route (or
+  DARK with the install line), never "script not found". Proven on the packed tarball in a blank `HOME` with no
+  `gh` or reviewer CLI on `PATH`. The project's own `golden-frijoles.config.json` → `review` still wins over the
+  kit's default config.
+- **`review-route.mjs` renders a route when GitHub CLI is not installed,** with the security lens forced
+  (unknown is not "no security path"), so a stranger sees the DARK state instead of an exit. An installed `gh`
+  that cannot read the PR (a wrong number, expired auth) still stops, and the PR number must be numeric.
+
+### Security
+
+- **The build view never runs code the open repo supplies.** It ran `<repo>/scripts/build-state.mjs` on every
+  turn in whatever repo was open. It now always runs the copy bundled in the plugin (`hooks/vendor/`, generated
+  from `template/scripts/` and checked in CI), and works in a repo that has no `scripts/` at all.
+
 ## [0.6.0] - 2026-09-29
 
 ### Changed

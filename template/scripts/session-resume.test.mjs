@@ -47,7 +47,10 @@ test('resolveRepos: config repos + checkouts; the origin remote is "." unless ma
   const { repos, note } = resolveRepos({
     root: '/r',
     spawn: originSpawn('git@github.com:acme/root.git'),
-    loadConfig: () => ({ repos: ['acme/root', 'acme/web', 'acme/lib'], checkouts: { 'acme/web': 'apps/web' } }),
+    loadConfig: () => ({
+      repos: ['acme/root', 'acme/web', 'acme/lib'],
+      checkouts: { 'acme/web': 'apps/web' },
+    }),
   });
   assert.equal(note, null);
   assert.deepEqual(repos, [
@@ -62,7 +65,9 @@ test('resolveRepos: no reporting config degrades to THIS repo and names the gap 
   const { repos, note } = resolveRepos({
     root: '/r',
     spawn: originSpawn('https://github.com/acme/root.git'),
-    loadConfig: () => { throw new ReportingConfigError('/r/reporting.config.json not found — …'); },
+    loadConfig: () => {
+      throw new ReportingConfigError('/r/reporting.config.json not found — …');
+    },
   });
   assert.deepEqual(repos, [{ repo: 'acme/root', dir: '.' }]);
   assert.match(note, /reading only this repo/);
@@ -121,7 +126,10 @@ test('parseMigrationListTable: matched rows are neither unapplied nor orphaned',
 
 test('parseMigrationListTable: header and separator rows are not treated as data', () => {
   const parsed = parseMigrationListTable(MIGRATION_FIXTURE);
-  assert.equal(parsed.rows.some((r) => r.local === null && r.remote === null), false);
+  assert.equal(
+    parsed.rows.some((r) => r.local === null && r.remote === null),
+    false
+  );
 });
 
 // Captured VERBATIM from the live CLI, 2026-07-26. Two local files genuinely share version
@@ -154,7 +162,10 @@ test('decideMigrationAnomalies: a duplicate version is named as a collision, not
   assert.equal(out.length, 1);
   assert.equal(out[0].type, 'migration-duplicate-version');
   assert.match(out[0].detail, /only one can ever be recorded/);
-  assert.equal(out.some((a) => a.type === 'migration-unapplied'), false);
+  assert.equal(
+    out.some((a) => a.type === 'migration-unapplied'),
+    false
+  );
 });
 
 test('parseMigrationListTable: empty/garbage text → no rows, no throw', () => {
@@ -265,7 +276,11 @@ test('decideMigrationAnomalies: both directions produce distinctly-typed anomali
 // of the documented MCP-timestamp/filename divergence, so they collapse to one counted line by default.
 test('decideMigrationAnomalies: many orphans collapse to ONE summary line, unapplied stay per-item', () => {
   const orphans = Array.from({ length: 36 }, (_, i) => `2026072${String(i).padStart(7, '0')}`);
-  const out = decideMigrationAnomalies({ repo: 'r', unappliedLocal: ['20260711120000'], appliedNoFile: orphans });
+  const out = decideMigrationAnomalies({
+    repo: 'r',
+    unappliedLocal: ['20260711120000'],
+    appliedNoFile: orphans,
+  });
 
   // 1 dangerous-direction line + exactly 1 collapsed orphan line — never 37.
   assert.equal(out.length, 2);
@@ -281,7 +296,12 @@ test('decideMigrationAnomalies: many orphans collapse to ONE summary line, unapp
 
 test('decideMigrationAnomalies: --all-migrations (expandOrphans) restores the per-item listing', () => {
   const orphans = ['20260701000000', '20260702000000', '20260703000000'];
-  const out = decideMigrationAnomalies({ repo: 'r', unappliedLocal: [], appliedNoFile: orphans, expandOrphans: true });
+  const out = decideMigrationAnomalies({
+    repo: 'r',
+    unappliedLocal: [],
+    appliedNoFile: orphans,
+    expandOrphans: true,
+  });
   assert.equal(out.length, 3);
   assert.ok(out.every((a) => a.type === 'migration-orphan'));
   assert.equal(out.filter((a) => a.type === 'migration-orphan-summary').length, 0);
@@ -299,11 +319,30 @@ test('buildAnomalies: reproduces the apps/api stray-branch case end-to-end', () 
     {
       repo: 'acme/api',
       dir: 'apps/api',
-      git: { available: true, branch: 'feat/order-payment-capture-state', detached: false, dirtyFiles: 0, worktrees: [] },
+      git: {
+        available: true,
+        branch: 'feat/order-payment-capture-state',
+        detached: false,
+        dirtyFiles: 0,
+        worktrees: [],
+      },
       // `createdAt` is RELATIVE, not a literal date: gatherRepoGh always carries one through from the
       // REST payload, and a hardcoded date would silently age past STALE_PR_DAYS and turn this
       // stray-branch assertion red for a reason that has nothing to do with stray branches.
-      gh: { available: true, open: [{ number: 110, title: 'dependabot bump', headRefName: 'dependabot/x', createdAt: new Date().toISOString(), isDraft: false, mergeable: 'MERGEABLE', ciFailing: false }] },
+      gh: {
+        available: true,
+        open: [
+          {
+            number: 110,
+            title: 'dependabot bump',
+            headRefName: 'dependabot/x',
+            createdAt: new Date().toISOString(),
+            isDraft: false,
+            mergeable: 'MERGEABLE',
+            ciFailing: false,
+          },
+        ],
+      },
     },
   ];
   const anomalies = buildAnomalies({ repoStates, migrationResults: [] });
@@ -325,7 +364,14 @@ test('buildAnomalies: gh unavailable for a repo suppresses stray-branch AND PR a
 });
 
 test('buildAnomalies: git unavailable for a repo produces no anomalies for it (not a crash)', () => {
-  const repoStates = [{ repo: 'r', dir: '.', git: { available: false, reason: 'not found' }, gh: { available: true, open: [] } }];
+  const repoStates = [
+    {
+      repo: 'r',
+      dir: '.',
+      git: { available: false, reason: 'not found' },
+      gh: { available: true, open: [] },
+    },
+  ];
   assert.deepEqual(buildAnomalies({ repoStates, migrationResults: [] }), []);
 });
 
@@ -333,10 +379,19 @@ test('buildAnomalies: git unavailable for a repo produces no anomalies for it (n
 
 test('buildGaps: names a missing-repo git gap, a gh gap, a migration gap, and a journal gap', () => {
   const repoStates = [
-    { repo: 'r1', git: { available: false, reason: 'path not found: /x' }, gh: { available: false, reason: 'unauthenticated' } },
+    {
+      repo: 'r1',
+      git: { available: false, reason: 'path not found: /x' },
+      gh: { available: false, reason: 'unauthenticated' },
+    },
   ];
   const migrationResults = [{ repo: 'r1', available: false, reason: 'supabase CLI not found' }];
-  const gaps = buildGaps({ repoStates, migrationResults, journalAvailable: false, journalReason: 'no entries yet' });
+  const gaps = buildGaps({
+    repoStates,
+    migrationResults,
+    journalAvailable: false,
+    journalReason: 'no entries yet',
+  });
   assert.equal(gaps.length, 4);
   assert.match(gaps.join('\n'), /path not found: \/x/);
   assert.match(gaps.join('\n'), /unauthenticated/);
@@ -346,16 +401,30 @@ test('buildGaps: names a missing-repo git gap, a gh gap, a migration gap, and a 
 
 test('buildGaps: everything available → []', () => {
   const repoStates = [{ repo: 'r1', git: { available: true }, gh: { available: true } }];
-  assert.deepEqual(buildGaps({ repoStates, migrationResults: [{ repo: 'r1', available: true }], journalAvailable: true }), []);
+  assert.deepEqual(
+    buildGaps({ repoStates, migrationResults: [{ repo: 'r1', available: true }], journalAvailable: true }),
+    []
+  );
 });
 
 // ---- buildReport / renderHumanReport — shape + D3 ordering ----
 
 test('buildReport: assembles anomalies, gaps, journal (capped to journalLimit), and repos/migrations verbatim', () => {
   const report = buildReport({
-    repoStates: [{ repo: 'r', dir: '.', git: { available: true, branch: 'main', dirtyFiles: 0, worktrees: [] }, gh: { available: true, open: [] } }],
+    repoStates: [
+      {
+        repo: 'r',
+        dir: '.',
+        git: { available: true, branch: 'main', dirtyFiles: 0, worktrees: [] },
+        gh: { available: true, open: [] },
+      },
+    ],
     migrationResults: [],
-    journalEntries: [{ kind: 'decision', text: 'a' }, { kind: 'next', text: 'b' }, { kind: 'doing', text: 'c' }],
+    journalEntries: [
+      { kind: 'decision', text: 'a' },
+      { kind: 'next', text: 'b' },
+      { kind: 'doing', text: 'c' },
+    ],
     journalAvailable: true,
     journalLimit: 2,
     generatedAt: '2026-07-26T00:00:00Z',
@@ -365,7 +434,10 @@ test('buildReport: assembles anomalies, gaps, journal (capped to journalLimit), 
   assert.deepEqual(report.gaps, []);
   assert.equal(report.journal.totalEntries, 3);
   assert.equal(report.journal.recent.length, 2);
-  assert.deepEqual(report.journal.recent, [{ kind: 'next', text: 'b' }, { kind: 'doing', text: 'c' }]);
+  assert.deepEqual(report.journal.recent, [
+    { kind: 'next', text: 'b' },
+    { kind: 'doing', text: 'c' },
+  ]);
 });
 
 test('renderHumanReport: anomalies section precedes the journal section, which precedes full state (D3 order)', () => {
@@ -386,12 +458,20 @@ test('renderHumanReport: anomalies section precedes the journal section, which p
   const anomalyIdx = text.indexOf('ANOMALIES');
   const journalIdx = text.indexOf('Journal —');
   const stateIdx = text.indexOf('Full derived state:');
-  assert.ok(anomalyIdx >= 0 && anomalyIdx < journalIdx && journalIdx < stateIdx, 'expected anomalies → journal → full state ordering');
+  assert.ok(
+    anomalyIdx >= 0 && anomalyIdx < journalIdx && journalIdx < stateIdx,
+    'expected anomalies → journal → full state ordering'
+  );
   assert.match(text, /stray-branch/);
 });
 
 test('renderHumanReport: no anomalies renders the reassuring line, not an empty section', () => {
-  const report = buildReport({ repoStates: [], migrationResults: [], journalEntries: [], journalAvailable: true });
+  const report = buildReport({
+    repoStates: [],
+    migrationResults: [],
+    journalEntries: [],
+    journalAvailable: true,
+  });
   assert.match(renderHumanReport(report), /No anomalies detected/);
 });
 
@@ -462,9 +542,12 @@ test('main(): migration CLI unavailable (spawn error) → degrades, migration ga
   const code = await main(
     [],
     baseDeps({
-      existsSyncFn: (p) => true,
+      existsSyncFn: (_p) => true,
       readdirSyncFn: () => ['20260101000000_x.sql'],
-      spawn: (cmd) => (cmd === 'supabase' ? { error: new Error('spawn supabase ENOENT'), status: null } : { status: 0, stdout: 'main\n' }),
+      spawn: (cmd) =>
+        cmd === 'supabase'
+          ? { error: new Error('spawn supabase ENOENT'), status: null }
+          : { status: 0, stdout: 'main\n' },
       log: (m) => (out += m),
     })
   );
@@ -479,12 +562,17 @@ test('main(): apps/api on a stray branch with no open PR → the anomaly appears
     baseDeps({
       spawn: (cmd, args, opts) => {
         if (cmd === 'git' && args[0] === 'rev-parse') {
-          return { status: 0, stdout: opts.cwd.includes('apps/api') ? 'feat/order-payment-capture-state\n' : 'main\n' };
+          return {
+            status: 0,
+            stdout: opts.cwd.includes('apps/api') ? 'feat/order-payment-capture-state\n' : 'main\n',
+          };
         }
         if (cmd === 'git' && args[0] === 'worktree') return { status: 0, stdout: '' };
         return { status: 0, stdout: '' };
       },
-      listPullsFn: () => [{ number: 1, state: 'OPEN', headRefName: 'dependabot/x', title: 't', url: 'u', headSha: 's' }],
+      listPullsFn: () => [
+        { number: 1, state: 'OPEN', headRefName: 'dependabot/x', title: 't', url: 'u', headSha: 's' },
+      ],
       log: (m) => (out += m),
     })
   );
@@ -520,7 +608,16 @@ test('main(): everything degraded at once still returns one coherent partial bri
 test('main(): --help prints usage and exits 0 without gathering anything', async () => {
   let out = '';
   let spawnCalled = false;
-  const code = await main(['--help'], baseDeps({ spawn: () => { spawnCalled = true; return { status: 0 }; }, log: (m) => (out += m) }));
+  const code = await main(
+    ['--help'],
+    baseDeps({
+      spawn: () => {
+        spawnCalled = true;
+        return { status: 0 };
+      },
+      log: (m) => (out += m),
+    })
+  );
   assert.equal(code, 0);
   assert.equal(spawnCalled, false);
   assert.match(out, /Usage: node scripts\/session-resume\.mjs/);
@@ -534,23 +631,39 @@ test('main(): --help prints usage and exits 0 without gathering anything', async
 test('buildGaps: a failed working-tree probe is reported as UNKNOWN, not silently as clean', () => {
   const gaps = buildGaps({
     repoStates: [
-      { repo: 'r', dir: '.', git: { available: true, branch: 'main', dirtyFiles: null, dirtyProbeFailed: true, worktrees: [] }, gh: { available: true, open: [] } },
+      {
+        repo: 'r',
+        dir: '.',
+        git: { available: true, branch: 'main', dirtyFiles: null, dirtyProbeFailed: true, worktrees: [] },
+        gh: { available: true, open: [] },
+      },
     ],
     migrationResults: [],
     journalAvailable: true,
   });
-  assert.ok(gaps.some((g) => /UNKNOWN, not clean/.test(g)), 'a failed dirty probe must name a gap');
+  assert.ok(
+    gaps.some((g) => /UNKNOWN, not clean/.test(g)),
+    'a failed dirty probe must name a gap'
+  );
 });
 
 test('buildGaps: a successful clean tree produces NO dirty gap', () => {
   const gaps = buildGaps({
     repoStates: [
-      { repo: 'r', dir: '.', git: { available: true, branch: 'main', dirtyFiles: 0, dirtyProbeFailed: false, worktrees: [] }, gh: { available: true, open: [] } },
+      {
+        repo: 'r',
+        dir: '.',
+        git: { available: true, branch: 'main', dirtyFiles: 0, dirtyProbeFailed: false, worktrees: [] },
+        gh: { available: true, open: [] },
+      },
     ],
     migrationResults: [],
     journalAvailable: true,
   });
-  assert.equal(gaps.some((g) => /UNKNOWN/.test(g)), false);
+  assert.equal(
+    gaps.some((g) => /UNKNOWN/.test(g)),
+    false
+  );
 });
 
 // ── D-mem: the memory index budget ────────────────────────────────────────────────────────────
@@ -561,10 +674,7 @@ test('buildGaps: a successful clean tree produces NO dirty gap', () => {
 // the decision, never the filesystem.
 
 test('decideMemoryBudgetAnomaly: comfortably under budget is no anomaly', () => {
-  assert.equal(
-    decideMemoryBudgetAnomaly({ available: true, bytes: 18_000, path: '/m/MEMORY.md' }),
-    null,
-  );
+  assert.equal(decideMemoryBudgetAnomaly({ available: true, bytes: 18_000, path: '/m/MEMORY.md' }), null);
 });
 
 test('decideMemoryBudgetAnomaly: over the hard limit says it IS truncating, now', () => {
@@ -595,11 +705,11 @@ test('decideMemoryBudgetAnomaly: the boundaries are inclusive of "still fine"', 
   assert.equal(decideMemoryBudgetAnomaly({ available: true, bytes: MEMORY_BUDGET_BYTES }), null);
   assert.equal(
     decideMemoryBudgetAnomaly({ available: true, bytes: MEMORY_BUDGET_BYTES + 1 }).type,
-    'memory-index-near-limit',
+    'memory-index-near-limit'
   );
   assert.equal(
     decideMemoryBudgetAnomaly({ available: true, bytes: MEMORY_HARD_LIMIT_BYTES + 1 }).type,
-    'memory-index-truncating',
+    'memory-index-truncating'
   );
 });
 
@@ -621,7 +731,9 @@ test('buildAnomalies: omitting memoryIndex adds nothing — absence is not a pas
 test('readMemoryIndex: an unreadable path reports unavailable, not zero bytes', () => {
   const result = readMemoryIndex('/some/project', {
     home: '/nonexistent-home',
-    stat: () => { throw new Error('ENOENT'); },
+    stat: () => {
+      throw new Error('ENOENT');
+    },
   });
   assert.equal(result.available, false);
   // Zero would flow into the size comparison and read as "comfortably under budget".
@@ -633,7 +745,10 @@ test('readMemoryIndex: derives the project slug from the path, dashes for separa
   const seen = [];
   readMemoryIndex('/Users/x/dobby/project', {
     home: '/Users/x',
-    stat: (p) => { seen.push(p); return { size: 1234 }; },
+    stat: (p) => {
+      seen.push(p);
+      return { size: 1234 };
+    },
   });
   assert.equal(seen[0], '/Users/x/.claude/projects/-Users-x-dobby-project/memory/MEMORY.md');
 });
@@ -672,15 +787,29 @@ test('main: forwards its injected stat/home — never touches the real home dire
     existsSyncFn: () => false,
     readdirSyncFn: () => [],
     spawn: () => ({ status: 1, stdout: '', stderr: 'unavailable' }),
-    listPullsFn: () => { throw new Error('gh unavailable'); },
-    mergeFn: () => { throw new Error('gh unavailable'); },
-    rollupFn: () => { throw new Error('gh unavailable'); },
-    readLogFromBranchFn: () => { throw new Error('no journal'); },
+    listPullsFn: () => {
+      throw new Error('gh unavailable');
+    },
+    mergeFn: () => {
+      throw new Error('gh unavailable');
+    },
+    rollupFn: () => {
+      throw new Error('gh unavailable');
+    },
+    readLogFromBranchFn: () => {
+      throw new Error('no journal');
+    },
     resolveReposFn: () => ({ repos: FIXTURE_REPOS, note: null }),
     home: '/injected-home',
     homeDir: '/injected-home',
-    stat: (p) => { seen.push(p); return { size: 100 }; },
-    statFn: (p) => { seen.push(p); return { size: 100 }; },
+    stat: (p) => {
+      seen.push(p);
+      return { size: 100 };
+    },
+    statFn: (p) => {
+      seen.push(p);
+      return { size: 100 };
+    },
     now: new Date('2026-08-20T00:00:00Z'),
   });
   // Exactly one, on EITHER path: this deps set is harsh enough to push main down its
@@ -708,13 +837,16 @@ test('main: forwards its injected stat/home on the SUCCESS path too', async () =
     readLogFromBranchFn: () => '',
     resolveReposFn: () => ({ repos: FIXTURE_REPOS, note: null }),
     homeDir: '/success-path-home',
-    statFn: (p) => { seen.push(p); return { size: 100 }; },
+    statFn: (p) => {
+      seen.push(p);
+      return { size: 100 };
+    },
     now: new Date('2026-08-20T00:00:00Z'),
   });
   assert.equal(seen.length, 1, 'expected exactly one stat call on the success path');
   assert.ok(
     seen[0].startsWith('/success-path-home/'),
-    `stat hit ${seen[0]} — main is not forwarding its injected home`,
+    `stat hit ${seen[0]} — main is not forwarding its injected home`
   );
 });
 
@@ -727,7 +859,9 @@ const pr = (o) => ({ number: 1, title: 't', url: 'u', createdAt: NOW, isDraft: f
 
 test('decideStalePrAnomalies: flags a PR past the threshold and names its age', () => {
   const out = decideStalePrAnomalies(
-    [pr({ number: 151, title: 'bump', createdAt: '2026-08-07T11:20:14.000Z' })], { nowISO: NOW });
+    [pr({ number: 151, title: 'bump', createdAt: '2026-08-07T11:20:14.000Z' })],
+    { nowISO: NOW }
+  );
   assert.equal(out.length, 1);
   assert.equal(out[0].type, 'pr-stale');
   assert.match(out[0].detail, /#151 .* has been open 17 days/);
@@ -736,10 +870,19 @@ test('decideStalePrAnomalies: flags a PR past the threshold and names its age', 
 test('decideStalePrAnomalies: a fresh PR is silent, and the boundary is inclusive', () => {
   // 6 days — in flight, says nothing. The negation of what is flagged must stay allowed, or the line
   // gets skimmed and the whole anomaly is worth less than nothing.
-  assert.deepEqual(decideStalePrAnomalies([pr({ createdAt: '2026-08-18T12:00:00.000Z' })], { nowISO: NOW }), []);
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ createdAt: '2026-08-18T12:00:00.000Z' })], { nowISO: NOW }),
+    []
+  );
   // exactly 7 → flagged; a hair under 7 → not.
-  assert.equal(decideStalePrAnomalies([pr({ createdAt: '2026-08-17T12:00:00.000Z' })], { nowISO: NOW }).length, 1);
-  assert.equal(decideStalePrAnomalies([pr({ createdAt: '2026-08-17T12:00:01.000Z' })], { nowISO: NOW }).length, 0);
+  assert.equal(
+    decideStalePrAnomalies([pr({ createdAt: '2026-08-17T12:00:00.000Z' })], { nowISO: NOW }).length,
+    1
+  );
+  assert.equal(
+    decideStalePrAnomalies([pr({ createdAt: '2026-08-17T12:00:01.000Z' })], { nowISO: NOW }).length,
+    0
+  );
 });
 
 // The first cut of this guard exempted every draft ("a draft is open on purpose"). That is exactly
@@ -751,8 +894,17 @@ const finished = { ciAvailable: true, ciFailing: false, ciPending: false, mergea
 
 test('decideStalePrAnomalies: an old draft that is GREEN and mergeable is finished work nobody landed', () => {
   const out = decideStalePrAnomalies(
-    [pr({ number: 404, title: 'nightly smoke fix', createdAt: '2026-08-15T00:00:00.000Z', isDraft: true, ...finished })],
-    { nowISO: NOW });
+    [
+      pr({
+        number: 404,
+        title: 'nightly smoke fix',
+        createdAt: '2026-08-15T00:00:00.000Z',
+        isDraft: true,
+        ...finished,
+      }),
+    ],
+    { nowISO: NOW }
+  );
   assert.equal(out.length, 1);
   assert.equal(out[0].type, 'pr-draft-finished');
   assert.match(out[0].detail, /#404 .* DRAFT .* green and mergeable for 9 days/);
@@ -761,14 +913,30 @@ test('decideStalePrAnomalies: an old draft that is GREEN and mergeable is finish
 test('decideStalePrAnomalies: a draft still in flight stays silent — the negation the guard must allow', () => {
   const old = { createdAt: '2026-06-01T00:00:00.000Z', isDraft: true };
   // red CI, pending CI, conflicting, and "CI not reported at all" are all genuinely in-progress.
-  assert.deepEqual(decideStalePrAnomalies([pr({ ...old, ...finished, ciFailing: true })], { nowISO: NOW }), []);
-  assert.deepEqual(decideStalePrAnomalies([pr({ ...old, ...finished, ciPending: true })], { nowISO: NOW }), []);
-  assert.deepEqual(decideStalePrAnomalies([pr({ ...old, ...finished, mergeable: 'CONFLICTING' })], { nowISO: NOW }), []);
-  assert.deepEqual(decideStalePrAnomalies([pr({ ...old, ...finished, ciAvailable: false })], { nowISO: NOW }), []);
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ ...old, ...finished, ciFailing: true })], { nowISO: NOW }),
+    []
+  );
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ ...old, ...finished, ciPending: true })], { nowISO: NOW }),
+    []
+  );
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ ...old, ...finished, mergeable: 'CONFLICTING' })], { nowISO: NOW }),
+    []
+  );
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ ...old, ...finished, ciAvailable: false })], { nowISO: NOW }),
+    []
+  );
   assert.deepEqual(decideStalePrAnomalies([pr({ ...old })], { nowISO: NOW }), []);
   // and a FRESH finished draft is not nagged either
   assert.deepEqual(
-    decideStalePrAnomalies([pr({ createdAt: '2026-08-23T00:00:00.000Z', isDraft: true, ...finished })], { nowISO: NOW }), []);
+    decideStalePrAnomalies([pr({ createdAt: '2026-08-23T00:00:00.000Z', isDraft: true, ...finished })], {
+      nowISO: NOW,
+    }),
+    []
+  );
 });
 
 test('decideStalePrAnomalies: an unreadable createdAt is UNKNOWN, never silently "fresh"', () => {
@@ -781,7 +949,10 @@ test('decideStalePrAnomalies: an unreadable createdAt is UNKNOWN, never silently
 });
 
 test('decideStalePrAnomalies: no trustworthy clock ⇒ assert nothing rather than assert wrongly', () => {
-  assert.deepEqual(decideStalePrAnomalies([pr({ createdAt: '2026-01-01T00:00:00.000Z' })], { nowISO: 'garbage' }), []);
+  assert.deepEqual(
+    decideStalePrAnomalies([pr({ createdAt: '2026-01-01T00:00:00.000Z' })], { nowISO: 'garbage' }),
+    []
+  );
   assert.deepEqual(decideStalePrAnomalies(undefined, { nowISO: NOW }), []);
   assert.deepEqual(decideStalePrAnomalies([], { nowISO: NOW }), []);
 });
@@ -801,15 +972,20 @@ test('prAgeLabel: renders days, and says unknown rather than a plausible 0', () 
 // report. The bug survived because the tests asserted `.kind`/`.text`: they pinned the broken shape
 // rather than the rendered outcome. These assert the shared contract instead.
 test('assertRenderableAnomalies: throws on an anomaly that would render as [undefined] undefined', () => {
-  assert.throws(() => assertRenderableAnomalies([{ kind: 'memory-index-near-limit', text: 'over budget' }]),
-    /\[undefined\] undefined/);
+  assert.throws(
+    () => assertRenderableAnomalies([{ kind: 'memory-index-near-limit', text: 'over budget' }]),
+    /\[undefined\] undefined/
+  );
   assert.throws(() => assertRenderableAnomalies([{ type: 'x' }]), /lack a string/);
   assert.throws(() => assertRenderableAnomalies([{ detail: 'y' }]), /lack a string/);
   assert.throws(() => assertRenderableAnomalies([null]), /lack a string/);
 });
 
 test('assertRenderableAnomalies: a well-formed set passes through unchanged', () => {
-  const ok = [{ type: 'dirty-tree', detail: 'x' }, { type: 'pr-stale', detail: 'y', repo: 'r' }];
+  const ok = [
+    { type: 'dirty-tree', detail: 'x' },
+    { type: 'pr-stale', detail: 'y', repo: 'r' },
+  ];
   assert.equal(assertRenderableAnomalies(ok), ok);
   assert.deepEqual(assertRenderableAnomalies([]), []);
 });

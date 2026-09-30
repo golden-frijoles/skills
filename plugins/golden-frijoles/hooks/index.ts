@@ -1,7 +1,8 @@
 // index.ts — the build view, as a Claude Code function hook (build-visualization-claude-mods S4).
 //
-// A THIN RENDERER (D3): every fact on screen comes from `scripts/build-state.mjs --json --offline`, which
-// is plain Node, tested, and useful on its own. This file decides nothing about epics, stories or status.
+// A THIN RENDERER (D3): every fact on screen comes from `build-state.mjs --json --offline` — the copy bundled
+// in `vendor/`, never the open repo's (distribute-what-we-use D5) — which is plain Node, tested, and useful
+// on its own. This file decides nothing about epics, stories or status.
 //
 // The latency budget (D4): one `git rev-parse` per turn, and a full resolve only when the branch or HEAD
 // moved or the cached view aged out — the view is kept in `$.store`, failures included, so a project
@@ -10,7 +11,7 @@
 // carry a timeout for the same reason: turn start waits on this hook.
 //
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
-import { repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
+import { buildStateArgv, repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
 
 const STORE_KEY = 'golden-frijoles/build-view';
 const GIT_TIMEOUT_MS = 2_000;
@@ -31,8 +32,8 @@ export function register(on) {
         $.ui.status(cached.text || '');
         return next(e);
       }
-      const script = facts.root ? `${facts.root}/scripts/build-state.mjs` : 'scripts/build-state.mjs';
-      const run = await $.process.run(['node', script, '--json', '--offline', '--repo-root', facts.root || '.'], {
+      // The BUNDLED resolver, never one the open repo supplies (distribute-what-we-use D5).
+      const run = await $.process.run(buildStateArgv(facts.root), {
         timeoutMs: RESOLVE_TIMEOUT_MS,
       });
       const text = statusTextFrom(run.stdout, run.exitCode);

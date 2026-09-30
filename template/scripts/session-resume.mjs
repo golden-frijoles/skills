@@ -47,12 +47,18 @@ import { spawnSync } from 'node:child_process';
 // worth of edits from crossing it. Both in bytes; see decideMemoryBudgetAnomaly.
 export const MEMORY_HARD_LIMIT_BYTES = 25_000;
 export const MEMORY_BUDGET_BYTES = 23_552;
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { listPulls, getPullMergeability, getStatusRollup } from './lib/gh-rest.mjs';
 import { readLogFromBranch } from './lib/log-branch.mjs';
-import { parseJournal, lastNEntries, formatEntry, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
+import {
+  parseJournal,
+  lastNEntries,
+  formatEntry,
+  JOURNAL_BRANCH,
+  JOURNAL_PATH,
+} from './lib/session-journal.mjs';
 import { loadReportingConfig, ReportingConfigError } from './lib/reporting-config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,7 +70,11 @@ const DEFAULT_ROOT = join(__dirname, '..');
  * repo whose `origin` remote this checkout points at is `.` unless the map says otherwise. No config →
  * just this repo (D4: degrade, never die), with the reason returned so the brief can name the gap.
  */
-export function resolveRepos({ root = DEFAULT_ROOT, loadConfig = loadReportingConfig, spawn = spawnSync } = {}) {
+export function resolveRepos({
+  root = DEFAULT_ROOT,
+  loadConfig = loadReportingConfig,
+  spawn = spawnSync,
+} = {}) {
   const origin = originRepo({ root, spawn });
   let config;
   try {
@@ -89,7 +99,9 @@ export function resolveRepos({ root = DEFAULT_ROOT, loadConfig = loadReportingCo
 function originRepo({ root, spawn }) {
   const r = spawn('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8' });
   if (r.error || r.status !== 0) return null;
-  const m = String(r.stdout).trim().match(/github\.com[:/]([^/]+\/[^/.\s]+?)(?:\.git)?$/);
+  const m = String(r.stdout)
+    .trim()
+    .match(/github\.com[:/]([^/]+\/[^/.\s]+?)(?:\.git)?$/);
   return m ? m[1] : null;
 }
 
@@ -119,7 +131,8 @@ export function parseWorktreeListPorcelain(text) {
     const out = { path: null, branch: null, detached: false, locked: false, bare: false };
     for (const line of block.split('\n')) {
       if (line.startsWith('worktree ')) out.path = line.slice('worktree '.length).trim();
-      else if (line.startsWith('branch ')) out.branch = line.slice('branch '.length).replace('refs/heads/', '').trim();
+      else if (line.startsWith('branch '))
+        out.branch = line.slice('branch '.length).replace('refs/heads/', '').trim();
       else if (line === 'detached') out.detached = true;
       else if (line.startsWith('locked')) out.locked = true;
       else if (line === 'bare') out.bare = true;
@@ -189,7 +202,9 @@ export function rollupHasFailure(rollup) {
 export function rollupHasPending(rollup) {
   return (
     Array.isArray(rollup) &&
-    rollup.some((c) => !c.conclusion && (c.status === 'IN_PROGRESS' || c.status === 'QUEUED' || c.status === 'PENDING'))
+    rollup.some(
+      (c) => !c.conclusion && (c.status === 'IN_PROGRESS' || c.status === 'QUEUED' || c.status === 'PENDING')
+    )
   );
 }
 
@@ -210,13 +225,19 @@ export function decideStrayBranch({ branch, detached, openPrs }) {
 
 export function decideDirtyTree({ label, dirtyFiles }) {
   if (!dirtyFiles) return null;
-  return { type: 'dirty-tree', detail: `${label}: ${dirtyFiles} uncommitted/untracked file${dirtyFiles === 1 ? '' : 's'}.` };
+  return {
+    type: 'dirty-tree',
+    detail: `${label}: ${dirtyFiles} uncommitted/untracked file${dirtyFiles === 1 ? '' : 's'}.`,
+  };
 }
 
 export function decideWorktreeAnomalies(worktrees) {
   return (worktrees || [])
     .filter((w) => w.dirty)
-    .map((w) => ({ type: 'dirty-tree', detail: `worktree ${w.path} (branch ${w.branch || 'detached'}): uncommitted changes.` }));
+    .map((w) => ({
+      type: 'dirty-tree',
+      detail: `worktree ${w.path} (branch ${w.branch || 'detached'}): uncommitted changes.`,
+    }));
 }
 
 // A PR nobody has closed the loop on is the single most repeated failure this report exists to catch,
@@ -297,11 +318,13 @@ export function prAgeLabel(pr, nowISO = new Date().toISOString()) {
 // Normalising the shape is the fix; this is the guard that keeps it normalised. It asserts on the
 // POPULATION every run rather than on the one decider that was wrong.
 export function assertRenderableAnomalies(anomalies) {
-  const bad = (anomalies || []).filter((a) => !a || typeof a.type !== 'string' || typeof a.detail !== 'string');
+  const bad = (anomalies || []).filter(
+    (a) => !a || typeof a.type !== 'string' || typeof a.detail !== 'string'
+  );
   if (bad.length) {
     throw new Error(
       `${bad.length} anomaly/anomalies lack a string \`type\`+\`detail\` and would render as ` +
-      `"[undefined] undefined": ${JSON.stringify(bad).slice(0, 400)}`,
+        `"[undefined] undefined": ${JSON.stringify(bad).slice(0, 400)}`
     );
   }
   return anomalies;
@@ -311,7 +334,10 @@ export function decidePrAnomalies(open) {
   const out = [];
   for (const pr of open || []) {
     if (pr.mergeable === 'CONFLICTING') {
-      out.push({ type: 'pr-conflict', detail: `PR #${pr.number} "${pr.title}" (${pr.url}) has a merge conflict.` });
+      out.push({
+        type: 'pr-conflict',
+        detail: `PR #${pr.number} "${pr.title}" (${pr.url}) has a merge conflict.`,
+      });
     }
     if (pr.ciFailing) {
       out.push({ type: 'pr-ci-red', detail: `PR #${pr.number} "${pr.title}" (${pr.url}) has red CI.` });
@@ -334,10 +360,20 @@ export function decidePrAnomalies(open) {
 //     applies nobody realigned — real, but historical and never actionable at session-resume time.
 //     Collapsed to ONE counted line that still names the versions, so the information is kept and the
 //     signal is not drowned. `--all-migrations` restores the per-item listing when that is the task.
-export function decideMigrationAnomalies({ repo, unappliedLocal, appliedNoFile, duplicateLocalVersions, expandOrphans = false }) {
+export function decideMigrationAnomalies({
+  repo,
+  unappliedLocal,
+  appliedNoFile,
+  duplicateLocalVersions,
+  expandOrphans = false,
+}) {
   const out = [];
   for (const v of unappliedLocal || []) {
-    out.push({ repo, type: 'migration-unapplied', detail: `migration ${v} has a file but is NOT in the live schema_migrations table.` });
+    out.push({
+      repo,
+      type: 'migration-unapplied',
+      detail: `migration ${v} has a file but is NOT in the live schema_migrations table.`,
+    });
   }
   for (const v of duplicateLocalVersions || []) {
     out.push({
@@ -352,7 +388,11 @@ export function decideMigrationAnomalies({ repo, unappliedLocal, appliedNoFile, 
   const orphans = appliedNoFile || [];
   if (expandOrphans) {
     for (const v of orphans) {
-      out.push({ repo, type: 'migration-orphan', detail: `schema_migrations has version ${v} applied live with no matching local file.` });
+      out.push({
+        repo,
+        type: 'migration-orphan',
+        detail: `schema_migrations has version ${v} applied live with no matching local file.`,
+      });
     }
   } else if (orphans.length) {
     const shown = orphans.slice(0, 5).join(', ');
@@ -389,7 +429,13 @@ export function decideMigrationAnomalies({ repo, unappliedLocal, appliedNoFile, 
  * that cannot be read must never be reported as "fine" — that is the same collapse this
  * repo bans everywhere else (AGENTS.md rule 5).
  */
-export function decideMemoryBudgetAnomaly({ available, bytes, limitBytes = MEMORY_HARD_LIMIT_BYTES, budgetBytes = MEMORY_BUDGET_BYTES, path }) {
+export function decideMemoryBudgetAnomaly({
+  available,
+  bytes,
+  limitBytes = MEMORY_HARD_LIMIT_BYTES,
+  budgetBytes = MEMORY_BUDGET_BYTES,
+  path,
+}) {
   if (!available) {
     return {
       type: 'memory-index-unavailable',
@@ -487,7 +533,8 @@ export function buildAnomalies({ repoStates, migrationResults, expandOrphans = f
 export function buildGaps({ repoStates, migrationResults, journalAvailable, journalReason }) {
   const gaps = [];
   for (const rs of repoStates || []) {
-    if (!rs.git?.available) gaps.push(`${rs.repo}: git state unavailable — ${rs.git?.reason || 'unknown reason'}.`);
+    if (!rs.git?.available)
+      gaps.push(`${rs.repo}: git state unavailable — ${rs.git?.reason || 'unknown reason'}.`);
     // A failed dirty-probe is UNKNOWN, not clean. Without this the report renders no dirty-tree
     // anomaly and no gap — indistinguishable from a clean tree.
     else if (rs.git.dirtyProbeFailed) {
@@ -500,10 +547,13 @@ export function buildGaps({ repoStates, migrationResults, journalAvailable, jour
     }
   }
   for (const m of migrationResults || []) {
-    if (!m.available) gaps.push(`${m.repo}: migration drift check unavailable — ${m.reason || 'unknown reason'}.`);
+    if (!m.available)
+      gaps.push(`${m.repo}: migration drift check unavailable — ${m.reason || 'unknown reason'}.`);
   }
   if (!journalAvailable) {
-    gaps.push(`journal unavailable — ${journalReason || 'claude/session-journal has no entries yet, or could not be fetched'}.`);
+    gaps.push(
+      `journal unavailable — ${journalReason || 'claude/session-journal has no entries yet, or could not be fetched'}.`
+    );
   }
   return gaps;
 }
@@ -542,7 +592,9 @@ export function renderHumanReport(report) {
   const lines = [];
   lines.push(`Session resume — ${report.generatedAt}`);
   lines.push('');
-  lines.push(report.anomalies.length ? `⚠ ANOMALIES (${report.anomalies.length})` : '✓ No anomalies detected.');
+  lines.push(
+    report.anomalies.length ? `⚠ ANOMALIES (${report.anomalies.length})` : '✓ No anomalies detected.'
+  );
   for (const a of report.anomalies) {
     lines.push(`  - [${a.type}]${a.repo ? ` ${a.repo}:` : ''} ${a.detail}`);
   }
@@ -560,7 +612,9 @@ export function renderHumanReport(report) {
     }:`
   );
   if (!report.journal.recent.length) {
-    lines.push(`  (none${report.journal.available ? ' yet' : `: ${report.journal.reason || 'unavailable'}`})`);
+    lines.push(
+      `  (none${report.journal.available ? ' yet' : `: ${report.journal.reason || 'unavailable'}`})`
+    );
   } else {
     for (const e of report.journal.recent) lines.push(`  ${formatEntry(e)}`);
   }
@@ -582,7 +636,9 @@ export function renderHumanReport(report) {
       lines.push(`    git: unavailable (${rs.git?.reason || 'unknown'})`);
     }
     if (rs.gh?.available) {
-      lines.push(`    open PRs: ${(rs.gh.open || []).length}; recently merged: ${(rs.gh.recentMerged || []).length}`);
+      lines.push(
+        `    open PRs: ${(rs.gh.open || []).length}; recently merged: ${(rs.gh.recentMerged || []).length}`
+      );
       for (const pr of rs.gh.open || []) {
         lines.push(
           `      #${pr.number} ${pr.title} [${pr.headRefName}] age=${prAgeLabel(pr)} mergeable=${pr.mergeable} ` +
@@ -599,7 +655,9 @@ export function renderHumanReport(report) {
     lines.push('Migration drift (D5, read-only):');
     for (const m of report.migrations) {
       if (m.available) {
-        lines.push(`  - ${m.repo}: ${m.unappliedLocal.length} unapplied local file(s); ${m.appliedNoFile.length} applied-with-no-file.`);
+        lines.push(
+          `  - ${m.repo}: ${m.unappliedLocal.length} unapplied local file(s); ${m.appliedNoFile.length} applied-with-no-file.`
+        );
       } else {
         lines.push(`  - ${m.repo}: unavailable (${m.reason})`);
       }
@@ -667,7 +725,8 @@ function gatherRepoGit({ dir, root, existsSyncFn, spawn }) {
 
 function gatherRepoGh({ repo, listPullsFn, mergeFn, rollupFn }) {
   const all = listPullsFn({ repo, state: 'all', perPage: 50 });
-  if (all === null) return { available: false, reason: 'gh unavailable, unauthenticated, or the repo could not be reached' };
+  if (all === null)
+    return { available: false, reason: 'gh unavailable, unauthenticated, or the repo could not be reached' };
 
   const open = all.filter((p) => p.state === 'OPEN');
   const recentMerged = all.filter((p) => p.state === 'MERGED').slice(0, RECENT_MERGED_LIMIT);
@@ -721,7 +780,12 @@ function gatherMigrationDrift({ repos, root, existsSyncFn, readdirSyncFn, spawn 
       });
       continue;
     }
-    results.push({ repo: r.repo, available: true, fileCount: files.length, ...parseMigrationListTable(res.stdout) });
+    results.push({
+      repo: r.repo,
+      available: true,
+      fileCount: files.length,
+      ...parseMigrationListTable(res.stdout),
+    });
   }
   return results;
 }
@@ -743,7 +807,13 @@ function gatherJournal({ root, readLogFromBranchFn }) {
 // ============================================================================================
 
 export function parseArgs(argv) {
-  const out = { json: false, root: DEFAULT_ROOT, journalLimit: JOURNAL_LIMIT_DEFAULT, expandOrphans: false, help: false };
+  const out = {
+    json: false,
+    root: DEFAULT_ROOT,
+    journalLimit: JOURNAL_LIMIT_DEFAULT,
+    expandOrphans: false,
+    help: false,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--json') out.json = true;
@@ -808,13 +878,20 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     const repoStates = repos.map((r) => ({
       repo: r.repo,
       dir: r.dir,
-      git: r.dir == null
-        ? { available: false, reason: 'no local checkout configured (reporting.config.json → checkouts)' }
-        : gatherRepoGit({ dir: r.dir, root: args.root, existsSyncFn, spawn }),
+      git:
+        r.dir == null
+          ? { available: false, reason: 'no local checkout configured (reporting.config.json → checkouts)' }
+          : gatherRepoGit({ dir: r.dir, root: args.root, existsSyncFn, spawn }),
       gh: gatherRepoGh({ repo: r.repo, listPullsFn, mergeFn, rollupFn }),
     }));
 
-    const migrationResults = gatherMigrationDrift({ repos, root: args.root, existsSyncFn, readdirSyncFn, spawn });
+    const migrationResults = gatherMigrationDrift({
+      repos,
+      root: args.root,
+      existsSyncFn,
+      readdirSyncFn,
+      spawn,
+    });
     const journal = gatherJournal({ root: args.root, readLogFromBranchFn });
 
     const report = buildReport({
@@ -834,7 +911,9 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   } catch (e) {
     // Last-resort net (D4: degrade, never die) — should be unreachable given every gather function above
     // already catches its own failure mode, but a resume tool must never stack-trace on a bad day.
-    warn(`⚠ session-resume: unexpected error, showing a partial/empty brief instead of crashing: ${e.message}`);
+    warn(
+      `⚠ session-resume: unexpected error, showing a partial/empty brief instead of crashing: ${e.message}`
+    );
     // Honour --json even here. Cross-review caught that this path emitted the HUMAN report
     // unconditionally, so a machine consumer asking for JSON received prose on stdout with exit 0 —
     // it would parse-fail or, worse, be treated as an empty result.
@@ -856,7 +935,17 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   }
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+// realpath on both sides: through a symlinked path a plain compare is false and the script exits 0 having
+// done nothing (#189 review).
+const isMain = (() => {
+  try {
+    return (
+      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+})();
 if (isMain) {
   main().then((code) => {
     process.exitCode = code;

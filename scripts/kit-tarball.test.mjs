@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { stageKit } from './build-kit.mjs';
@@ -87,6 +87,67 @@ test('the packed kit, installed in a stranger repo, runs build-order from a subd
 
   const missing = spawnSync(bin, ['--root', join(repo, 'nope'), 'build-order'], { encoding: 'utf8', env: sealedEnv() });
   assert.equal(missing.status, 2, 'a --root that does not exist is refused, not guessed');
+});
+
+// distribute-what-we-use S2.1: the kickoff's review/session commands run from the PACKED kit, not a
+// source checkout. PATH holds only node and HOME is blank, so no gh or reviewer CLI can accidentally make
+// the happy path pass. A missing observation must render DARK / could-not-look, never a stack trace.
+test('the packed kit degrades review routing and session resume without gh or reviewer CLIs', { skip: !hasNpm && 'npm not found — could not look' }, () => {
+  const kitDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stage-review-')));
+  stageKit(kitDir);
+  const packDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-pack-review-')));
+  const pack = spawnSync('npm', ['pack', '--pack-destination', packDir, kitDir], { encoding: 'utf8', env: sealedEnv() });
+  assert.equal(pack.status, 0, pack.stderr);
+  const tgz = readdirSync(packDir).find((f) => f.endsWith('.tgz'));
+  assert.ok(tgz, 'npm pack produced no tarball');
+
+  const tools = realpathSync(mkdtempSync(join(tmpdir(), 'kit-tools-review-')));
+  const install = spawnSync(
+    'npm',
+    ['install', '--offline', '--no-audit', '--no-fund', '--prefix', tools, join(packDir, tgz)],
+    { encoding: 'utf8', env: sealedEnv() }
+  );
+  assert.equal(install.status, 0, install.stderr);
+
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stranger-review-')));
+  writeFileSync(join(repo, 'package.json'), JSON.stringify({ name: 'stranger-review', private: true }));
+  // A project section must beat dist/review-config.json: this proves the installed reader still finds the
+  // project's config while its fallback prompt/config assets are loaded from dist/ beside the scripts.
+  writeFileSync(
+    join(repo, 'golden-frijoles.config.json'),
+    JSON.stringify({ review: { reviewScope: 'security-paths-only', securityPaths: ['src/**'] } })
+  );
+  const isolatedHome = realpathSync(mkdtempSync(join(tmpdir(), 'kit-home-review-')));
+  // A bin dir holding ONLY node: node's own directory is not enough — under nvm it also holds globally
+  // installed CLIs (codex, claude), and the DARK state would then go unproven (#189 review).
+  const onlyNode = realpathSync(mkdtempSync(join(tmpdir(), 'kit-bin-review-')));
+  symlinkSync(process.execPath, join(onlyNode, 'node'));
+  const noCliEnv = { ...sealedEnv(), HOME: isolatedHome, PATH: onlyNode };
+  const pkgDir = join(tools, 'node_modules', '@golden-frijoles', 'kit');
+
+  const review = spawnSync(process.execPath, [join(pkgDir, 'dist', 'review-route.mjs'), '--builder', 'claude', '1'], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: noCliEnv,
+  });
+  const reviewOutput = `${review.stdout}\n${review.stderr}`;
+  assert.equal(review.status, 0, reviewOutput);
+  assert.match(reviewOutput, /could not look/i);
+  // No reviewer CLI is on PATH, so the layer must be reported DARK — not merely the gh message.
+  assert.match(reviewOutput, /NONE AVAILABLE|DARK/);
+  assert.match(reviewOutput, /install GitHub CLI/);
+  assert.match(reviewOutput, /review scope:\s+security-paths-only/);
+  assert.doesNotMatch(reviewOutput, /^ {4}at /m);
+
+  const resume = spawnSync(process.execPath, [join(pkgDir, 'dist', 'session-resume.mjs'), '--root', repo], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: noCliEnv,
+  });
+  const resumeOutput = `${resume.stdout}\n${resume.stderr}`;
+  assert.equal(resume.status, 0, resumeOutput);
+  assert.match(resumeOutput, /Degraded sources/i);
+  assert.doesNotMatch(resumeOutput, /^ {4}at /m);
 });
 
 // golden-frijoles-plugin S3.2: `gf-kit init` adopts a repo that has NOTHING yet — no Roadmap/, no .git even,

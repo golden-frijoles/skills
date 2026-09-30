@@ -5,7 +5,10 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { repoFactsFrom, shouldRefresh, statusTextFrom, MAX_AGE_MS } from './build-view.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import * as view from './build-view.mjs';
+
+const { repoFactsFrom, shouldRefresh, statusTextFrom, MAX_AGE_MS } = view;
 
 test('repoFactsFrom: branch@sha and the repo ROOT, else nulls', () => {
   assert.deepEqual(repoFactsFrom('abc123\nfeat/foo-s2\n/repo\n'), { key: 'feat/foo-s2@abc123', root: '/repo' });
@@ -57,4 +60,35 @@ test('the contract with the resolver holds: build-state.mjs really emits a `line
   assert.ok(Array.isArray(state.lines) && state.lines.length, 'build-state --json must carry a non-empty `lines`');
   assert.ok(state.lines.every((l) => typeof l === 'string'));
   assert.equal(statusTextFrom(stdout, 0), state.lines.join('\n'));
+});
+
+// ── D5: automatic behaviour never runs repo-supplied code (distribute-what-we-use S2.2) ──────────────
+// The hook runs on every turn in whatever repo is open. It used to execute `<repo>/scripts/build-state.mjs`,
+// a file any repo can own. It now always runs the copy bundled beside it, whether or not the repo has one.
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+test('the resolver the hook runs is the bundled copy, never a file the open repo owns', () => {
+  assert.equal(typeof view.buildStateArgv, 'function', 'build-view.mjs must export buildStateArgv');
+  for (const root of ['/repo', '/some/stranger', null]) {
+    const argv = view.buildStateArgv(root);
+    assert.equal(argv[0], 'node');
+    assert.equal(argv[1], join(HERE, 'vendor', 'build-state.mjs'));
+    assert.ok(!argv.some((a) => /(^|\/)scripts\/build-state\.mjs$/.test(a)), `no repo scripts/ path in ${argv}`);
+    assert.deepEqual(argv.slice(2), ['--json', '--offline', '--repo-root', root || '.']);
+  }
+});
+
+test('index.ts builds its command from buildStateArgv, not from the repo root', () => {
+  const src = readFileSync(join(HERE, 'index.ts'), 'utf8');
+  assert.match(src, /buildStateArgv\(/);
+  assert.doesNotMatch(src, /\/scripts\/build-state\.mjs/, 'the hook must not name a repo-relative resolver');
+});
+
+test('the bundle exists and is the real resolver: it emits `lines` for this repo', () => {
+  const bundled = join(HERE, 'vendor', 'build-state.mjs');
+  assert.ok(existsSync(bundled), 'run `node scripts/render-hook-vendor.mjs` from skills/');
+  const repo = join(HERE, '..', '..', '..');
+  const stdout = execFileSync('node', [bundled, '--json', '--offline', '--repo-root', repo], { encoding: 'utf8' });
+  const state = JSON.parse(stdout);
+  assert.ok(Array.isArray(state.lines) && state.lines.length);
 });

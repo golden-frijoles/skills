@@ -6,6 +6,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BUILDERS, PREFERENCE, planReview, renderPlan } from './review-route.mjs';
 
 test('a family never reviews its own diff, whoever built it', () => {
@@ -81,4 +86,35 @@ test('every emitted command names the builder, so the pairing guard fires in nor
     .filter((l) => l.includes('cross-review.mjs'));
   assert.equal(cmds.length, 2);
   for (const c of cmds) assert.match(c, /--builder agy\b/);
+});
+
+// ── #189 review: an INSTALLED gh that cannot read the PR stops the run; only a missing gh renders anyway ──
+
+const ROUTE = join(dirname(fileURLToPath(import.meta.url)), 'review-route.mjs');
+function runRoute(args, ghScript) {
+  const bin = mkdtempSync(join(tmpdir(), 'route-bin-'));
+  if (ghScript) {
+    writeFileSync(join(bin, 'gh'), ghScript);
+    chmodSync(join(bin, 'gh'), 0o755);
+  }
+  const r = spawnSync(process.execPath, [ROUTE, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin` },
+  });
+  return { code: r.status, out: `${r.stdout}${r.stderr}` };
+}
+
+test('an installed gh that cannot read the PR STOPS: the trigger is unknown, not false', () => {
+  const failingGh =
+    '#!/bin/sh\ncase "$1" in --version) echo "gh 2.0.0";; *) echo "not found" >&2; exit 1;; esac\n';
+  const r = runRoute(['--builder', 'claude', '99999'], failingGh);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /UNKNOWN/);
+  assert.doesNotMatch(r.out, /cross-review\.mjs 99999/, 'no route is printed for a PR it could not read');
+});
+
+test('a non-numeric PR number is refused before anything runs', () => {
+  const r = runRoute(['--builder', 'claude', '12abc'], null);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /must be numeric/);
 });

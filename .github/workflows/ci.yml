@@ -97,6 +97,12 @@ jobs:
       # and is covered by `claude plugin validate` below, which reads the module statically.
       - name: build view mod — the pure half
         run: node --test plugins/golden-frijoles/hooks/build-view.test.mjs
+      # The hook runs the resolver bundled beside it, never the open repo's (distribute-what-we-use D5). The
+      # bundle is generated from template/scripts/; a stale one would render a different view than it tests.
+      - name: build view mod — the bundled resolver matches template/scripts
+        run: |
+          node scripts/render-hook-vendor.mjs --check
+          node --test scripts/render-hook-vendor.test.mjs
 
       # `claude plugin validate` needs NO API key, and it is the only thing that checks the hook module
       # against the real function-hooks contract: a malformed hooks.json, an unknown event name, or a `$`

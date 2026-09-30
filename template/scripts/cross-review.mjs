@@ -36,10 +36,10 @@
 // lockfile itself.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readSection } from './lib/config.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 import { collectSecretValues, decideAuthorTrust, findSecretLeaks } from './lib/secret-guard.mjs';
@@ -839,7 +839,17 @@ async function main() {
 }
 
 // Guarded so importing this module for its pure helpers does not run a review.
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+// realpath on both sides: through a symlinked path a plain compare is false and the script exits 0 having
+// done nothing (#189 review).
+const isMain = (() => {
+  try {
+    return (
+      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+})();
 if (isMain)
   main().catch((e) => {
     process.stderr.write(`cross-review: ${e?.message || e}\n`);
