@@ -11,9 +11,27 @@ risk: {{RISK}}
 epic: null
 build_order: null
 updated: {{DATE}}
+intent_ask: verbatim   # verbatim = the product owner's own words below · proxy = reconstructed after the fact
+intent_match: null     # written by `node scripts/intent-match.mjs <this seed> --write` (groom Stage 3.5) — advisory
 ---
 
 # Pitch — {{TITLE}}
+
+## The ask, as given
+<!-- The product owner's words, VERBATIM, as they arrived (Stage 1) — never tidied, never summarised. The intent
+     score compares the pitch against this, so a rewrite here would score the pitch against itself. -->
+
+> <paste the ask here, word for word>
+
+### Claims
+<!-- Stage 1: split the ask into the separate things it asks for, one per line, in the product owner's terms. The
+     product owner may edit this list; the scorer only reads it. -->
+1. <one thing the ask asks for>
+2. <another>
+
+**Teach-back:** <yes | partly | no> — "<the Stage 1 mirror: You want X so that Y. Right?>"
+<!-- Record the product owner's answer to the mirror: yes, partly or no. Leave the placeholder if it was never asked;
+     an unanswered teach-back is left out of the score, not counted as zero. -->
 
 ## Problem
 <!-- The specific pain/story motivating this — narrowed at Stage 1, never a grab-bag. -->
@@ -50,6 +68,32 @@ updated: {{DATE}}
 ## What already exists (reuse, don't rebuild)
 <!-- Concrete files / routes / primitives (the platform-first reframe — Stage 4: read the backend
      model/route first; this list is what repeatedly re-scopes epics smaller). -->
+
+## Visuals
+<!-- Stage 4.6 — drawn from the SHAPE of the ask, not from taste. Every shaped bet (appetite M or L) gets a system
+     context: actors, systems and the data flow between them. Add whatever the ask's shape triggers (the table in
+     the groom skill's references/intent-and-visuals.md): a flow, a state machine, a sequence or a container diagram in Mermaid; a data sample as a
+     table of three real-looking rows; a screen as a `surface` block. Fixed-scope work (appetite S) draws only when a
+     trigger fires. Delete the examples you don't use. -->
+
+```mermaid
+flowchart LR
+  PO([Product owner]) -- the ask --> A[the thing we build]
+  A -- data --> S[(where it lands)]
+```
+
+A screen, as a `surface` block — its route, the state shown, and its blocks in order, by kind, with the words that
+matter. Name each state from the ten: idle · hover · focus · pressed · loading · success · error · empty · disabled ·
+unbuilt.
+
+```surface
+route: /orders
+state: empty
+blocks:
+  - heading: "Orders"
+  - empty-state: "No orders yet. Your first sale shows up here."
+  - primary-action: "Share your shop"
+```
 
 ## UX heuristics & rails check
 <!-- Keep this a checklist, not an essay. -->

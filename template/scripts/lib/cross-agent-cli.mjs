@@ -875,11 +875,17 @@ export function runWithCodexFallback({ prompt, stdin, antigravityArgv, builder =
   }
 }
 
+// The argv for one agy print-mode call. Exported so a caller that needs its OWN spawn (a hard timeout, one model, no
+// fallback line — the intent reader, intent-match C4) builds the identical invocation instead of a second copy of it.
+export function agyArgs(fullArgv, model = AGY_MODEL) {
+  return ['-p', fullArgv, '--model', model];
+}
+
 // One `agy -p "<prompt>" --model "<MODEL>"` invocation. The prompt+framed context ride in `fullArgv` (stdin is
 // NOT the prompt and must be at EOF — input:'' gives an immediate EOF or print mode blocks forever). Returns
 // the raw spawn result; the caller classifies status/stdout.
 function execAgy(fullArgv, model, spawn) {
-  return spawn('agy', ['-p', fullArgv, '--model', model], {
+  return spawn('agy', agyArgs(fullArgv, model), {
     input: '',
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
@@ -1252,16 +1258,8 @@ export const CLAUDE_REVIEW_MODEL = process.env.CLAUDE_REVIEW_MODEL || 'sonnet';
 // Empty stdout is treated as a FAILURE, not as "no findings". Every CLI on this roster can exit 0 having
 // produced nothing when it is quota-capped or misconfigured, and a review that silently becomes empty is
 // worse than one that errors — it reads as a clean pass. `deps.spawn` is injectable for tests.
-export function runVibe(fullArgv, opts = {}, deps = {}) {
-  const { spawn = spawnSync } = deps;
-  if (Buffer.byteLength(fullArgv, 'utf8') > VIBE_ARG_LIMIT) {
-    return fail(
-      opts.soft,
-      `input too large for vibe (${Math.round(Buffer.byteLength(fullArgv) / 1024)} KB > ` +
-        `${VIBE_ARG_LIMIT / 1024} KB; vibe takes the prompt in argv, not stdin) — use --agent codex instead.`
-    );
-  }
-
+// The argv for one vibe call, read-only (every tool disabled). Exported for the same reason as agyArgs (C4).
+export function vibeArgs(fullArgv) {
   const args = [
     '--prompt',
     fullArgv,
@@ -1276,8 +1274,20 @@ export function runVibe(fullArgv, opts = {}, deps = {}) {
     '*',
   ];
   if (VIBE_MODEL) args.push('--model', VIBE_MODEL);
+  return args;
+}
 
-  const r = spawn('vibe', args, { input: '', encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+export function runVibe(fullArgv, opts = {}, deps = {}) {
+  const { spawn = spawnSync } = deps;
+  if (Buffer.byteLength(fullArgv, 'utf8') > VIBE_ARG_LIMIT) {
+    return fail(
+      opts.soft,
+      `input too large for vibe (${Math.round(Buffer.byteLength(fullArgv) / 1024)} KB > ` +
+        `${VIBE_ARG_LIMIT / 1024} KB; vibe takes the prompt in argv, not stdin) — use --agent codex instead.`
+    );
+  }
+
+  const r = spawn('vibe', vibeArgs(fullArgv), { input: '', encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (r.error)
     return fail(
       opts.soft,

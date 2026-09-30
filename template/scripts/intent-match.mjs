@@ -121,6 +121,18 @@ export const INTENT_QUESTIONS = Object.freeze({
       'Yes: it names the action, where to do it and the exact result to observe, so two testers would agree.',
     ],
   },
+  agreement: {
+    // Asked by intent-reader.mjs at the architecture lock (D16), once per epic, only when `intent.reader` is on.
+    // Not measured: there is no labelled set of reader replies yet. Its answer is one signal among five, advisory.
+    type: 'noul',
+    instructions:
+      '`plan` is the architecture lock a builder wrote for this work. `reading` is what a second reader, given only the pitch, says they would build, would not build, and would ask first. Would the two of them build the same thing?',
+    criteria: {
+      true: 'Yes: the reading describes the same product and the same scope as the plan; the differences are wording, order, or detail the plan already settles.',
+      false:
+        'No: the reading would build something the plan does not, leave out something the plan builds, or its first question exposes a decision the plan has not made.',
+    },
+  },
   route: {
     type: 'choice',
     instructions:
@@ -150,6 +162,13 @@ export const INTENT_QUESTIONS = Object.freeze({
 
 const FRONTMATTER_RE = /^---\n[\s\S]*?\n---\n?/;
 
+/**
+ * A fence line, by CommonMark's rule: at most THREE spaces of indent. A line indented four or more is code, never a
+ * fence — and the reader writes its reply indented, so a `\s*` here let an odd fence line in a reply flip the scanner
+ * and make the next write delete every section after `## Intent match` (fresh review round 2, #197).
+ */
+export const FENCE_RE = /^ {0,3}(```|~~~)/;
+
 /** Flat frontmatter → { key: value } (comment-stripped, quotes stripped). The same rule epic-dod uses. */
 export function frontmatterOf(text) {
   const m = /^---\n([\s\S]*?)\n---/.exec(String(text));
@@ -167,7 +186,7 @@ export function sections(body) {
   const out = [{ heading: null, lines: [] }];
   let fence = false;
   for (const line of String(body).split('\n')) {
-    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    if (FENCE_RE.test(line)) fence = !fence;
     if (!fence && /^## /.test(line)) out.push({ heading: line.slice(3).trim(), lines: [] });
     else out.at(-1).lines.push(line);
   }
@@ -184,7 +203,7 @@ export function listItems(lines, { numbered = false } = {}) {
   const top = numbered ? /^(\d+)[.)]\s+(.*)$/ : /^(?:[-*+]|\d+[.)])\s+(.*)$/;
   let fence = false;
   for (const raw of lines) {
-    if (/^\s*(```|~~~)/.test(raw)) {
+    if (FENCE_RE.test(raw)) {
       fence = !fence;
       continue;
     }
@@ -450,6 +469,24 @@ export function componentsOf(result) {
   return Object.fromEntries(Object.entries(result.signals).map(([k, v]) => [k, round(v)]));
 }
 
+/**
+ * The components a `--write` stored in a seed's `<!-- intent-match: {…} -->` comment, or null. Pure. Only unit
+ * numbers survive, so a hand-edited comment can never smuggle a non-number into a total.
+ */
+export function componentsFrom(text) {
+  const m = /<!-- intent-match: (\{[^\n]*?\}) -->/.exec(String(text ?? ''));
+  if (!m) return null;
+  let raw;
+  try {
+    raw = JSON.parse(m[1]);
+  } catch {
+    return null;
+  }
+  const out = {};
+  for (const k of Object.keys(SIGNAL_NAMES)) if (isUnit(raw?.[k])) out[k] = raw[k];
+  return Object.keys(out).length ? out : null;
+}
+
 /** The `## Intent match` section `--write` puts in the seed. Pure. */
 export function intentSection(result, opts = {}) {
   return [
@@ -466,34 +503,29 @@ export function intentSection(result, opts = {}) {
   ].join('\n');
 }
 
-/**
- * Put the score into the seed text. Pure. `intent_match:` goes into the frontmatter (replaced, or added before the
- * closing fence), `intent_ask: verbatim` is added when the seed has an ask and no `intent_ask:` yet, and
- * `## Intent match` replaces any earlier one or is appended.
- */
-export function writeIntoSeed(text, result, opts = {}) {
-  let src = String(text);
+/** Set `key: value` in a document's frontmatter — replaced, or added before the closing fence. Pure. */
+export function setFrontmatterKey(text, key, value, { onlyIfAbsent = false } = {}) {
+  const src = String(text);
   const fm = FRONTMATTER_RE.exec(src);
-  if (fm) {
-    let block = fm[0];
-    const set = (key, value, { onlyIfAbsent = false } = {}) => {
-      const re = new RegExp(`^${key}:.*$`, 'm');
-      if (re.test(block)) {
-        if (!onlyIfAbsent) block = block.replace(re, `${key}: ${value}`);
-      } else block = block.replace(/\n---\n?$/, `\n${key}: ${value}\n---\n`);
-    };
-    set('intent_match', result.total);
-    if (opts.hasAsk) set('intent_ask', 'verbatim', { onlyIfAbsent: true });
-    src = block + src.slice(fm[0].length);
-  }
-  const section = intentSection(result, opts);
+  if (!fm) return src;
+  let block = fm[0];
+  const re = new RegExp(`^${key}:.*$`, 'm');
+  if (re.test(block)) {
+    if (!onlyIfAbsent) block = block.replace(re, `${key}: ${value}`);
+  } else block = block.replace(/\n---\n?$/, `\n${key}: ${value}\n---\n`);
+  return block + src.slice(fm[0].length);
+}
+
+/** Replace the `## Intent match` section (up to the next `## `), or append it. Pure. */
+export function upsertIntentSection(text, section) {
+  const src = String(text);
   const lines = src.split('\n');
   // Fence-aware, like sections(): a `## Intent match` inside a code block is an example, and treating it as the
   // section deleted everything up to the next heading, closing fence included (fresh review of #196).
   const headingAt = [];
   let fence = false;
   lines.forEach((l, i) => {
-    if (/^\s*(```|~~~)/.test(l)) fence = !fence;
+    if (FENCE_RE.test(l)) fence = !fence;
     else if (!fence && /^## /.test(l)) headingAt.push(i);
   });
   const start = headingAt.find((i) => INTENT_HEADING.test(lines[i].slice(3).trim())) ?? -1;
@@ -502,6 +534,16 @@ export function writeIntoSeed(text, result, opts = {}) {
   return [...lines.slice(0, start), ...section.replace(/\n$/, '').split('\n'), '', ...lines.slice(end)]
     .join('\n')
     .replace(/\n{3,}/g, '\n\n');
+}
+
+/**
+ * Put the score into the seed text. Pure. `intent_match:` goes into the frontmatter, `intent_ask: verbatim` is added
+ * when the seed has an ask and no `intent_ask:` yet, and `## Intent match` replaces any earlier one or is appended.
+ */
+export function writeIntoSeed(text, result, opts = {}) {
+  let src = setFrontmatterKey(text, 'intent_match', result.total);
+  if (opts.hasAsk) src = setFrontmatterKey(src, 'intent_ask', 'verbatim', { onlyIfAbsent: true });
+  return upsertIntentSection(src, intentSection(result, opts));
 }
 
 // ── The run, every side effect injected ───────────────────────────────────────────────────────────────────────

@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-30
+
+### Added
+
+- **Planning keeps the ask** (intent-match S2). The seed template gains *The ask, as given* (the product owner's
+  words, verbatim), *Claims* (numbered, editable), the *Teach-back* answer, `intent_ask:` / `intent_match:` keys, and
+  a `## Visuals` section with a system-context example and a `surface` block for a screen. `scaffold-epic` copies
+  the seed's `intent_match:` into the epic README (a whole number 0–100, otherwise `null`).
+- **Groom Stage 3.5 and Stage 4.6.** Stage 3.5 runs `intent-match.mjs --write` (advisory, never a gate). Stage 4.6
+  draws from the shape of the ask: a system context for every M/L bet, then a wireframe (`surface` block), flow,
+  data sample, state machine, sequence or container diagram only when the ask triggers one; a screen's states come
+  from the ten (idle · hover · focus · pressed · loading · success · error · empty · disabled · unbuilt).
+- **`intent-reader.mjs`: an optional reader at the architecture lock.** `intent.reader` is `off` by default (one line,
+  nothing read or spawned). On, the first installed of codex, agy and vibe — never Claude — reads the pitch once
+  under a hard timeout (120 s), Jev scores whether it would build what the plan builds, and the agreement and the
+  new total go into the epic README. Any failure is one `reader skipped: <why>` line and exit 0. The epic kickoff's
+  lock step names it.
+- The reader's reply passes `lib/secret-guard.mjs` before it is sent to Jev or written into a README, and is
+  written indented (never fenced), so a reply's own fences or headings cannot break the section.
+- `lib/cross-agent-cli.mjs` exports `agyArgs` and `vibeArgs`, so a caller with its own spawn builds the same argv.
+- `lib/config.mjs`: an `intent` section and the `intent.reader` setting.
+
 ## [0.10.0] - 2026-09-29
 
 ### Added

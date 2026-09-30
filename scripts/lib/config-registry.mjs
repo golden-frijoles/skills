@@ -143,6 +143,16 @@ export const REGISTRY = Object.freeze([
     question: 'Should every risk:high story name its kill-switch flag?',
   },
   {
+    // intent-match D4/D16: an optional second-family read of the pitch at the architecture lock. OFF unless a person
+    // turns it on — never asked (`never-yet`), because a reader that runs by default is the stall D4 rules out.
+    key: 'intent.reader',
+    module: 'Plan',
+    askWhen: 'never-yet',
+    default: 'off',
+    choices: ['off', 'on'],
+    question: 'At the architecture lock, ask one other model family (codex, agy or vibe) to read the pitch and score whether it would build the same thing? Off by default; any failure is skipped.',
+  },
+  {
     key: 'spend.telemetry',
     module: 'Spend',
     askWhen: 'never-yet',

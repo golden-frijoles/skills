@@ -100,9 +100,16 @@ const sub = (str, vars) => str.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars ? 
 // colon, a `#` or a quote can never change the parse — the machine-readable contract
 // (build-visualization-claude-mods) is only worth having if a title cannot break it.
 const yaml = (s) => JSON.stringify(s);
+// intent-match: the seed's advisory score travels into the epic README, so `epic-dod` and `intent-outcomes` can tell a
+// scored epic from an unscored one without opening the seed. Only a whole number 0–100 is copied; anything else
+// (absent, `null`, a typo) scaffolds `null` — an unscored epic, never a made-up score.
+const seedPath = join(REPO_ROOT, 'Roadmap', '00-ideas', 'seeds', `${slug}.md`);
+const seedFm = existsSync(seedPath) ? /^---\n([\s\S]*?)\n---/.exec(readFileSync(seedPath, 'utf8'))?.[1] ?? '' : '';
+const seedScore = /^intent_match:\s*(\d{1,3})\s*(?:#.*)?$/m.exec(seedFm)?.[1];
+const intentMatch = seedScore != null && Number(seedScore) <= 100 ? seedScore : 'null';
 const baseVars = {
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
-  TYPE_KEY: typeRaw, DATE: date,
+  TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.
   SPRINTS_TOTAL: String(sprints.length), STORIES_TOTAL: String(sprints.length),
 };

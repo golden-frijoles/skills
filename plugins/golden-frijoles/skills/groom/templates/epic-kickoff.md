@@ -9,6 +9,8 @@ with `node scripts/session-resume.mjs`.
 Non-negotiable for this run:
 1. **Lock first.** Write `D1…Dn` and each sprint's build contract into the epic README, verified against
    live code and live data, before any builder starts. Scope the live system disproves gets corrected out loud.
+   Then run `node scripts/intent-reader.mjs --epic {{SLUG}}` once: off by default (one line, nothing waits); on,
+   one other family reads the pitch and any failure is a single `reader skipped` line. Never wait on it.
 2. **Stack** `feat/{{SLUG}}` → `-s2` → …, one PR per sprint, merged in order. Worktree or in place: decide
    per *Epic-mode builds*.
 3. **Review** every PR through `node scripts/review-route.mjs --builder <who-wrote-it> <PR#>` (one general

@@ -9,6 +9,8 @@ import {
   INTENT_QUESTIONS,
   ROUTES,
   band,
+  frontmatterOf,
+  FENCE_RE,
   buildRequest,
   buildRouteRequest,
   judgeItem,
@@ -185,7 +187,14 @@ test('buildRequest: one Noul per claim, a Noul and a Score per criterion, each n
 });
 
 test('INTENT_QUESTIONS: every question set in one object, in the shapes Jev takes (D13)', () => {
-  assert.deepEqual(Object.keys(INTENT_QUESTIONS).sort(), ['clarity', 'coverage_in', 'coverage_out', 'route']);
+  assert.deepEqual(Object.keys(INTENT_QUESTIONS).sort(), [
+    'agreement',
+    'clarity',
+    'coverage_in',
+    'coverage_out',
+    'route',
+  ]);
+  assert.equal(INTENT_QUESTIONS.agreement.type, 'noul');
   for (const id of ['coverage_in', 'coverage_out']) {
     assert.equal(INTENT_QUESTIONS[id].type, 'noul');
     assert.deepEqual(Object.keys(INTENT_QUESTIONS[id].criteria), ['true', 'false']);
@@ -490,4 +499,37 @@ test('--write on a CRLF seed writes the score into the frontmatter it reports wr
   assert.equal(await run(['seed.md', '--write', '--no-route'], io), EXIT_SCORED);
   assert.match(out.written, /^---\n[\s\S]*\nintent_match: \d+\n[\s\S]*?---\n/);
   assert.doesNotMatch(out.written, /\r/);
+});
+
+// ── the seed template (intent-match S2.1) is the parser's contract ───────────────────────────────────────────
+
+test('the groom seed template parses: placeholder teach-back is unanswered, Visuals never leak into criteria', async (t) => {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  // This spec runs from skills/template/scripts/ and from this repo's scripts/ copy; a kit consumer has neither path.
+  const tpl = [
+    join(here, '..', '..', 'plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'scope-seed.md'),
+    join(here, '..', 'skills', 'plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'scope-seed.md'),
+  ].find((p) => existsSync(p));
+  if (!tpl) return t.skip('groom template not in this checkout');
+  const text = readFileSync(tpl, 'utf8').replace(
+    '## Acceptance criteria',
+    '## Acceptance criteria\n- the one real check'
+  );
+  const p = parseSeed(text);
+  assert.equal(p.teachBack, null, 'the "<yes | partly | no>" placeholder is not an answer');
+  assert.equal(p.claims.length, 2);
+  assert.deepEqual(p.criteria, ['the one real check']);
+  assert.doesNotMatch(p.pitch, /paste the ask here/, 'the ask section never reaches Jev');
+  assert.match(p.pitch, /```surface/, 'the Visuals stay in the pitch Jev reads');
+  assert.match(frontmatterOf(text).intent_ask, /^verbatim$/);
+  assert.equal(frontmatterOf(text).intent_match, 'null');
+});
+
+test('FENCE_RE follows CommonMark: up to three spaces of indent is a fence, four is code', () => {
+  assert.equal(FENCE_RE.test('```'), true);
+  assert.equal(FENCE_RE.test('   ~~~'), true);
+  assert.equal(FENCE_RE.test('    ```'), false);
 });

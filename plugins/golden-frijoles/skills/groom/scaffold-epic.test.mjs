@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,9 +20,13 @@ import {
 
 const SCAFFOLD = join(dirname(fileURLToPath(import.meta.url)), 'scaffold-epic.mjs');
 
-function scaffold(extra = []) {
+function scaffold(extra = [], { seed = null } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'scaffold-'));
   mkdirSync(join(root, 'Roadmap'));
+  if (seed != null) {
+    mkdirSync(join(root, 'Roadmap', '00-ideas', 'seeds'), { recursive: true });
+    writeFileSync(join(root, 'Roadmap', '00-ideas', 'seeds', 'tmp-check.md'), seed);
+  }
   execFileSync(
     'node',
     [SCAFFOLD, '--slug', 'tmp-check', '--area', '09', '--macro', '09-platform-infra', '--title', 'Tmp: "check" # x', ...extra],
@@ -71,4 +75,27 @@ test('every sprint-N.md is born with frontmatter and a parser-owned per-story bl
 
 test('a risk outside the two tiers is refused before anything is written', () => {
   assert.throws(() => scaffold(['--risk', 'medium', '--sprints', 'One']), /--risk must be low\|high/);
+});
+
+// intent-match S2: the seed's advisory score is copied, never invented.
+test('intent_match: copied from the seed when it is a whole number 0–100, otherwise null', () => {
+  const cases = [
+    [null, 'null'],
+    ['---\nslug: tmp-check\nintent_match: 72\n---\n', '72'],
+    ['---\nslug: tmp-check\nintent_match: 72   # advisory\n---\n', '72'],
+    ['---\nslug: tmp-check\nintent_match: null\n---\n', 'null'],
+    ['---\nslug: tmp-check\nintent_match: 140\n---\n', 'null'],
+    ['---\nslug: tmp-check\nintent_match: seventy\n---\n', 'null'],
+    ['---\nslug: tmp-check\n---\nintent_match: 90\n', 'null'],
+  ];
+  for (const [seed, want] of cases) {
+    const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One'], { seed });
+    try {
+      const readme = readFileSync(join(dir, 'README.md'), 'utf8');
+      assert.match(readme, new RegExp(`^intent_match: ${want}\\s`, 'm'), JSON.stringify(seed));
+      assert.equal(parseDocFrontmatter(readme).error, null);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
 });

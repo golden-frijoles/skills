@@ -26,5 +26,6 @@ dist/
 # Jev decision log (jev-semantic-guards D3)
 .jev/
 
-# references folder
-references/
+# references folder — the ROOT one only (local-only material). A skill's own references/ ships with it: unanchored,
+# this rule silently hid every new file under groom/references/ (intent-match S2).
+/references/

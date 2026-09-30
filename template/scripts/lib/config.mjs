@@ -43,6 +43,7 @@ export const SECTIONS = Object.freeze([
   'ship',
   'spend',
   'routines',
+  'intent',
 ]);
 
 /**
