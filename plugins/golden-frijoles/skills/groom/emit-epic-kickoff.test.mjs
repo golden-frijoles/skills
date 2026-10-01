@@ -13,6 +13,7 @@ import {
   buildEpicRules,
   compactStory,
   parseEpicRisk,
+  EPIC_KICKOFF_TEMPLATE,
 } from './emit-epic-kickoff.mjs';
 
 test('sprintNumFromFilename accepts only real sprint files', () => {
@@ -102,11 +103,7 @@ test('buildEpicKickoff substitutes every placeholder the template uses', () => {
 });
 
 test('the real template renders with no leftover placeholders', async () => {
-  const { readFileSync } = await import('node:fs');
-  const { fileURLToPath } = await import('node:url');
-  const { dirname, join } = await import('node:path');
-  const here = dirname(fileURLToPath(import.meta.url));
-  const templateText = readFileSync(join(here, 'templates', 'epic-kickoff.md'), 'utf8');
+  const templateText = EPIC_KICKOFF_TEMPLATE;
 
   const out = buildEpicKickoff({
     macro: '09-platform-infra',
@@ -140,7 +137,7 @@ test('every WAYS-OF-WORKING section the template points at exists', async () => 
   const { fileURLToPath } = await import('node:url');
   const { dirname, join } = await import('node:path');
   const here = dirname(fileURLToPath(import.meta.url));
-  const tpl = readFileSync(join(here, 'templates', 'epic-kickoff.md'), 'utf8');
+  const tpl = EPIC_KICKOFF_TEMPLATE;
   const ways = ['../../../../Roadmap/WAYS-OF-WORKING.template.md', '../../../../template/Roadmap/WAYS-OF-WORKING.template.md']
     .map((p) => join(here, p))
     .find(existsSync);
@@ -153,4 +150,22 @@ test('every WAYS-OF-WORKING section the template points at exists', async () => 
   assert.ok(named.length >= 3, `expected the template to name its sections, found: ${named.join(', ')}`);
   for (const section of named)
     assert.ok(headings.some((h) => h.startsWith(section)), `WAYS-OF-WORKING has no "## ${section}…" section`);
+});
+
+test('S1.4 — the kickoff STARTS with pushing the epic branch (board-sinks-and-scrumban D13/D17)', () => {
+  const out = buildEpicKickoff({
+    macro: '09-platform-infra',
+    slug: 'demo',
+    epicTitle: 'Demo',
+    risk: 'LOW',
+    sprints: [{ name: 'sprint-1.md', num: 1, title: 'One', stories: ['Story 1.1 — A'] }],
+    templateText: EPIC_KICKOFF_TEMPLATE,
+  });
+  const [first, second] = out.split('\n');
+  // The push is the trigger that moves the card to Building — it must come before any other instruction.
+  assert.match(first, /^Start by pushing the epic branch, before anything else/);
+  assert.equal(
+    second,
+    '`git switch -c feat/demo origin/main && git push -u origin feat/demo` (resuming? `git switch feat/demo`).'
+  );
 });

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { vendorDrift, vendorManifest, writeVendor, ENTRY } from './render-hook-vendor.mjs';
+import { BUNDLES, vendorDrift, vendorManifest, writeVendor, ENTRY } from './render-hook-vendor.mjs';
 
 function fixture() {
   const src = mkdtempSync(join(tmpdir(), 'vendor-src-'));
@@ -22,7 +22,12 @@ test('the manifest is the entry plus its real import closure — nothing hand-li
 });
 
 test('the real manifest bundles build-state and exactly the libs it imports', () => {
-  assert.deepEqual(vendorManifest(), ['build-state.mjs', 'lib/roadmap-contract.mjs', 'lib/session-journal.mjs']);
+  assert.deepEqual(vendorManifest(), [
+    'build-state.mjs',
+    'lib/roadmap-contract.mjs',
+    'lib/session-journal.mjs',
+    'lib/work-branch.mjs',
+  ]);
 });
 
 test('drift: a missing bundle, a one-byte change and a padded file are all caught; a fresh write is clean', () => {
@@ -38,6 +43,16 @@ test('drift: a missing bundle, a one-byte change and a padded file are all caugh
   assert.deepEqual(vendorDrift({ manifest, sourceDir: src, vendorDir: vendor }).extra, ['stray.mjs']);
 });
 
-test('the committed bundle matches template/scripts right now', () => {
-  assert.deepEqual(vendorDrift(), { stale: [], extra: [] });
+test('the committed bundles match template/scripts right now', () => {
+  for (const bundle of BUNDLES) {
+    const manifest = vendorManifest({ entry: bundle.entry });
+    assert.deepEqual(vendorDrift({ manifest, vendorDir: bundle.vendorDir }), { stale: [], extra: [] }, bundle.name);
+  }
+});
+
+test('the groom kickoff bundle is the epic kickoff builder and nothing else (board-sinks-and-scrumban D17)', () => {
+  const groom = BUNDLES.find((b) => b.entry === 'lib/epic-kickoff.mjs');
+  assert.ok(groom, 'a bundle for lib/epic-kickoff.mjs');
+  assert.match(groom.vendorDir, /plugins\/golden-frijoles\/skills\/groom\/vendor$/);
+  assert.deepEqual(vendorManifest({ entry: groom.entry }), ['lib/epic-kickoff.mjs']);
 });

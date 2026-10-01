@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// render-hook-vendor.mjs — bundle the build-view resolver INSIDE the plugin (distribute-what-we-use D5).
+// render-hook-vendor.mjs — bundle the build-view resolver (and the groom kickoff builder) INSIDE the plugin
+// (distribute-what-we-use D5; board-sinks-and-scrumban D17).
 //
 //   node scripts/render-hook-vendor.mjs            # (re)write plugins/golden-frijoles/hooks/vendor/
 //   node scripts/render-hook-vendor.mjs --check    # exit 1 if the bundle is stale, missing or padded
@@ -28,12 +29,26 @@ export const SOURCE_DIR = join(repoRoot, 'template', 'scripts');
 export const VENDOR_DIR = join(repoRoot, 'plugins', 'golden-frijoles', 'hooks', 'vendor');
 export const ENTRY = 'build-state.mjs';
 
+// board-sinks-and-scrumban D17 — a SECOND bundle, same rule. The groom skill's kickoff generators import the epic
+// kickoff builder from `template/scripts/lib/epic-kickoff.mjs` (so the Hub card and the CLI print one kickoff), and an
+// installed plugin cannot reach `template/scripts/` any more than the hook can. Each bundle is one entry plus its
+// real import closure, written next to the code that imports it.
+export const BUNDLES = Object.freeze([
+  { name: 'the build-view bundle', entry: ENTRY, vendorDir: VENDOR_DIR, fix: 'hooks/vendor/' },
+  {
+    name: 'the groom kickoff bundle',
+    entry: 'lib/epic-kickoff.mjs',
+    vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor'),
+    fix: 'skills/groom/vendor/',
+  },
+]);
+
 /** The files the bundle must hold: the entry plus its relative-import closure. Throws on a broken import. */
-export function vendorManifest({ sourceDir = SOURCE_DIR, read = readFileSync, exists = existsSync } = {}) {
-  const { files, broken } = importClosure(ENTRY, { scriptsDir: sourceDir, read, exists });
+export function vendorManifest({ sourceDir = SOURCE_DIR, read = readFileSync, exists = existsSync, entry = ENTRY } = {}) {
+  const { files, broken } = importClosure(entry, { scriptsDir: sourceDir, read, exists });
   if (broken.length)
-    throw new Error(`build-state's closure has a broken import: ${broken.map((b) => `${b.from} → ${b.to}`).join(', ')}`);
-  return [ENTRY, ...files].sort();
+    throw new Error(`${entry}'s closure has a broken import: ${broken.map((b) => `${b.from} → ${b.to}`).join(', ')}`);
+  return [entry, ...files].sort();
 }
 
 function listFiles(dir, base = dir) {
@@ -74,20 +89,24 @@ const isMain = (() => {
   }
 })();
 if (isMain) {
-  if (process.argv.includes('--check')) {
-    const { stale, extra } = vendorDrift();
-    if (stale.length || extra.length) {
-      process.stderr.write(
-        `render-hook-vendor: the build-view bundle is out of date.\n` +
-          (stale.length ? `  stale or missing: ${stale.join(', ')}\n` : '') +
-          (extra.length ? `  not in the closure: ${extra.join(', ')}\n` : '') +
-          `  Fix: node scripts/render-hook-vendor.mjs (from skills/), and commit hooks/vendor/.\n`
-      );
-      process.exit(1);
+  let failed = false;
+  for (const bundle of BUNDLES) {
+    const manifest = vendorManifest({ entry: bundle.entry });
+    if (process.argv.includes('--check')) {
+      const { stale, extra } = vendorDrift({ manifest, vendorDir: bundle.vendorDir });
+      if (stale.length || extra.length) {
+        failed = true;
+        process.stderr.write(
+          `render-hook-vendor: ${bundle.name} is out of date.\n` +
+            (stale.length ? `  stale or missing: ${stale.join(', ')}\n` : '') +
+            (extra.length ? `  not in the closure: ${extra.join(', ')}\n` : '') +
+            `  Fix: node scripts/render-hook-vendor.mjs (from skills/), and commit ${bundle.fix}.\n`
+        );
+      } else process.stdout.write(`render-hook-vendor: ${bundle.name} matches template/scripts/.\n`);
+    } else {
+      const files = writeVendor({ manifest, vendorDir: bundle.vendorDir });
+      process.stdout.write(`render-hook-vendor: ${bundle.name} — wrote ${files.length} file(s): ${files.join(', ')}\n`);
     }
-    process.stdout.write('render-hook-vendor: the build-view bundle matches template/scripts/.\n');
-  } else {
-    const files = writeVendor();
-    process.stdout.write(`render-hook-vendor: wrote ${files.length} file(s): ${files.join(', ')}\n`);
   }
+  if (failed) process.exit(1);
 }

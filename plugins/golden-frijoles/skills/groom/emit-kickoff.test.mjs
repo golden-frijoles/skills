@@ -201,3 +201,25 @@ test('buildKickoff: substitutes macro/slug/sprint/epic-title/sprint-title/story-
     'Roadmap/09-platform-infra/process-token-diet/sprint-1.md — "Process token-diet" — "Script the boilerplate, flip the review policy"\n- Story 1.1 — A'
   );
 });
+
+test('S1.4 — the per-sprint kickoff STARTS with pushing feat/<slug>-s<N> (board-sinks-and-scrumban)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const out = buildKickoff({
+    macro: '09-platform-infra',
+    slug: 'demo',
+    sprintNum: 3,
+    epicTitle: 'Demo',
+    sprintTitle: 'Three',
+    storyList: '- Story 3.1 — A',
+    templateText: readFileSync(join(here, 'templates', 'kickoff.md'), 'utf8'),
+  });
+  const [first, second] = out.split('\n');
+  assert.match(first, /^Start by pushing this sprint's branch, before anything else/);
+  assert.equal(
+    second,
+    '`git switch -c feat/demo-s3 origin/main && git push -u origin feat/demo-s3` (resuming? `git switch feat/demo-s3`).'
+  );
+});

@@ -14,7 +14,7 @@
 //                            changes the next sprint's scope (so the next kickoff can't be written yet).
 //
 // Same contract as its sibling: it resolves the epic by SEARCHING Roadmap/*/<slug>/ under --repo-root
-// (default cwd), reads the epic README and EVERY sprint-N.md, substitutes into templates/epic-kickoff.md
+// (default cwd), reads the epic README and EVERY sprint-N.md, substitutes into EPIC_KICKOFF_TEMPLATE (lib/epic-kickoff.mjs)
 // and prints to stdout. It writes no file — read + print, editorial control stays with the caller.
 //
 // The prompt POINTS at the process instead of restating it. WAYS-OF-WORKING → *Epic-mode builds* is the
@@ -30,119 +30,33 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const TPL = join(__dirname, 'templates');
-
-// Reuse the sibling's parsers rather than forking a second copy — the file formats are identical, and two
-// drifting parsers for one format is a bug generator.
+// The builder, its parsers and the template text live in ONE file, `template/scripts/lib/epic-kickoff.mjs`, vendored
+// here byte-for-byte (board-sinks-and-scrumban D17): the Hub's Ready-to-build card carries the kickoff the extractor
+// builds from that same file, so the card and this CLI cannot print two different prompts. Re-exported for the spec.
+import { parseArgs, parseFrontmatter } from './emit-kickoff.mjs';
 import {
-  parseArgs,
-  sub,
-  parseFrontmatter,
-  parseEpicTitle,
-  parseSprintHeader,
-  parseStoryHeadings,
-} from './emit-kickoff.mjs';
-
-// ── pure helpers (exported for the co-located test) ─────────────────────────────────────────
-
-// `sprint-3.md` → 3. Returns null for anything that isn't a sprint file, so a stray doc in the epic dir
-// (a NOTES.md, an image) can't be mistaken for a sprint.
-export function sprintNumFromFilename(name) {
-  const m = name.match(/^sprint-(\d+)\.md$/);
-  return m ? Number(m[1]) : null;
-}
-
-// Every sprint file in the epic dir, NUMERICALLY sorted. Numeric, not lexicographic: a 10-sprint epic
-// would otherwise order sprint-10 between sprint-1 and sprint-2, and the whole point of epic mode is that
-// the sprints are an ordered assembly line. Stacked branches make a wrong order actively harmful.
-export function listSprintFiles(names) {
-  return names
-    .map((name) => ({ name, num: sprintNumFromFilename(name) }))
-    .filter((s) => s.num !== null)
-    .sort((a, b) => a.num - b.num);
-}
-
-// The comma-separated file list for the orientation line.
-export function buildSprintFileList(sprints) {
-  if (!sprints.length) return '(no sprint-N.md files found)';
-  return sprints.map((s) => s.name).join(', ');
-}
-
-// `Story 1.1 — Persist intent ✅ #12. **Decided …**` → `1.1 Persist intent`, clipped. The breakdown is a
-// checklist for the orchestrator and the product owner; the sprint files carry the detail.
-export function compactStory(heading) {
-  const m = String(heading).match(/^Story\s+(\d+\.\d+)\s+[-–—]\s+(.+)$/);
-  if (!m) return String(heading);
-  const title = m[2].replace(/\s+✅.*$/, '').replace(/\*\*/g, '').trim();
-  return `${m[1]} ${title.length > 70 ? `${title.slice(0, 69)}…` : title}`;
-}
-
-// The per-sprint breakdown at the foot of the prompt: one line per sprint, its stories inline. This is the
-// only part that genuinely varies per epic, and it is deliberately the LAST thing in the prompt — the
-// contract above it is invariant, so two kickoffs diff to their scope.
-export function buildSprintBreakdown(sprints) {
-  if (!sprints.length) return '(no sprint files found — scaffold the epic first)';
-  return sprints
-    .map((s) => {
-      const stories = s.stories.length
-        ? s.stories.map(compactStory).join(' · ')
-        : '(no `### Story N.M — <title>` headings found in this sprint doc)';
-      const clean = s.title ? s.title.replace(/^S\d+\s*[—–:-]?\s*/, '') : '';
-      const title = clean ? ` · ${clean}` : '';
-      return `- **S${s.num}${title}** (${s.name}): ${stories}`;
-    })
-    .join('\n');
-}
-
-// Rules that apply to THIS epic only, picked from its docs. A false positive costs one line; a missing one
-// is the incident each rule came from, so the patterns lean inclusive.
-const MIGRATION_RE = /\bmigrations?\b|supabase\/migrations|\bALTER TABLE\b|\bCREATE TABLE\b/i;
-// A flag KEY (`checkout.stripe_enabled`) or a flag write — not the words "kill-switch" / "flag", which every
-// scaffolded README's Definition of Done carries whether or not a flag was planned.
-const FLAG_RE = /\b[a-z][a-z0-9_]*\.[a-z0-9_]+_enabled\b|\bgf flags (?:create|set|on)\b/;
-
-// "No new table, no migration" is the most common way a doc mentions one — strip negated mentions first.
-const NEGATED_RE = /\b(?:no|without|zero|not an?|nor an?)\s+(?:new\s+)?(?:db\s+|database\s+|schema\s+)?migrations?\b/gi;
-
-export function buildEpicRules({ risk, texts }) {
-  const all = texts.join('\n').replace(NEGATED_RE, '');
-  const rules = [];
-  if (String(risk).toUpperCase() === 'HIGH')
-    rules.push(
-      '- **High risk:** the fresh `pr-reviewer` pass is mandatory on every PR, on top of the routed external passes.'
-    );
-  if (MIGRATION_RE.test(all))
-    rules.push(
-      '- **Migration:** apply it BEFORE merging (merging deploys), verify live, merge, then confirm the deploy.'
-    );
-  if (FLAG_RE.test(all))
-    rules.push(
-      '- **Flag:** create it in Golden Frijoles in every env and ACTIVATE it; `gf flags get <key>` must show production.'
-    );
-  return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';
-}
-
-export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText, texts = [] }) {
-  return sub(templateText, {
-    EPIC_RULES: buildEpicRules({ risk, texts }),
-    MACRO: macro,
-    SLUG: slug,
-    EPIC_TITLE: epicTitle,
-    RISK: risk,
-    SPRINT_COUNT: String(sprints.length),
-    SPRINT_FILE_LIST: buildSprintFileList(sprints),
-    SPRINT_BREAKDOWN: buildSprintBreakdown(sprints),
-  });
-}
-
-// The epic README header line carries `**Risk:** <low|high>`; the frontmatter doesn't. Falls back to
-// 'high' — the WAYS-OF-WORKING rule is "when unsure, treat it as high", and a kickoff that under-declares
-// risk is the one that skips the mandatory fresh-reviewer pass.
-export function parseEpicRisk(text) {
-  const m = text.match(/\*\*Risk:\*\*\s*([A-Za-z]+)/);
-  return m ? m[1].toLowerCase() : 'high';
-}
+  sprintNumFromFilename,
+  listSprintFiles,
+  buildSprintFileList,
+  compactStory,
+  buildSprintBreakdown,
+  buildEpicRules,
+  buildEpicKickoff,
+  parseEpicRisk,
+  epicKickoffFromDir,
+  EPIC_KICKOFF_TEMPLATE,
+} from './vendor/lib/epic-kickoff.mjs';
+export {
+  sprintNumFromFilename,
+  listSprintFiles,
+  buildSprintFileList,
+  compactStory,
+  buildSprintBreakdown,
+  buildEpicRules,
+  buildEpicKickoff,
+  parseEpicRisk,
+  EPIC_KICKOFF_TEMPLATE,
+};
 
 // ── filesystem helpers (thin, not unit-tested — exercised by the real run) ──────────────────
 
@@ -189,21 +103,16 @@ function main() {
     die(`Roadmap/${macro}/${slug}/README.md frontmatter slug "${frontmatter.slug}" != requested "${slug}"`);
   }
 
-  const epicTitle = parseEpicTitle(readmeText);
-  if (!epicTitle) die(`couldn't find an H1 title in Roadmap/${macro}/${slug}/README.md`);
-
-  const found = listSprintFiles(readdirSync(dir));
-  if (!found.length) die(`no sprint-N.md files under Roadmap/${macro}/${slug}/ — scaffold the epic first`);
-
-  const sprints = found.map(({ name, num }) => {
-    const text = readFileSync(join(dir, name), 'utf8');
-    const header = parseSprintHeader(text);
-    return { name, num, text, title: header ? header.sprintTitle : null, stories: parseStoryHeadings(text) };
-  });
+  let built;
+  try {
+    built = epicKickoffFromDir({ macro, slug, dir });
+  } catch (err) {
+    die(err.message);
+  }
 
   // A single-sprint "epic" is the documented exception, not the default — say so instead of emitting a
   // whole-epic orchestration prompt for one sprint's worth of work.
-  if (sprints.length === 1) {
+  if (built.sprints.length === 1) {
     process.stderr.write(
       `⚠ "${slug}" has one sprint. Epic mode buys nothing here — the per-sprint kickoff is the right ` +
         `tool: node skills/groom/emit-kickoff.mjs --epic ${slug} --sprint 1\n` +
@@ -211,20 +120,7 @@ function main() {
     );
   }
 
-  const templatePath = join(TPL, 'epic-kickoff.md');
-  if (!existsSync(templatePath)) die(`missing template: ${templatePath}`);
-
-  process.stdout.write(
-    buildEpicKickoff({
-      macro,
-      slug,
-      epicTitle,
-      risk: parseEpicRisk(readmeText).toUpperCase(),
-      sprints,
-      templateText: readFileSync(templatePath, 'utf8'),
-      texts: [readmeText, ...sprints.map((s) => s.text)],
-    })
-  );
+  process.stdout.write(built.kickoff);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

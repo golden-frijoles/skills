@@ -40,72 +40,18 @@ export function parseArgs(argv) {
   return a;
 }
 
-// Same substitution approach as scaffold-epic.mjs's `sub()` — {{PLACEHOLDER}} → value, leaves
-// unknown placeholders untouched (so a missing var surfaces loudly in the printed output).
-export const sub = (str, vars) => str.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars ? vars[k] : `{{${k}}}`));
-
-// Parses the epic README's YAML-ish frontmatter block (the two `---` fence lines and simple
-// `key: value` lines between them — no nested structures, matches what scaffold-epic.mjs emits).
-export function parseFrontmatter(text) {
-  const lines = text.split('\n');
-  if (lines[0].trim() !== '---') return {};
-  const end = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-  if (end === -1) return {};
-  const out = {};
-  for (const line of lines.slice(1, end)) {
-    const m = line.match(/^(\w+):\s*(.*)$/);
-    // Strip a YAML inline comment (whitespace + `#` … to end-of-line) before
-    // trimming: frontmatter routinely annotates values, e.g.
-    // `status: in-progress   # AUTHORITATIVE …`. Without this, a comment on
-    // the `slug:` line would make `frontmatter.slug !== slug` a false mismatch
-    // and crash the run on otherwise-fine data. Only an UNquoted value is
-    // parsed here (these frontmatters never quote), so this can't eat a `#`
-    // inside a quoted string.
-    if (m) out[m[1]] = m[2].replace(/\s+#.*$/, '').trim();
-  }
-  return out;
-}
-
-// Strips a leading `---`…`---` frontmatter fence, if present, returning only the body. Frontmatter
-// commonly carries trailing `# comment` annotations on its own lines (e.g. `status: in-progress   #
-// AUTHORITATIVE epic status …`, or a bare `# note` line) — those must never be mistaken for the H1,
-// so every H1 search below runs against this stripped body, not the raw file text.
-export function stripFrontmatter(text) {
-  const lines = text.split('\n');
-  if (lines[0].trim() !== '---') return text;
-  const end = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-  if (end === -1) return text;
-  return lines.slice(end + 1).join('\n');
-}
-
-// The epic README's H1 is `# Epic: <title>` — strip the `Epic: ` prefix. Searches only the body
-// AFTER the frontmatter fence (see stripFrontmatter) so a `# `-led YAML comment can't win first.
-export function parseEpicTitle(text) {
-  const m = stripFrontmatter(text).match(/^#\s+(.+)$/m);
-  if (!m) return null;
-  const raw = m[1].trim();
-  return raw.replace(/^Epic:\s*/, '');
-}
-
-// The sprint doc's H1 is `# <epic title> — Sprint <N>: <sprint title>`. The separator accepts a
-// hyphen, en-dash, or em-dash ([-–—]) — an author typing a plain "-" must not crash the generator.
-export function parseSprintHeader(text) {
-  const m = stripFrontmatter(text).match(/^#\s+(.+?)\s+[-–—]\s+Sprint\s+(\d+):\s+(.+)$/m);
-  if (!m) return null;
-  return { epicTitle: m[1].trim(), sprintNum: m[2], sprintTitle: m[3].trim() };
-}
-
-// Story headings are `### Story N.M — <title>` — return the full heading text (minus `### `). The
-// separator accepts a hyphen, en-dash, or em-dash ([-–—]): the em-dash-only regex this replaced
-// silently dropped every story typed with a plain "-", producing a complete-looking kickoff with
-// NO stories at all — the worst failure shape (silent, plausible-looking output).
-export function parseStoryHeadings(text) {
-  const out = [];
-  const re = /^###\s+(Story\s+\d+\.\d+\s+[-–—]\s+.+)$/gm;
-  let m;
-  while ((m = re.exec(text))) out.push(m[1].trim());
-  return out;
-}
+// The doc parsers live in the epic kickoff builder now (board-sinks-and-scrumban D17), so the per-sprint and epic
+// generators — and the Hub card's kickoff, which the extractor builds from the same file — read the doc format with
+// ONE set of parsers. Re-exported for this file's spec and for any caller that imported them from here.
+import {
+  sub,
+  parseFrontmatter,
+  stripFrontmatter,
+  parseEpicTitle,
+  parseSprintHeader,
+  parseStoryHeadings,
+} from './vendor/lib/epic-kickoff.mjs';
+export { sub, parseFrontmatter, stripFrontmatter, parseEpicTitle, parseSprintHeader, parseStoryHeadings };
 
 export function buildStoryList(headings) {
   if (!headings.length) return '(no `### Story N.M — <title>` headings found in the sprint doc)';

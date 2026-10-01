@@ -1,8 +1,11 @@
+Start by pushing this sprint's branch, before anything else — it is what moves the card to Building on the board:
+`git switch -c feat/{{SLUG}}-s{{N}} origin/main && git push -u origin feat/{{SLUG}}-s{{N}}` (resuming? `git switch feat/{{SLUG}}-s{{N}}`).
+
 Read AGENTS.md, Roadmap/WAYS-OF-WORKING.md and Roadmap/LEARNINGS.md. Skim team memory.
 Then read Roadmap/{{MACRO}}/{{SLUG}}/README.md and Roadmap/{{MACRO}}/{{SLUG}}/sprint-{{N}}.md.
 
 You're building Sprint {{N}} of "{{EPIC_TITLE}}". Enter plan mode, confirm the plan as user stories with me,
-then branch feat/{{SLUG}} off latest main and build one story at a time per WAYS-OF-WORKING. If you're one of
+then build one story at a time per WAYS-OF-WORKING. If you're one of
 several builders running in parallel, work in your own isolated `git worktree`, not the shared root checkout.
 Reuse before rebuild (see "What already exists"). Escalate rather than guess: stop and hand back on any trigger in
 the ONE list, WAYS-OF-WORKING → *Escalate, don't guess* — default to escalate when unsure. Commit per story with path-limited adds
