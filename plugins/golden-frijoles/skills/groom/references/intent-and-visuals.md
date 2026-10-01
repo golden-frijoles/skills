@@ -64,8 +64,8 @@ disabled · unbuilt**. `disabled` means you can't do this right now, and it come
 built yet. The two must look different: collapsing them is the defect the taxonomy exists to prevent.
 
 The table uses the same words Stage 3.5 routes a gap to. The route vocabulary adds three that aren't drawings:
-*copy deck* (the exact words), *spike* (an experiment) and *think chain* (a trade-off reasoned in writing; answer it by
-hand until `think-skills` ships). So a routed gap usually maps to one row here.
+*copy deck* (the exact words), *spike* (an experiment) and *think chain* (a trade-off reasoned in writing; when the
+question is whether the work is worth doing, the `pmf-narrative` and `risk-validation` coaches answer it). So a routed gap usually maps to one row here.
 
 Mermaid renders on GitHub and diffs as text.
 

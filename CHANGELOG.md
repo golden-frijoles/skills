@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-01
+
+### Added
+
+- **Groom reads the strategy the coaches leave.** `groom/strategy.mjs` reads `Roadmap/00-strategy/` and prints the
+  input metrics a seed could move and the riskiest dimension it could test. Stage 0 runs it, and the pitch gets one
+  line under its title: `Moves: <input key> · Tests: <dimension>`. A project with no `00-strategy/` gets no output, no
+  line and no nag. A strategy file it can't read is named with the reason, and grooming carries on.
+
+### Changed
+
+- **A "worth doing?" gap routes to the coaches.** `intent-match`'s think-chain route used to say "answer by hand until
+  think-skills ships". It now names `pmf-narrative` and `risk-validation`. Only the label changed: the question Jev
+  answers is the same stamped wording.
+
 ## [0.17.0] - 2026-09-30
 
 ### Added

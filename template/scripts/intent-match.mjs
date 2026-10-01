@@ -70,7 +70,9 @@ export const ROUTES = Object.freeze({
   sequence: 'sequence',
   container_diagram: 'container diagram',
   spike: 'spike',
-  think_chain: 'think chain (answer by hand until think-skills ships)',
+  // think-skills D9: the label only. The `think_chain` choice text Jev reads is a stamped wording in intent.json.
+  think_chain:
+    'think chain (worth doing? run `pmf-narrative`, then `risk-validation`; any other trade-off, reason it in writing)',
 });
 
 /**

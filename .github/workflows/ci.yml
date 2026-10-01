@@ -92,7 +92,8 @@ jobs:
             plugins/golden-frijoles/skills/groom/emit-epic-kickoff.test.mjs \
             plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs \
             plugins/golden-frijoles/skills/groom/session-budget.test.mjs \
-            plugins/golden-frijoles/skills/groom/session-line.test.mjs
+            plugins/golden-frijoles/skills/groom/session-line.test.mjs \
+            plugins/golden-frijoles/skills/groom/strategy.test.mjs
 
       # ── The build view mod (build-visualization-claude-mods S4) ─────────────────────────────
       # Its pure half: the cache decision and the status text. The hook file itself is four calls on `$`

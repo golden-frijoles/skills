@@ -533,3 +533,10 @@ test('FENCE_RE follows CommonMark: up to three spaces of indent is a fence, four
   assert.equal(FENCE_RE.test('   ~~~'), true);
   assert.equal(FENCE_RE.test('    ```'), false);
 });
+
+// think-skills D9: a "worth doing?" gap leads to the coaches that answer it, not to "answer by hand".
+test('the think-chain route names the strategy coaches', () => {
+  assert.match(ROUTES.think_chain, /`pmf-narrative`/);
+  assert.match(ROUTES.think_chain, /`risk-validation`/);
+  assert.doesNotMatch(ROUTES.think_chain, /answer by hand/);
+});
