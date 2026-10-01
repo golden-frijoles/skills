@@ -7,6 +7,34 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-01
+
+### Added
+
+- **One stage, decided once.** `scripts/lib/stage.mjs` exports the six stages (To groom · Grooming · Ready to build ·
+  Building · QA · Shipped) and `resolveStage()`, the only place a card's stage is computed. Building and QA are facts:
+  a work branch on origin is Building, a ready PR is QA, a merged PR waiting for its close-out is QA, and a merged or
+  closed branch left on origin no longer counts. `lib/stage-facts.mjs` gathers those facts once per run (one
+  `git ls-remote`, one `gh pr list`) and keeps them in `.golden-frijoles/board.json`, so an offline run says how old
+  they are.
+- **The projection carries the card.** Every epic and seed row from `roadmap-extract.mjs` now has `stage`,
+  `stage_source`, `goal`, `sprints`, `links`, `pr`, `kickoff` (Ready to build only) and `shipped_at`. `--live`
+  gathers facts now, the default reads the snapshot and never touches the network, and `--docs-only` reads none.
+- **`build-order.mjs --live`** prints the full six-stage board; the committed `BUILD-ORDER.md` is the docs-only view,
+  because Building and QA move on events no commit records.
+
+### Changed
+
+- **Starting a build is the trigger.** The epic kickoff's first instruction pushes `feat/<slug>`, and the per-sprint
+  kickoff pushes `feat/<slug>-s<N>`, before any other work.
+- **The epic kickoff builder lives in `template/scripts/lib/epic-kickoff.mjs`**, vendored into the groom skill
+  (`groom/vendor/`, checked by `render-hook-vendor.mjs --check`), so the kickoff a board card carries and the one the
+  CLI prints are one function. `groom/templates/epic-kickoff.md` is gone; the text is `EPIC_KICKOFF_TEMPLATE`.
+- **`BUILD-ORDER.md` is grouped by the six stages**, and its epic links resolve (they pointed one folder too high).
+- **One extractor.** Area names are derived from the project's own `Roadmap/NN-*` folders (they were another
+  product's), and rows gain `status_date` and `build_order_num`. An epic's `type` and `risk` come from its README
+  frontmatter first.
+
 ## [0.19.0] - 2026-10-01
 
 ### Added
