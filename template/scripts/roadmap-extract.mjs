@@ -1,7 +1,22 @@
 #!/usr/bin/env node
 // roadmap-extract.mjs — project the Roadmap docs into rows: the ONE status extractor every roadmap tool reads.
 //
-//   node scripts/roadmap-extract.mjs        # print the projected rows as JSON
+//   node scripts/roadmap-extract.mjs              # rows as JSON; stage from the docs + the last snapshot of facts
+//   node scripts/roadmap-extract.mjs --live       # gather git/GitHub facts now (one ls-remote, one gh call)
+//   node scripts/roadmap-extract.mjs --docs-only  # no facts at all — what the committed BUILD-ORDER.md reads
+//
+// ── One extractor (board-sinks-and-scrumban D15) ─────────────────────────────────────────────────────────
+// This file is THE projection, byte-identical in every project's scripts/ and in the kit. It used to have a fork in
+// the origin repo (scripts/roadmap-to-notion.mjs --extract) that had grown folder-derived area names, `status_date`
+// and `build_order_num` while this copy still carried another product's area names; the fork is gone and those
+// fields live here. The Notion push imports buildRows() from here.
+//
+// ── Stage (D13/D14/D21) ──────────────────────────────────────────────────────────────────────────────────
+// Every Epic and Seed row carries `stage` — one of the six words in lib/stage.mjs, or null (archived) — with the
+// `stage_source` it was read from, plus the card's prose (`goal`, `sprints`, `links`, `pr`, `kickoff`,
+// `shipped_at`). The default reads facts from `.golden-frijoles/board.json` and never touches the network: six
+// callers spawn this with no flags, one of them inside the pre-commit hook. `--live` refreshes the facts.
+// `status` and `status_derived` stay as the legacy fields Notion's Status column and older views read.
 //
 // Readers: build-order.mjs (BUILD-ORDER.md), doc-hygiene.mjs (archived-epic checks), pmo-report.mjs (story
 // progress), and — only if a project opts in — optional/notion/roadmap-to-notion.mjs, which pushes these
@@ -41,29 +56,52 @@
 //   Legacy freeform lines are still mapped best-effort below.
 
 import { readFileSync, readdirSync, existsSync, statSync, writeSync, realpathSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { projectRoot } from './lib/project-root.mjs';
+import { attributeFacts, resolveStage } from './lib/stage.mjs';
+import { gatherFacts } from './lib/stage-facts.mjs';
+import { epicKickoffFromDir } from './lib/epic-kickoff.mjs';
 
 const REPO = projectRoot(); // D2
 const ROADMAP = join(REPO, 'Roadmap');
 const SEEDS = join(ROADMAP, '00-ideas', 'seeds');
 
-const AREA_NAMES = {
-  '01': '01 Discovery', '02': '02 Checkout & Payments', '03': '03 Selling & Shops',
-  '04': '04 Shipping', '05': '05 Trust/Offers/Messaging', '06': '06 Print',
-  '07': '07 Agentic/Federated', '08': '08 Growth', '09': '09 Platform-infra',
-  '10': '10 Events & Ticketing',
-};
+// Area labels are DERIVED from the project's own macro-section folders (`Roadmap/NN-slug/` → "NN Slug Title-Cased"),
+// never hardcoded: a hardcoded map was another product's area list and mislabeled every line it touched. A number
+// with no folder yet (a seed for a future area) falls back to the raw number.
+const AREA_NAMES = existsSync(ROADMAP)
+  ? Object.fromEntries(
+      readdirSync(ROADMAP)
+        .filter((d) => /^\d{2}-/.test(d) && statSync(join(ROADMAP, d)).isDirectory())
+        .map((d) => {
+          const [, num, slug] = d.match(/^(\d{2})-(.+)$/);
+          const label = slug
+            .split('-')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+          return [num, `${num} ${label}`];
+        })
+    )
+  : {};
 const SEED_STATUS_LABEL = {
-  raw: 'Raw', ready: 'Ready', queued: 'Queued', scaffolded: 'Scaffolded',
-  'in-progress': 'In progress', shipped: 'Shipped', archived: 'Archived',
+  raw: 'Raw',
+  ready: 'Ready',
+  queued: 'Queued',
+  scaffolded: 'Scaffolded',
+  'in-progress': 'In progress',
+  shipped: 'Shipped',
+  archived: 'Archived',
 };
 const PRIORITY_LABEL = {
-  'wave-0': 'Wave 0 Enablers', 'wave-1': 'Wave 1', 'wave-2': 'Wave 2',
-  'wave-3': 'Wave 3', 'wave-4': 'Wave 4',
+  'wave-0': 'Wave 0 Enablers',
+  'wave-1': 'Wave 1',
+  'wave-2': 'Wave 2',
+  'wave-3': 'Wave 3',
+  'wave-4': 'Wave 4',
 };
-const TYPE_LABEL = { feature: 'Feature', spike: 'Spike', chore: 'Chore', epic: 'Epic' };
+const TYPE_LABEL = { feature: 'Feature', spike: 'Spike', chore: 'Chore', bug: 'Bug', epic: 'Epic' };
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};
@@ -76,10 +114,12 @@ function parseFrontmatter(md) {
     if (!m) continue;
     let v = m[2];
     if (v[0] === '"' || v[0] === "'") {
-      const q = v[0]; const e = v.indexOf(q, 1);
-      v = e > 0 ? v.slice(1, e) : v.slice(1);             // quoted: take inside quotes (keeps '#5')
+      const q = v[0];
+      const e = v.indexOf(q, 1);
+      v = e > 0 ? v.slice(1, e) : v.slice(1); // quoted: take inside quotes (keeps '#5')
     } else {
-      const h = v.search(/\s#/); if (h >= 0) v = v.slice(0, h); // strip inline ` # comment`
+      const h = v.search(/\s#/);
+      if (h >= 0) v = v.slice(0, h); // strip inline ` # comment`
       v = v.trim();
       if (v === 'null' || v === '') v = null;
     }
@@ -90,12 +130,14 @@ function parseFrontmatter(md) {
 
 function readSeeds() {
   if (!existsSync(SEEDS)) return [];
-  return readdirSync(SEEDS).filter((f) => f.endsWith('.md')).map((f) => {
-    const fm = parseFrontmatter(readFileSync(join(SEEDS, f), 'utf8'));
-    seedStatusLabel(fm.status, `Roadmap/00-ideas/seeds/${f}`); // hard-fail on an invalid enum value
-    seedAppetite(fm.appetite, `Roadmap/00-ideas/seeds/${f}`);  // hard-fail on an invalid appetite
-    return { ...fm, _file: `Roadmap/00-ideas/seeds/${f}` };
-  });
+  return readdirSync(SEEDS)
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => {
+      const fm = parseFrontmatter(readFileSync(join(SEEDS, f), 'utf8'));
+      seedStatusLabel(fm.status, `Roadmap/00-ideas/seeds/${f}`); // hard-fail on an invalid enum value
+      seedAppetite(fm.appetite, `Roadmap/00-ideas/seeds/${f}`); // hard-fail on an invalid appetite
+      return { ...fm, _file: `Roadmap/00-ideas/seeds/${f}` };
+    });
 }
 
 // Seed frontmatter `status:` → board label. Absent → 'Raw' (legacy tolerance); a PRESENT but
@@ -106,7 +148,9 @@ export function seedStatusLabel(status, file = 'seed') {
   if (status == null) return 'Raw';
   const label = SEED_STATUS_LABEL[status];
   if (!label) {
-    throw new Error(`${file}: unrecognized seed frontmatter status "${status}" — valid values: ${Object.keys(SEED_STATUS_LABEL).join(' | ')}`);
+    throw new Error(
+      `${file}: unrecognized seed frontmatter status "${status}" — valid values: ${Object.keys(SEED_STATUS_LABEL).join(' | ')}`
+    );
   }
   return label;
 }
@@ -120,7 +164,9 @@ const APPETITES = new Set(['S', 'M', 'L']);
 export function seedAppetite(appetite, file = 'seed') {
   if (appetite == null) return null;
   if (!APPETITES.has(appetite)) {
-    throw new Error(`${file}: unrecognized seed frontmatter appetite "${appetite}" — valid values: S | M | L`);
+    throw new Error(
+      `${file}: unrecognized seed frontmatter appetite "${appetite}" — valid values: S | M | L`
+    );
   }
   return appetite;
 }
@@ -143,7 +189,9 @@ function listEpicDirs() {
 
 function epicTitle(epicPath, slug) {
   try {
-    const first = readFileSync(join(epicPath, 'README.md'), 'utf8').split('\n').find((l) => l.startsWith('# '));
+    const first = readFileSync(join(epicPath, 'README.md'), 'utf8')
+      .split('\n')
+      .find((l) => l.startsWith('# '));
     if (first) return first.replace(/^#\s+(Epic\s*[—·:\-]\s*)?/i, '').trim();
   } catch {}
   return slug;
@@ -154,11 +202,17 @@ function epicTitle(epicPath, slug) {
 // epics label them by epic-letter (`## C.1`, `### B1.1`, `## D.2`). Matching only `### S/US/Story`
 // silently undercounted ~22 epics to "0 stories" (status then leaned on the retro-floor by luck). The
 // letter form requires a `.digit` (`[A-Z]\d*\.\d+`) so it can't false-fire on `## QA` / `## Stories`. ---
-const STORY_RE = /^#{2,3}\s+(?:Story\s+\d+|S\d+(?:\.\d+)?(?:\s*\([^)]*\))?|US-\d+|[A-Z]\d*\.\d+)\b/i;
-function countStories(body) {
-  let total = 0, done = 0;
+// A heading may lead with its own status mark (`### ✅ S1.1 …`).
+const STORY_RE =
+  /^#{2,3}\s+(?:✅|⬜|🟦|🏗️?)?\s*(?:Story\s+\d+|S\d+(?:\.\d+)?(?:\s*\([^)]*\))?|US-\d+|[A-Z]\d*\.\d+)\b/i;
+export function countStories(body) {
+  let total = 0,
+    done = 0;
   for (const line of body.split('\n')) {
-    if (STORY_RE.test(line)) { total++; if (line.includes('✅')) done++; }
+    if (STORY_RE.test(line)) {
+      total++;
+      if (line.includes('✅')) done++;
+    }
   }
   return { total, done };
 }
@@ -167,14 +221,16 @@ function countStories(body) {
 // plain `Status:` line — real sprint files use both (e.g. support-widget writes `Status: ✅ shipped`). ---
 function deriveSprintStatus(body) {
   const hasSmoke = /Smoke walkthrough \(do these|—\s*Smoke walkthrough/i.test(body);
-  const m = body.match(/^(?:\*\*)?Status:(?:\*\*)?\s*(.+)$/mi);
+  const m = body.match(/^(?:\*\*)?Status:(?:\*\*)?\s*(.+)$/im);
   const line = (m ? m[1] : '').trim();
   const s = line.toLowerCase();
   if (line) {
     if (/⬜|not started|^planned\b/.test(s)) return 'Planned';
-    if (/🟦|in review|awaiting\s*(pr|review)|draft\s*\[?pr|built\s*—.*(awaiting|review|draft)/.test(s)) return 'In review';
-    if (/✅/.test(line) && /(shipped|merged|live|in prod|to\s*`?main`?|on\s*`?main`?)/.test(s)) return 'Shipped';
-    if (/✅\s*built|built\s*\(/.test(s)) return 'In review';           // "built" with no merge word ⇒ not yet shipped
+    if (/🟦|in review|awaiting\s*(pr|review)|draft\s*\[?pr|built\s*—.*(awaiting|review|draft)/.test(s))
+      return 'In review';
+    if (/✅/.test(line) && /(shipped|merged|live|in prod|to\s*`?main`?|on\s*`?main`?)/.test(s))
+      return 'Shipped';
+    if (/✅\s*built|built\s*\(/.test(s)) return 'In review'; // "built" with no merge word ⇒ not yet shipped
     if (/🏗|in progress|wip|building\b/.test(s)) return 'In progress';
     if (/✅/.test(line)) return 'Shipped';
   }
@@ -229,7 +285,8 @@ export function deriveEpicStatus(sprints, retroShipped, epicFmStatus) {
   if (epicFmStatus === 'archived') return 'Archived';
   if (retroShipped) return 'Shipped';
   if (sprints.length && sprints.every((s) => s.status === 'Shipped')) return 'Shipped';
-  if (sprints.some((s) => s.status === 'Shipped' || s.status === 'In progress' || s.status === 'In review')) return 'In progress';
+  if (sprints.some((s) => s.status === 'Shipped' || s.status === 'In progress' || s.status === 'In review'))
+    return 'In progress';
   return 'Scaffolded'; // scaffolded-only / all Planned
 }
 
@@ -239,7 +296,13 @@ export function deriveEpicStatus(sprints, retroShipped, epicFmStatus) {
 // status, which made `status === status_derived` by construction — so the advisory drift check could
 // never fire on exactly the class of error it exists to catch (an epic mislabeled with an out-of-enum
 // value, e.g. `mercadolibre-sync` at `status: ready` while fully shipped; audit 2026-07-06 §1).
-const EPIC_FM_TO_BUCKET = { shipped: 'Shipped', 'in-progress': 'In progress', scaffolded: 'Scaffolded', queued: 'Scaffolded', archived: 'Archived' };
+const EPIC_FM_TO_BUCKET = {
+  shipped: 'Shipped',
+  'in-progress': 'In progress',
+  scaffolded: 'Scaffolded',
+  queued: 'Scaffolded',
+  archived: 'Archived',
+};
 function epicFrontmatter(epicPath) {
   return parseFrontmatter(readFileSync(join(epicPath, 'README.md'), 'utf8'));
 }
@@ -247,7 +310,9 @@ export function frontmatterStatusBucket(fm, doc = 'epic README') {
   if (!fm.status) return null;
   const bucket = EPIC_FM_TO_BUCKET[fm.status];
   if (!bucket) {
-    throw new Error(`${doc}: unrecognized epic frontmatter status "${fm.status}" — valid values: ${Object.keys(EPIC_FM_TO_BUCKET).join(' | ')}`);
+    throw new Error(
+      `${doc}: unrecognized epic frontmatter status "${fm.status}" — valid values: ${Object.keys(EPIC_FM_TO_BUCKET).join(' | ')}`
+    );
   }
   return bucket;
 }
@@ -259,6 +324,35 @@ export function normalizeBuildOrder(v) {
   const s = String(v).trim();
   if (s === '') return null;
   return /^-?\d+$/.test(s) ? Number(s) : v;
+}
+
+// Numeric sort key for build order: "#3" → 3, "#3c" → 3, 4 → 4, absent → null. The display value stays as-is;
+// this feeds a NUMBER sort (rich text sorted "#10" before "#2").
+export function buildOrderNum(v) {
+  if (v === null || v === undefined) return null;
+  const m = String(v).match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+// When a row ENTERED its current status: the last commit whose diff touched the status-bearing line, else the
+// file's last commit, else today (a brand-new uncommitted scaffold entered its status now). Docs + git stay the SSOT.
+function gitDate(args) {
+  try {
+    return execFileSync('git', ['log', '-1', '--format=%as', ...args], {
+      cwd: REPO,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+function statusDate(relFile, statusLineRegex) {
+  return (
+    (statusLineRegex && gitDate([`-G${statusLineRegex}`, '--', relFile])) ||
+    gitDate(['--', relFile]) ||
+    new Date().toISOString().slice(0, 10)
+  );
 }
 
 // Floor a sprint's derived status against its epic's AUTHORITATIVE status, so the Sprints board never
@@ -297,26 +391,92 @@ function sprintKickoff({ epicKey, slug, n, risk }) {
     `Build Sprint ${n} of "${slug}" per WAYS-OF-WORKING, in your OWN git worktree off latest main on`,
     `feat/${slug}. Plan mode → confirm stories with me → build one story at a time. Commit per story`,
     `PATH-SCOPED (git add <your files> && git commit -- <those paths>; never -A). One api spec`,
-    `per testable story. Keep the CI gate green; open a draft PR declaring risk ${tier}.`,
+    `per testable story. Keep the CI gate green; open a draft PR declaring risk ${tier}, and flip it`,
+    `ready-for-review (+ sprint Status → 🟦 In review) once the gate is green and self-QA is posted.`,
     `Write the sprint smoke walkthrough into sprint-${n}.md before calling it done.`,
   ].join('\n');
-  if (risk === 'High') k += `\nHIGH-risk: all stories HIGH → the product owner merges; the authed money-path browser smoke is owed to them.`;
+  if (risk === 'High')
+    k += `\nHIGH-risk: all stories HIGH → the product owner merges; the authed money-path browser smoke is owed to them.`;
   return k;
 }
 
-export function buildRows() {
+// ── The card's prose (D21) ─────────────────────────────────────────────────────────────────────────────────
+const GOAL_MAX = 600;
+
+/**
+ * The first paragraph under the first of `headings` (`## Why`, `## Problem` …): whitespace collapsed, bold markers
+ * dropped, clipped at a word to GOAL_MAX. null when none of the headings has a paragraph under it.
+ */
+export function firstParagraph(md, headings) {
+  const lines = String(md).split('\n');
+  for (const heading of headings) {
+    const at = lines.findIndex((l) => l.trim().toLowerCase() === `## ${heading}`.toLowerCase());
+    if (at === -1) continue;
+    const para = [];
+    for (const line of lines.slice(at + 1)) {
+      if (/^#{1,6}\s/.test(line)) break;
+      if (!line.trim()) {
+        if (para.length) break;
+        continue;
+      }
+      para.push(line.trim());
+    }
+    if (!para.length) continue;
+    const text = para.join(' ').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+    if (text.length <= GOAL_MAX) return text;
+    const cut = text.slice(0, GOAL_MAX - 1);
+    return `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length)}…`;
+  }
+  return null;
+}
+
+// The branch prefix a fixed-scope seed is built on, by its type.
+const SEED_BRANCH_PREFIX = { bug: 'fix', chore: 'chore', spike: 'spike', feature: 'feat' };
+
+/** The kickoff a queued seed (fixed scope, no epic) carries on its Ready-to-build card. */
+export function seedKickoff({ slug, title, type, file }) {
+  const branch = `${SEED_BRANCH_PREFIX[type] ?? 'feat'}/${slug}`;
+  return [
+    `Start by pushing the branch, before anything else — it is what moves this card to Building on the board:`,
+    `\`git switch -c ${branch} origin/main && git push -u origin ${branch}\` (resuming? \`git switch ${branch}\`).`,
+    ``,
+    `Build: "${title}" — fixed scope, one builder session. The scope is ${file}.`,
+    `The process is Roadmap/WAYS-OF-WORKING.md under AGENTS.md: build, verify, open a PR, route its review with`,
+    `\`node scripts/review-route.mjs --builder <who-wrote-it> <PR#>\`, merge on green, then mark the seed shipped.`,
+  ].join('\n');
+}
+
+const prOf = (pr) =>
+  pr ? { number: pr.number, url: pr.url, state: pr.state, draft: Boolean(pr.draft) } : null;
+
+/**
+ * Build the rows. `facts` is what lib/stage-facts.mjs gathered (`{ branches, prs, origin }`); the default is no
+ * facts, so an import — doc-hygiene, pmo-report, a spec — never touches the network or the snapshot.
+ */
+export function buildRows({ facts = { branches: [], prs: [], origin: null } } = {}) {
   const seeds = readSeeds();
   const seedByEpic = new Map();
   for (const s of seeds) if (s.epic) seedByEpic.set(s.epic, s);
 
   const rows = [];
+  const epicDirs = listEpicDirs();
 
-  for (const e of listEpicDirs()) {
+  // Which initiative each branch and PR belongs to (D13): epic slugs and funnel-seed slugs are the names a branch can
+  // carry; a seed that carries `epic:` names that epic.
+  const known = new Set([...epicDirs.map((e) => e.slug), ...seeds.map((x) => x.slug)]);
+  const alias = new Map(seeds.filter((x) => x.epic).map((x) => [x.slug, String(x.epic).split('/').pop()]));
+  const byInitiative = attributeFacts(facts, known, alias);
+  const stageFor = (slug, row) => {
+    const own = byInitiative.get(slug) ?? { branches: [], prs: [] };
+    return resolveStage(row, { branches: own.branches }, { prs: own.prs }, facts.origin ?? null);
+  };
+
+  for (const e of epicDirs) {
     const epicKey = `${e.macro}/${e.slug}`;
     const seed = seedByEpic.get(epicKey) || {};
     const sprints = epicSprints(e.path);
     const retroShipped = epicShippedByRetro(e.path);
-    const epicFm = epicFrontmatter(e.path);                          // read README frontmatter once
+    const epicFm = epicFrontmatter(e.path); // read README frontmatter once
     const statusDerived = deriveEpicStatus(sprints, retroShipped, epicFm.status); // prose/retro fallback + drift signal (archived short-circuits)
     const status = frontmatterStatusBucket(epicFm, `Roadmap/${epicKey}/README.md`) || statusDerived; // README frontmatter is authoritative; invalid value throws
     const buildOrder = normalizeBuildOrder(epicFm.build_order ?? seed.build_order); // epic FM is SSOT, seed fallback
@@ -331,7 +491,31 @@ export function buildRows() {
     const doneStories = boardSprints.reduce((a, s) => a + s.done, 0);
     const area = AREA_NAMES[e.area] || e.area;
     const priority = seed.priority ? PRIORITY_LABEL[seed.priority] || seed.priority : null;
-    const risk = seed.risk ? (seed.risk === 'high' ? 'High' : 'Low') : null;
+    const riskWord = epicFm.risk || seed.risk;
+    const risk = riskWord ? (riskWord === 'high' ? 'High' : 'Low') : null;
+    const readmePath = `Roadmap/${epicKey}/README.md`;
+    const statusKey =
+      epicFm.status ||
+      (statusDerived === 'Shipped' ? 'shipped' : statusDerived === 'Archived' ? 'archived' : 'scaffolded');
+    const {
+      stage,
+      source: stageSource,
+      pr,
+    } = stageFor(e.slug, {
+      grain: 'Epic',
+      status: statusKey,
+      sprints: sprints.map((sp) => ({ n: sp.n, status: sp.status })), // each sprint's OWN docs status, not floored
+      sprints_total: sprints.length,
+    });
+    const statusDay = statusDate(readmePath, '^status:');
+    let kickoff = null;
+    if (stage === 'Ready to build') {
+      try {
+        kickoff = epicKickoffFromDir({ macro: e.macro, slug: e.slug, dir: e.path }).kickoff;
+      } catch {
+        kickoff = null; // an epic with no H1 or no sprint files has no kickoff to offer; the card says so by omission
+      }
+    }
 
     // Epic row
     rows.push({
@@ -339,15 +523,32 @@ export function buildRows() {
       slug: e.slug,
       grain: 'Epic',
       status,
-      status_derived: statusDerived,   // prose/retro derivation — for the advisory drift check on the board
+      status_derived: statusDerived, // prose/retro derivation — for the advisory drift check on the board
+      status_date: statusDay,
+      stage,
+      stage_source: stageSource,
       area,
       priority,
-      type: TYPE_LABEL[seed.type] || 'Epic',
+      type: TYPE_LABEL[epicFm.type || seed.type] || 'Epic',
       risk,
+      appetite: seed.appetite || null,
+      underwritten_by: seed.underwritten_by || null,
       sprint_progress: totStories ? `${doneStories}/${totStories} stories` : `${sprints.length} sprints`,
       build_order: buildOrder,
-      doc_link: `Roadmap/${epicKey}/README.md`,
+      build_order_num: buildOrderNum(buildOrder),
+      doc_link: readmePath,
       epic_slug: null,
+      goal: firstParagraph(readFileSync(join(e.path, 'README.md'), 'utf8'), ['Why', 'Goal', 'Problem']),
+      sprints: boardSprints.map((sp) => ({ n: sp.n, title: sp.title, done: sp.done, total: sp.total })),
+      links: {
+        readme: readmePath,
+        seed: seed._file || null,
+        sprints: boardSprints.map((sp) => `Roadmap/${epicKey}/sprint-${sp.n}.md`),
+        retro: existsSync(join(e.path, 'RETROSPECTIVE.md')) ? `Roadmap/${epicKey}/RETROSPECTIVE.md` : null,
+      },
+      pr: prOf(pr),
+      kickoff,
+      shipped_at: stage === 'Shipped' ? statusDay : null,
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries
@@ -360,12 +561,14 @@ export function buildRows() {
         slug: `${e.slug}--s${sp.n}`,
         grain: 'Sprint',
         status: sp.status,
+        status_date: statusDate(`Roadmap/${epicKey}/sprint-${sp.n}.md`, '^(\\*\\*)?Status:'),
         area,
         priority,
         type: 'Sprint',
         risk,
         sprint_progress: sp.total ? `${sp.done}/${sp.total} stories` : '—',
         build_order: buildOrder, // sprints inherit their epic's build order
+        build_order_num: buildOrderNum(buildOrder),
         doc_link: `Roadmap/${epicKey}/sprint-${sp.n}.md`,
         epic_slug: e.slug, // resolved to the Epic page id at sync time
         kickoff: sprintKickoff({ epicKey, slug: e.slug, n: sp.n, risk }),
@@ -375,11 +578,17 @@ export function buildRows() {
 
   // Seed rows: only seeds with no scaffolded epic (epic == null)
   for (const s of seeds.filter((x) => !x.epic)) {
+    const { stage, source: stageSource, pr } = stageFor(s.slug, { grain: 'Seed', status: s.status });
+    const statusDay = statusDate(s._file, '^status:');
+    const name = s.title || s.slug;
     rows.push({
-      name: s.title || s.slug,
+      name,
       slug: s.slug,
       grain: 'Seed',
       status: seedStatusLabel(s.status, s._file),
+      status_date: statusDay,
+      stage,
+      stage_source: stageSource,
       area: AREA_NAMES[s.area] || s.area || null,
       priority: s.priority ? PRIORITY_LABEL[s.priority] || s.priority : null,
       type: TYPE_LABEL[s.type] || 'Feature',
@@ -388,11 +597,36 @@ export function buildRows() {
       underwritten_by: s.underwritten_by || null,
       sprint_progress: null,
       build_order: s.build_order || null,
+      build_order_num: buildOrderNum(s.build_order),
       doc_link: s._file,
       epic_slug: null,
+      goal: firstParagraph(readFileSync(join(REPO, s._file), 'utf8'), [
+        'Problem',
+        'Why',
+        'Outcome & signal',
+        'The ask, as given',
+      ]),
+      links: { readme: null, seed: s._file, sprints: [], retro: null },
+      pr: prOf(pr),
+      kickoff:
+        stage === 'Ready to build'
+          ? seedKickoff({ slug: s.slug, title: name, type: s.type, file: s._file })
+          : null,
+      shipped_at: stage === 'Shipped' ? statusDay : null,
     });
   }
   return rows;
+}
+
+/** `--live` · `--offline` (the default) · `--docs-only` → a facts mode. The last one given wins. */
+export function factsModeFrom(argv) {
+  let mode = 'snapshot';
+  for (const a of argv) {
+    if (a === '--live') mode = 'live';
+    else if (a === '--offline') mode = 'snapshot';
+    else if (a === '--docs-only') mode = 'docs';
+  }
+  return mode;
 }
 
 // Print the rows. writeSync to fd 1 is synchronous on a PIPE too — `console.log` then an exit truncates
@@ -407,4 +641,12 @@ const isMain = (() => {
     return false;
   }
 })();
-if (isMain) writeSync(1, JSON.stringify(buildRows(), null, 2) + '\n');
+if (isMain) {
+  const mode = factsModeFrom(process.argv.slice(2));
+  const facts = gatherFacts({ root: REPO, mode });
+  // A FAILED --live run says why on stderr (the rows say where their facts came from in every stage_source). An
+  // offline run with no snapshot is the normal case for the six callers that spawn this with no flags — one of them
+  // in the pre-commit hook — so it stays quiet.
+  if (facts.note && mode === 'live') process.stderr.write(`roadmap-extract: ${facts.note}\n`);
+  writeSync(1, JSON.stringify(buildRows({ facts }), null, 2) + '\n');
+}

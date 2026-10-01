@@ -71,8 +71,16 @@ function repo({ readme = README(EPIC_FM), sprint = SPRINT(SPRINT_FM) } = {}) {
     join(HERE, 'lib', 'roadmap-contract.mjs'),
     join(root, 'scripts', 'lib', 'roadmap-contract.mjs')
   );
-  // roadmap-extract.mjs resolves the project through lib/project-root.mjs (golden-frijoles-plugin D2).
-  copyFileSync(join(HERE, 'lib', 'project-root.mjs'), join(root, 'scripts', 'lib', 'project-root.mjs'));
+  // roadmap-extract.mjs resolves the project through lib/project-root.mjs (golden-frijoles-plugin D2) and computes
+  // each row's stage through the board-sinks-and-scrumban libs (D13/D14/D17).
+  for (const lib of [
+    'project-root.mjs',
+    'stage.mjs',
+    'work-branch.mjs',
+    'stage-facts.mjs',
+    'epic-kickoff.mjs',
+  ])
+    copyFileSync(join(HERE, 'lib', lib), join(root, 'scripts', 'lib', lib));
   writeFileSync(join(root, 'scripts', 'doc-format.enforced.json'), '{ "enforced": ["Roadmap/"] }\n');
   const epic = join(root, 'Roadmap', '09-platform-infra', 'fixture-epic');
   mkdirSync(epic, { recursive: true });
