@@ -58,11 +58,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { PHASES, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
+import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BRANCH_PREFIX_RE = /^(?:feat|fix|chore|spike|bug|docs)\/(.+)$/;
-const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9_.]*(?:-[A-Za-z0-9_.]+)*$/;
 const SEEDS_DIR = ['Roadmap', '00-ideas', 'seeds'];
 const MAX_WORKTREES = 8; // resolved per refresh — a pile of stale agent worktrees must not stall the view
 const MAX_ELSEWHERE_LINES = 4;
@@ -74,45 +73,9 @@ export function storyIdsIn(text) {
   return [...String(text).matchAll(STORY_IN_TEXT_RE)].map((m) => `S${Number(m[1])}.${Number(m[2])}`);
 }
 
-/** A sprint token right after the slug: `s3`, `sprint3`, or `sprint` `3` → 3; else null. */
-function sprintAt(rest) {
-  const m = String(rest[0] ?? '').match(/^s(?:print)?(\d+)$/);
-  if (m) return Number(m[1]);
-  return rest[0] === 'sprint' && /^\d+$/.test(rest[1] ?? '') ? Number(rest[1]) : null;
-}
-
-/**
- * Every reading of a work branch as `<slug>[-s<N>][-anything]`, LONGEST slug first:
- * `feat/foo-s4-licences` → foo-s4-licences, foo-s4, foo (sprint 4). The resolver takes the first reading
- * whose slug names an epic (or a seed) on disk. [] for a branch that isn't a work branch.
- */
-export function branchCandidates(branch) {
-  const m = String(branch || '').match(BRANCH_PREFIX_RE);
-  if (!m || !SLUG_RE.test(m[1]) || m[1].includes('..')) return [];
-  const tokens = m[1].split('-');
-  const out = [];
-  for (let i = tokens.length; i >= 1; i--) {
-    out.push({
-      slug: tokens.slice(0, i).join('-'),
-      sprint: sprintAt(tokens.slice(i)),
-      exact: i === tokens.length,
-    });
-  }
-  return out;
-}
-
-/**
- * The syntactic reading alone, no disk: `feat/foo-s3` → { slug: 'foo', sprint: 3 },
- * `feat/foo-s3-extra` → { slug: 'foo', sprint: 3 }; null for a branch that is not a work branch.
- */
-export function parseBranch(branch) {
-  const cands = branchCandidates(branch);
-  if (!cands.length) return null;
-  const withSprint = cands.find((c) => c.sprint !== null);
-  return withSprint
-    ? { slug: withSprint.slug, sprint: withSprint.sprint }
-    : { slug: cands[0].slug, sprint: null };
-}
+// The branch parser lives in lib/work-branch.mjs now (board-sinks-and-scrumban D13), so the stage resolver reads a
+// branch exactly as this view does. Re-exported: callers and the spec import them from here.
+export { branchCandidates, parseBranch };
 
 function makeGit(root) {
   return (args) =>

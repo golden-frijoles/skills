@@ -18,3 +18,7 @@ export const SEED_FUNNEL_STATUSES = new Set(['Raw', 'Ready', 'Queued']);
 export function isFunnelSeed(row) {
   return row?.grain === 'Seed' && SEED_FUNNEL_STATUSES.has(row.status);
 }
+
+// The six stages (board-sinks-and-scrumban D1/D2) live in lib/stage.mjs; re-exported here so the old buckets and
+// the new stages have one home. The buckets above stay for the readers that still group by `status`.
+export { STAGES } from './stage.mjs';
