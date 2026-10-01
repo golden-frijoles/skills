@@ -169,7 +169,8 @@ jobs:
             scripts/kit-tarball.test.mjs \
             scripts/kit-bin.test.mjs \
             scripts/check-config-reads.test.mjs \
-            scripts/check-onboarding-parity.test.mjs
+            scripts/check-onboarding-parity.test.mjs \
+            scripts/strategy-templates.test.mjs
 
       # The Cowork install path. Cowork does NOT read a project's .claude/settings.json, so the
       # only way `groom` — which is written FOR Cowork — reaches it is a .skill archive. The zip

@@ -38,8 +38,11 @@ list anywhere in this repo.
 | `golden-frijoles` | The umbrella skill: detects what's here, sets up a bare repo, and routes to the right named skill. |
 | `groom` | The planning front door: shapes a raw ask into a seed, an appetite, and a scaffolded epic. |
 | `live-smoke` | Verifies rendered behavior in a real headless browser, with a screenshot and a JSON report. |
+| `north-star` | Runs a North Star workshop and leaves Roadmap/00-strategy/north-star.md with a sync payload for the engine. |
+| `pmf-narrative` | Coaches the six dimensions of a PMF narrative and leaves Roadmap/00-strategy/pmf-narrative.md. |
 | `pmo-report` | Posts the weekly PMO report (throughput, DORA-style delivery, doc-ops) with optional deck links. |
 | `prose-draft` | Drafts internal close-out prose (retros, poster entries) with a foreign model, for human review. |
+| `risk-validation` | Finds the riskiest PMF dimension and one targeted test; leaves Roadmap/00-strategy/risk-validation.md. |
 | `standup-post` | Posts a delta-only daily standup of overnight PR, CI, smoke and board signals across the project's repos. |
 | `vercel-prune` | Reports stale Vercel preview deployments for a frontend project; dry-run by default. |
 | `weekly-recap` | Posts the weekly executive recap: merged PRs, deploys, shipped epics and their retro digests. |

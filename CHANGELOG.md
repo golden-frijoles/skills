@@ -7,6 +7,33 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-30
+
+### Added
+
+- **Three strategy coaches ship in the plugin: `pmf-narrative`, `north-star` and `risk-validation`.** They walk a
+  product builder through a PMF narrative, a North Star workshop, and finding the riskiest dimension plus one targeted
+  test. Each one writes `Roadmap/00-strategy/<name>.md` from its own `templates/<name>.md`, as `status: draft`, and
+  asks before overwriting an `agreed` file. `north-star.md` carries a sync payload in the shape the Golden Frijoles
+  engine accepts. Each coach ends by offering the next (narrative, then North Star, then risk validation, then
+  `groom`). Risk Validation starts from the narrative's six dimensions when that file exists, instead of asking for
+  them again.
+
+### Fixed
+
+- **Asking for a North Star workshop loads the North Star coach.** Its description used to be Risk Validation's, word
+  for word, so the request matched the wrong skill.
+- **`doc-format` catches an HTML comment that never closes** (`unclosed-html-comment`, in epic READMEs, sprints and
+  retros). One that never closes hides everything after it when the doc renders, and two epic READMEs shipped that
+  way. A comment quoted in a code span or a code fence (of any length) is an example, so the rule skips it.
+
+### Changed
+
+- **The umbrella skill routes strategy asks to the coaches**, and no longer calls the planning chain out of scope.
+- **Each coach credits its sources** by name and URL: Amplitude's *North Star Playbook* for the North Star coach, and
+  Reforge's courses and Helmer's *7 Powers* for the other two.
+
+
 ## [0.16.0] - 2026-09-30
 
 ### Added

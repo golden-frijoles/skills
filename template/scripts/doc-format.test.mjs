@@ -9,6 +9,7 @@ import {
   checkEpicReadme,
   checkSprintDoc,
   checkRetrospective,
+  unclosedComments,
   fixDodHeading,
   fixSprintStatusLine,
   fixRetroClosedLine,
@@ -412,4 +413,39 @@ test('fixSprintStatusLine: rewrites the prose Status line, never a frontmatter l
   const fixed = fixSprintStatusLine(doc);
   assert.ok(fixed.startsWith(FM_SPRINT), 'frontmatter untouched');
   assert.match(fixed, /^\*\*Status:\*\* ✅ shipped$/m);
+});
+
+// ── unclosedComments (think-skills S1: two epic READMEs rendered as one big comment) ─────────
+
+test('unclosedComments: an <!-- that never closes is reported with its line', () => {
+  const doc =
+    '# Epic\n\n> header\n<!-- Class (above) is…\n     a longer description belongs in ## Why\nThe why paragraph.\n';
+  assert.deepEqual(
+    unclosedComments(doc).map((o) => o.rule),
+    ['unclosed-html-comment']
+  );
+  assert.match(unclosedComments(doc)[0].detail, /^line 4 /);
+});
+
+test('unclosedComments: a closed comment, single- or multi-line, is fine — and a later unclosed one still fires', () => {
+  assert.deepEqual(unclosedComments('a <!-- one --> b\n<!-- two\nlines -->\n## Why\n'), []);
+  assert.equal(unclosedComments('<!-- ok -->\ntext\n<!-- never closed\n').length, 1);
+});
+
+test('unclosedComments: a comment quoted in code is an example, not a comment', () => {
+  assert.deepEqual(unclosedComments('the comment carries a `<!-- jev:{…}` marker\n'), []);
+  assert.deepEqual(unclosedComments('```\n<!-- jev:{"mode":"shadow"\n```\nafter\n'), []);
+  assert.deepEqual(unclosedComments('a ``<!-- jev`` marker\n'), []);
+  assert.deepEqual(unclosedComments('````md\n```\n<!-- quoted\n```\n````\nafter\n'), []);
+});
+
+test('unclosedComments: every epic doc type runs it', () => {
+  const broken = '<!-- never closed\n';
+  for (const offenses of [
+    checkEpicReadme(broken, { slug: 'x', exists: () => false }),
+    checkSprintDoc(broken),
+    checkRetrospective(broken),
+  ]) {
+    assert.ok(offenses.some((o) => o.rule === 'unclosed-html-comment'));
+  }
 });

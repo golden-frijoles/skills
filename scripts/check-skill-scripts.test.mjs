@@ -149,8 +149,14 @@ test('the PAID debts: re-adding weekly-recap / standup-post / pmo-report / live-
 test('the real ledger is empty and the whole plugin audits clean against template/', () => {
   assert.deepEqual(KNOWN_ABSENT, {});
   const results = audit({ target: new URL('../template/', import.meta.url).pathname });
-  const bad = results.filter((r) => r.status !== 'ok');
+  // `exempt` passes, as it does in the guard itself, but only for the skills NO_SCRIPTS_EXPECTED names with a reason
+  // (think-skills D1 added the first three) — never as a way for any other skill to go quiet.
+  const bad = results.filter((r) => r.status !== 'ok' && !(r.status === 'exempt' && Object.hasOwn(NO_SCRIPTS_EXPECTED, r.skill)));
   assert.deepEqual(bad, [], `not ok: ${JSON.stringify(bad)}`);
+  assert.deepEqual(
+    results.filter((r) => r.status === 'exempt').map((r) => r.skill).sort(),
+    Object.keys(NO_SCRIPTS_EXPECTED).sort()
+  );
 });
 
 // ── the closure check ─────────────────────────────────────────────────────────────────────────

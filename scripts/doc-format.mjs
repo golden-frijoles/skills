@@ -110,8 +110,57 @@ export function siblingDocs(readmeRelPath) {
 
 // ── Individual checkers — each returns a list of { rule, detail } offenses for one file's content ──
 
+// An HTML comment that never closes hides EVERYTHING after it when the doc renders — the whole epic README, its
+// architecture lock included (think-skills and sketch-specs both shipped one, 2026-09-30, from an edit anchored on a
+// heading the old template's comment named). Code is skipped first: a `<!-- jev:` inside backticks or a fence is an
+// example, not a comment, and several sprint docs quote one.
+// A code span opens with a run of backticks and closes with the same run (``<!-- x`` included).
+const CODE_SPAN = /(`+)[\s\S]*?\1/g;
+
+// A later `-->` closes an open comment wherever it appears (a mermaid `A --> B` included) — that is what CommonMark
+// renders, so the rule agrees with the page; the text in between is still hidden, and only reading it shows that.
+export function unclosedComments(content) {
+  const lines = content.split('\n');
+  let fence = null;
+  let open = null; // the line an unclosed <!-- started on, while we are inside one
+  for (let i = 0; i < lines.length; i++) {
+    // The whole run of marks: a ```` fence is closed only by ```` or longer, never by the ``` it quotes.
+    const fenceMark = lines[i].match(/^ {0,3}(`{3,}|~{3,})/);
+    if (open === null && fenceMark) {
+      const mark = fenceMark[1];
+      if (fence === null) fence = mark;
+      else if (mark[0] === fence[0] && mark.length >= fence.length) fence = null;
+      continue;
+    }
+    if (fence !== null) continue;
+    let rest = open === null ? lines[i].replace(CODE_SPAN, '') : lines[i];
+    for (;;) {
+      if (open === null) {
+        const at = rest.indexOf('<!--');
+        if (at === -1) break;
+        open = i;
+        rest = rest.slice(at + 4);
+      } else {
+        const at = rest.indexOf('-->');
+        if (at === -1) break;
+        open = null;
+        rest = rest.slice(at + 3).replace(CODE_SPAN, '');
+      }
+    }
+  }
+  return open === null
+    ? []
+    : [
+        {
+          rule: 'unclosed-html-comment',
+          detail: `line ${open + 1} opens <!-- and nothing closes it — everything after it is hidden when the doc renders`,
+        },
+      ];
+}
+
 export function checkEpicReadme(content, { slug, exists = existsRelative } = {}) {
   const offenses = [];
+  offenses.push(...unclosedComments(content));
   // Many epics predate the seeds/ convention and genuinely have no seed file to link — that's an
   // accepted state (Sprint 2 sweep decision), not drift. Only require a **Scope seed:** field when a
   // real seed file exists for this epic's slug; a seed that exists but isn't linked IS still flagged.
@@ -230,6 +279,7 @@ export function bodyStartIndex(lines) {
 
 export function checkSprintDoc(content) {
   const offenses = [];
+  offenses.push(...unclosedComments(content));
   const all = content.split('\n');
   const statusLine = all
     .slice(bodyStartIndex(all))
@@ -331,6 +381,7 @@ export const RETRO_SECTION_STEMS = [
 // same date — that is fixing drift, not relaxing the check.
 export function checkRetrospective(content) {
   const offenses = [];
+  offenses.push(...unclosedComments(content));
   const closedLine = content.split('\n').find((l) => /closed/i.test(l) && l.trim() !== '');
   if (!closedLine) {
     offenses.push({ rule: 'retro-closed-missing', detail: 'no "Closed" date line found near the top' });
