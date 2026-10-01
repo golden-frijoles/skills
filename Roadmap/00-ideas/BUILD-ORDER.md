@@ -1,30 +1,46 @@
 <!-- GENERATED FILE — do not edit by hand.
      Regenerate:  node scripts/build-order.mjs
-     Status SSOT: each epic README's frontmatter `status:` field (set at epic close). Funnel
-     ordering: seed frontmatter (priority). Both projected via scripts/roadmap-extract.mjs. -->
+     Stage: scripts/lib/stage.mjs, from each initiative's frontmatter (docs only in this file; the
+     live board with git/GitHub facts is `node scripts/build-order.mjs --live` and the Hub). -->
 
-# Build order — generated status board
+# Build order — the six stages
 
-> **Generated 2026-09-28 — do not hand-edit.** Epic status SSOT = the epic `README.md` frontmatter
-> `status:` field (set at epic close). To change what this shows, edit that field (or a seed for the
-> funnel), then run `node scripts/build-order.mjs`. This board and the Notion "Marketplace Roadmap"
-> DB are both *derived views* — never hand-edit the board.
+> **Generated 2026-10-01 — do not hand-edit.** One stage per initiative, decided in one place
+> (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped. This committed
+> file reads the docs alone, so **Building and QA are not here** — they are facts git and GitHub hold.
+> For the live board run `node scripts/build-order.mjs --live`, or open the Hub board.
 
-## 🏗️ Building now (0)
+## To groom (0)
 
-_None._
-
-## 📋 Ready to build (scaffolded, not started) (0)
+_seeds with no pitch yet._
 
 _None._
 
-## ✅ Shipped (0)
+## Grooming (0)
+
+_a pitch is waiting at the approval gate._
 
 _None._
 
-## ⬜ Funnel — seeds not yet scaffolded (0)
+## Ready to build (0)
+
+_scaffolded (or a fixed-scope seed), in build order — pull from the top._
+
+_None._
+
+## Building — live only
+
+_a work branch is on origin. Not in this committed file: `node scripts/build-order.mjs --live` or the Hub board._
+
+## QA — live only
+
+_a PR is ready for review, or merged and waiting for its close-out. Not in this committed file: `node scripts/build-order.mjs --live` or the Hub board._
+
+## Shipped (0)
+
+_merged, deployed and closed._
 
 _None._
 
 ---
-_Epics: 0 · seeds in funnel: 0 · status drift: 0. Regenerate with `node scripts/build-order.mjs`._
+_0 initiatives on the board. Regenerate with `node scripts/build-order.mjs`._

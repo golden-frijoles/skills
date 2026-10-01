@@ -1,148 +1,116 @@
 #!/usr/bin/env node
-// build-order.mjs — render Roadmap/00-ideas/BUILD-ORDER.md from the SAME projection every roadmap
-// tool reads (roadmap-extract.mjs). One source of truth: seed frontmatter + epic/sprint
-// status lines. This file is GENERATED — never hand-edit BUILD-ORDER.md; run this instead.
+// build-order.mjs — render Roadmap/00-ideas/BUILD-ORDER.md in the six stages, from the SAME projection every roadmap
+// tool reads (roadmap-extract.mjs) and the ONE stage resolver (lib/stage.mjs). This file is GENERATED — never
+// hand-edit BUILD-ORDER.md; run this instead.
 //
-//   node scripts/build-order.mjs            # write Roadmap/00-ideas/BUILD-ORDER.md
+//   node scripts/build-order.mjs            # write Roadmap/00-ideas/BUILD-ORDER.md (docs only)
 //   node scripts/build-order.mjs --check    # exit 1 if the file is stale (for CI/precommit)
+//   node scripts/build-order.mjs --live     # print the full six-stage board with git/GitHub facts; writes nothing
 //
-// Why this exists: BUILD-ORDER.md used to be hand-maintained, so it drifted on every merge. Status
-// and ordering already live in seed frontmatter (the SSOT the Notion projection reads). This makes
-// the in-repo board a derived view that cannot drift.
+// ── Why the committed file is docs-only (board-sinks-and-scrumban lock C3) ───────────────────────────────
+// Building and QA are FACTS git and GitHub hold (a branch on origin, a ready PR), never fields in a doc. A committed
+// file that carried them would go stale on every PR event, and `--check` (build-order-guard, the nightly sync) would
+// turn every unrelated PR red. So the file holds what the docs alone decide — To groom, Grooming, Ready to build,
+// Shipped — and says where Building and QA live: `--live` here, the Hub board, and the build view. `--live` is the
+// same resolver with live facts, so it agrees with the Hub by construction.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { EPIC_STATUS_ORDER, SEED_FUNNEL_STATUSES } from './lib/roadmap-status-buckets.mjs';
+import { STAGES, groupByStage } from './lib/stage.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = projectRoot(); // D2
 const OUT = join(REPO, 'Roadmap', '00-ideas', 'BUILD-ORDER.md');
 const EXTRACTOR = join(__dirname, 'roadmap-extract.mjs');
+const LIVE = process.argv.includes('--live');
 
 function extract() {
-  const json = execFileSync('node', [EXTRACTOR], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const json = execFileSync('node', [EXTRACTOR, LIVE ? '--live' : '--docs-only'], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
   return JSON.parse(json);
 }
 
-// SSOT = each epic README's frontmatter `status:` field (00-ideas/README). The extractor resolves it
-// into r.status (frontmatter-authoritative, prose/retro fallback) and also emits r.status_derived (the
-// fallback derivation) so this board can flag an advisory drift when the two disagree. No seed read
-// here — a scaffolded epic's seed is funnel-only; the epic README owns its status.
-
-// Epic status → bucket. Sprints are folded into their epic via sprint_progress; seeds are the funnel.
-// The bucket KEYS/ORDER and the seed-funnel status set live in scripts/lib/roadmap-status-buckets.mjs —
-// shared with any other view of the roadmap (a reporting hub, a dashboard) so it can never independently
-// drift from this board's counts. Emoji/title here are this board's own presentation.
-const EPIC_BUCKET_META = {
-  'In progress': { emoji: '🏗️', title: 'Building now' },
-  Scaffolded: { emoji: '📋', title: 'Ready to build (scaffolded, not started)' },
-  Shipped: { emoji: '✅', title: 'Shipped' },
+// What each stage means, in the words the board uses (the seed's table, locked 2026-10-01).
+const STAGE_NOTE = {
+  'To groom': 'seeds with no pitch yet',
+  Grooming: 'a pitch is waiting at the approval gate',
+  'Ready to build': 'scaffolded (or a fixed-scope seed), in build order — pull from the top',
+  Building: 'a work branch is on origin',
+  QA: 'a PR is ready for review, or merged and waiting for its close-out',
+  Shipped: 'merged, deployed and closed',
 };
-const EPIC_BUCKETS = EPIC_STATUS_ORDER.map((key) => ({ key, ...EPIC_BUCKET_META[key] }));
-const SEED_FUNNEL = SEED_FUNNEL_STATUSES;
+const LIVE_ONLY = new Set(['Building', 'QA']);
 
 function line(r) {
-  const bits = [`[${r.name}](../../${r.doc_link.replace(/^Roadmap\//, '')})`];
+  // BUILD-ORDER.md lives in Roadmap/00-ideas/, so an epic README is ONE folder up — `../../` resolved to the repo
+  // root and 404'd every epic link on GitHub (seed board-link-depth, absorbed by board-sinks-and-scrumban S1.5).
+  const link = r.grain === 'Seed' ? `seeds/${r.slug}.md` : `../${r.doc_link.replace(/^Roadmap\//, '')}`;
   const meta = [];
+  if (r.build_order_num != null) meta.push(`#${r.build_order_num}`);
   if (r.area) meta.push(r.area);
+  if (r.grain === 'Seed') meta.push(`seed · ${r.type}`);
   if (r.sprint_progress) meta.push(r.sprint_progress);
   if (r.risk) meta.push(`risk: ${r.risk}`);
-  if (r.priority) meta.push(r.priority);
-  return `- ${bits[0]}${meta.length ? ` — ${meta.join(' · ')}` : ''}`;
+  if (r.appetite) meta.push(`appetite ${r.appetite}`);
+  // A queued seed without an underwriter is funded-but-unowned — advisory, loud on the board.
+  const warn =
+    r.grain === 'Seed' && r.status === 'Queued' && !r.underwritten_by
+      ? ' — ⚠️ no underwriter (set `underwritten_by:` at the betting table)'
+      : '';
+  return `- [${r.name}](${link}) — ${meta.join(' · ')} · _${r.stage_source}_${warn}`;
 }
 
 function render(rows) {
-  const epics = rows.filter((r) => r.grain === 'Epic');
-  const seeds = rows.filter((r) => r.grain === 'Seed');
+  const columns = groupByStage(rows);
   const now = new Date().toISOString().slice(0, 10);
-
-  // Epic status is authoritative from the README frontmatter (the extractor resolved it into e.status).
-  // Advisory drift = the prose/retro derivation (e.status_derived) disagreeing with that authoritative
-  // status — usually a close-out that forgot to set `status:`, or a stale README. Non-gating signal.
-  const drift = [];
-  for (const e of epics) {
-    if (e.status_derived && e.status_derived !== e.status) {
-      drift.push({ name: e.name, frontmatter: e.status, derived: e.status_derived });
-    }
-  }
-  render._drift = drift;
-
   const out = [];
   out.push('<!-- GENERATED FILE — do not edit by hand.');
   out.push('     Regenerate:  node scripts/build-order.mjs');
-  out.push("     Status SSOT: each epic README's frontmatter `status:` field (set at epic close). Funnel");
-  out.push('     ordering: seed frontmatter (priority). Both projected via scripts/roadmap-extract.mjs. -->');
-  out.push('');
-  out.push('# Build order — generated status board');
-  out.push('');
   out.push(
-    `> **Generated ${now} — do not hand-edit.** Epic status SSOT = the epic \`README.md\` frontmatter`
+    "     Stage: scripts/lib/stage.mjs, from each initiative's frontmatter (docs only in this file; the"
   );
   out.push(
-    '> `status:` field (set at epic close). To change what this shows, edit that field (or a seed for the'
+    '     live board with git/GitHub facts is `node scripts/build-order.mjs --live` and the Hub). -->'
+  );
+  out.push('');
+  out.push('# Build order — the six stages');
+  out.push('');
+  out.push(`> **Generated ${now} — do not hand-edit.** One stage per initiative, decided in one place`);
+  out.push(
+    '> (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped. This committed'
   );
   out.push(
-    '> funnel), then run `node scripts/build-order.mjs`. This board and the Notion "Marketplace Roadmap"'
+    '> file reads the docs alone, so **Building and QA are not here** — they are facts git and GitHub hold.'
   );
-  out.push('> DB are both *derived views* — never hand-edit the board.');
+  out.push('> For the live board run `node scripts/build-order.mjs --live`, or open the Hub board.');
   out.push('');
-
-  for (const b of EPIC_BUCKETS) {
-    const list = epics
-      .filter((e) => e.status === b.key)
-      .sort((a, z) => (a.area || '').localeCompare(z.area || '') || a.name.localeCompare(z.name));
-    out.push(`## ${b.emoji} ${b.title} (${list.length})`);
+  for (const stage of STAGES) {
+    const list = columns[stage];
+    if (LIVE_ONLY.has(stage) && !LIVE) {
+      out.push(`## ${stage} — live only`);
+      out.push('');
+      out.push(
+        `_${STAGE_NOTE[stage]}. Not in this committed file: \`node scripts/build-order.mjs --live\` or the Hub board._`
+      );
+      out.push('');
+      continue;
+    }
+    out.push(`## ${stage} (${list.length})`);
+    out.push('');
+    out.push(`_${STAGE_NOTE[stage]}._`);
     out.push('');
     out.push(list.length ? list.map(line).join('\n') : '_None._');
     out.push('');
   }
-
-  const funnel = seeds
-    .filter((s) => SEED_FUNNEL.has(s.status))
-    .sort((a, z) => (a.priority || 'zzz').localeCompare(z.priority || 'zzz') || a.name.localeCompare(z.name));
-  out.push(`## ⬜ Funnel — seeds not yet scaffolded (${funnel.length})`);
-  out.push('');
-  out.push(
-    funnel.length
-      ? funnel
-          .map((s) => {
-            const meta = [s.status, s.type, s.appetite ? `appetite ${s.appetite}` : null, s.priority]
-              .filter(Boolean)
-              .join(' · ');
-            // A queued seed without an underwriter is funded-but-unowned — advisory drift, loud on the board.
-            const warn =
-              s.status === 'Queued' && !s.underwritten_by
-                ? ' — ⚠️ no underwriter (set `underwritten_by:` at the betting table)'
-                : '';
-            return `- [${s.name}](seeds/${s.slug}.md)${meta ? ` — ${meta}` : ''}${warn}`;
-          })
-          .join('\n')
-      : '_None._'
-  );
-  out.push('');
-
-  if (drift.length) {
-    out.push(`## ⚠️ Status drift — README frontmatter vs sprint/retro-derived (${drift.length})`);
-    out.push('');
-    out.push('These epics’ authoritative README-frontmatter `status:` disagrees with what the sprint/retro');
-    out.push('derivation infers. The board trusts the **frontmatter**; a mismatch usually means a close-out');
-    out.push(
-      'forgot to set `status:` (or the README is stale). Reconcile the README, then this advisory clears.'
-    );
-    out.push('');
-    out.push('| Epic | frontmatter (used) | sprint/retro-derived |');
-    out.push('|---|---|---|');
-    for (const d of drift) out.push(`| ${d.name} | ${d.frontmatter} | ${d.derived} |`);
-    out.push('');
-  }
-
+  const cards = STAGES.reduce((n, s) => n + columns[s].length, 0);
   out.push('---');
-  out.push(
-    `_Epics: ${epics.length} · seeds in funnel: ${funnel.length} · status drift: ${drift.length}. Regenerate with \`node scripts/build-order.mjs\`._`
-  );
+  out.push(`_${cards} initiatives on the board. Regenerate with \`node scripts/build-order.mjs\`._`);
   out.push('');
   return out.join('\n');
 }
@@ -163,7 +131,10 @@ if (unfunded.length) {
 
 const content = render(rows);
 
-if (process.argv.includes('--check')) {
+if (LIVE) {
+  // Printed, never written: the committed file must stay docs-only (lock C3).
+  process.stdout.write(content);
+} else if (process.argv.includes('--check')) {
   const current = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
   // Ignore the "Generated <date>" line when comparing so a date-only diff isn't "stale".
   const norm = (s) => s.replace(/^> \*\*Generated \d{4}-\d{2}-\d{2} /m, '> **Generated DATE ');
