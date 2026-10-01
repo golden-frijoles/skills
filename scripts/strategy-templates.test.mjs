@@ -139,3 +139,11 @@ test('every coach credits its sources by name and URL', () => {
     assert.doesNotMatch(line[1], /references\//, name);
   }
 });
+
+// think-skills S3 (D10): the North Star coach names the one command that sends its file, pinned to the CLI version
+// that has it, and leaves running it to the user (the skill never writes to an engine itself).
+test('north-star names `gf north-star set`, pinned, as the user\'s step', () => {
+  const skill = read('north-star', 'SKILL.md');
+  assert.ok(skill.includes('`npx -y @golden-frijoles/cli@0.3.0 north-star set Roadmap/00-strategy/north-star.md`'));
+  assert.match(skill, /Do not run the command yourself\./);
+});

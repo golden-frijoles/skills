@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-01
+
+### Added
+
+- **The North Star coach names the command that sends its file:** `npx -y @golden-frijoles/cli@0.3.0 north-star set
+  Roadmap/00-strategy/north-star.md`. It's a dry run first, and `--yes` sends it. The coach tells the user to run it
+  and never writes to an engine itself. The command is new in `@golden-frijoles/cli` 0.3.0.
+
 ## [0.18.0] - 2026-10-01
 
 ### Added
