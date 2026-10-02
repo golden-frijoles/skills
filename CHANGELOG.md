@@ -7,6 +7,36 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-02
+
+### Added
+
+- **`epic-actuals.mjs` — what each epic consumed, measured from this machine's Claude Code transcripts** (finops S1).
+  `npx -y @golden-frijoles/kit epic-actuals --epic <slug>` prints sessions, tokens by kind, model and skill, and an
+  **≈ API $** (a list-price equivalent from one dated price table, `lib/model-prices.mjs`, read from the official
+  pricing page on 2026-10-02 — not what anyone was billed). No hook, receiver or credential: Claude Code already writes
+  every turn to `~/.claude/projects`. One message is counted once (its final streamed write), a resumed session's
+  copied history never moves a turn to another branch, subagents count toward their parent, and branch → epic is the
+  build view's own reading. Planning on `main` is reported as `unattributed`. Metrics only — no message content is ever
+  read into the index or printed. Codex/Agy/Vibe/Devin passes are not measured, and the report says so.
+- **The incremental usage index** in the main checkout's `.golden-frijoles/` (ignored): a second run reads only new
+  bytes, and totals outlive Claude Code's 30-day transcript cleanup.
+- **`--backfill [--write]`**: every shipped epic, measured or with the reason it could not be; `--write` stamps
+  `actual_usd`, `actual_mtok` and `actual_basis` on the measured ones.
+- **The build view's `$ Spend` row** on an epic branch, between Progress and Status: `≈$38 · 1.9M tok · 4 sessions ·
+  this machine`. It reads the summary file only; the mod refreshes it from `session.measure` (the bundled script, at
+  most once a minute, 10 s timeout). No summary → no row, never a zero. The refresh reads for at most 6 s and saves,
+  so a first scan on a slow machine completes over a few runs; until it does, the row stays hidden rather than low.
+  A backfill never overwrites an actual already written.
+
+### Changed
+
+- **The frontmatter contract reads decimals** (`38.42`) and declares six optional FinOps fields once —
+  `quote_low_usd`, `quote_high_usd`, `quote_basis`, `actual_usd`, `actual_mtok`, `actual_basis`; `doc-format` rejects a
+  non-numeric value.
+- **agy pinned to 1.2.15** (re-verified by `cross-agent-doctor agy --fix` on 2026-10-02, probed with
+  `gpt-oss-120b-medium` — the Gemini models were quota-capped).
+
 ## [0.21.0] - 2026-10-02
 
 ### Added

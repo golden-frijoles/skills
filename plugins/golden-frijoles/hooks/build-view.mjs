@@ -76,6 +76,27 @@ export function buildStateArgv(root, script = VENDOR_BUILD_STATE) {
   return ['node', script, '--json', '--offline', '--repo-root', root || '.'];
 }
 
+// ── The usage refresh (finops S1.3, D24) ─────────────────────────────────────────────────────────────────
+// The Spend row reads a summary file; `session.measure` keeps it fresh by running the BUNDLED epic-actuals.mjs (never
+// the open repo's — same rule as the resolver) at most once per USAGE_REFRESH_MS, with a timeout. A refresh is local
+// file reads only; it never touches the network (the opt-in engine push is a separate, later switch).
+export const VENDOR_EPIC_ACTUALS = decodeURIComponent(
+  new URL('./vendor/epic-actuals.mjs', import.meta.url).pathname
+).replace(/^\/([A-Za-z]:\/)/, '$1');
+export const USAGE_REFRESH_MS = 60_000;
+export const USAGE_TIMEOUT_MS = 10_000;
+
+/** The command the mod runs to refresh the usage index. The repo is only READ, via `--repo-root`. */
+export function epicActualsArgv(root, script = VENDOR_EPIC_ACTUALS) {
+  return ['node', script, '--refresh', '--repo-root', root || '.'];
+}
+
+/** Refresh when there is a repo and the last attempt (ok or not) is older than USAGE_REFRESH_MS. */
+export function shouldRefreshUsage(lastAt, root, now = Date.now()) {
+  if (!root) return false;
+  return !(Number.isFinite(lastAt) && now - lastAt < USAGE_REFRESH_MS);
+}
+
 // ── The band's rows (fix/build-view-band) ────────────────────────────────────────────────────────────
 // The view used to go to `$.ui.status`, a ONE-line status row: the resolver's newlines were drawn as U+FFFD
 // and everything past the terminal's width was cut off. It is now drawn as a band above the prompt, one
@@ -91,6 +112,7 @@ const LABEL_GLYPHS = {
   Story: '▸',
   Seed: '❧',
   Progress: '▰',
+  Spend: '$', // finops S1.3
   Status: '●',
   Open: '○',
   Also: '↳',

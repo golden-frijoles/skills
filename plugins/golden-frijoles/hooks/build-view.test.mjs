@@ -168,3 +168,34 @@ test('attempt turns a rejection into the fallback, and a failing onFail cannot u
     'fallback',
   );
 });
+
+// ── finops S1.3 ──────────────────────────────────────────────────────────────────────────────────────────────────────
+test('finops 1.3: the Spend row is a field with the $ glyph, plain tone, words untouched', () => {
+  const rows = view.bandRowsFrom('Currently building\n  Spend    ≈$38 · 1.9M tok · 4 sessions · this machine');
+  assert.deepEqual(rows[1], {
+    kind: 'field',
+    glyph: '$',
+    label: 'Spend',
+    value: '≈$38 · 1.9M tok · 4 sessions · this machine',
+    main: '≈$38 · 1.9M tok · 4 sessions · this machine',
+    meta: null,
+    risk: null,
+    tone: 'plain',
+  });
+});
+
+test('finops 1.3 (D24): the usage refresh runs the BUNDLED script, at most once a minute, only with a repo', () => {
+  assert.deepEqual(view.epicActualsArgv('/r', '/plugin/vendor/epic-actuals.mjs'), [
+    'node',
+    '/plugin/vendor/epic-actuals.mjs',
+    '--refresh',
+    '--repo-root',
+    '/r',
+  ]);
+  assert.match(view.VENDOR_EPIC_ACTUALS, /hooks\/vendor\/epic-actuals\.mjs$/);
+  assert.equal(existsSync(view.VENDOR_EPIC_ACTUALS), true, 'the bundle carries it');
+  assert.equal(view.shouldRefreshUsage(null, '/r', 1_000_000), true);
+  assert.equal(view.shouldRefreshUsage(1_000_000 - 30_000, '/r', 1_000_000), false);
+  assert.equal(view.shouldRefreshUsage(1_000_000 - 61_000, '/r', 1_000_000), true);
+  assert.equal(view.shouldRefreshUsage(null, null, 1_000_000), false, 'no repo root, nothing to refresh');
+});

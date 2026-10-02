@@ -898,3 +898,61 @@ test('S3.1: an online run whose gather FELL BACK to the snapshot never lifts the
     f.done();
   }
 });
+
+// ── finops S1.3 — the Spend row reads the usage summary, and only that (D5) ──────────────────────────────────────────
+const SUMMARY = (epics) =>
+  JSON.stringify({ basis: 'this machine', generated_at: '2026-10-02T00:00:00Z', epics });
+
+test('finops 1.3: on an epic branch with a summary row, Spend sits between Progress and Status', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.golden-frijoles', 'usage-summary.json'),
+      SUMMARY({ 'arranged-only': { usd: 38.42, usd_known: true, mtok: 1.9, sessions: 4 } })
+    );
+    const lines = renderLines(
+      resolveBuildState({ root: f.root, offline: true, gh: noGh, board: false, elsewhere: false })
+    );
+    const at = (label) => lines.findIndex((l) => l.startsWith(`  ${label}`));
+    assert.equal(lines[at('Spend')], '  Spend    ≈$38 · 1.9M tok · 4 sessions · this machine');
+    assert.equal(at('Spend'), at('Progress') + 1);
+    assert.equal(at('Status'), at('Spend') + 1);
+  } finally {
+    f.done();
+  }
+});
+
+test('finops 1.3: no summary, or no row for this epic, renders no Spend line — never a zero', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only');
+    const state = () =>
+      resolveBuildState({ root: f.root, offline: true, gh: noGh, board: false, elsewhere: false });
+    assert.equal(state().spend, null);
+    assert.ok(!renderLines(state()).some((l) => l.startsWith('  Spend')));
+    mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+    writeFileSync(join(f.root, '.golden-frijoles', 'usage-summary.json'), SUMMARY({ other: { usd: 5 } }));
+    assert.equal(state().spend, null);
+    writeFileSync(join(f.root, '.golden-frijoles', 'usage-summary.json'), '{ torn');
+    assert.equal(state().spend, null, 'a torn file is no row, not a throw');
+    writeFileSync(
+      join(f.root, '.golden-frijoles', 'usage-summary.json'),
+      JSON.stringify({ complete: false, epics: { 'arranged-only': { usd: 1, mtok: 1, sessions: 1 } } })
+    );
+    assert.equal(state().spend, null, 'an incomplete first scan shows no row, never an understated one');
+  } finally {
+    f.done();
+  }
+});
+
+test('finops 1.3: a lower bound reads ≥, and cents show only under $1', async () => {
+  const { dollars, spendValue } = await import('./build-state.mjs');
+  assert.equal(dollars(38.42, false), '≥$38');
+  assert.equal(dollars(0.65), '≈$0.65');
+  assert.equal(
+    spendValue({ usd: 3, usd_known: true, mtok: 7.9, sessions: 1, basis: 'this machine' }),
+    '≈$3 · 7.9M tok · 1 session · this machine'
+  );
+});

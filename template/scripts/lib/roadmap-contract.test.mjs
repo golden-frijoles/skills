@@ -8,6 +8,8 @@ import {
   validateEpicFrontmatter,
   validateSprintFrontmatter,
   SPRINT_FIELDS,
+  FINOPS_FIELDS,
+  validateFinopsFields,
 } from './roadmap-contract.mjs';
 
 const sprintDoc = (fields, body = '# E — Sprint 1: One\n') => `---\n${fields}\n---\n${body}`;
@@ -221,4 +223,64 @@ test('a bare `stories:` (null) or a scalar is not a list, and fails (golden-bean
       JSON.stringify(v)
     );
   }
+});
+
+// ── finops D6/D17 — decimals, and the six quote/actual fields ──────────────────────────────────────
+
+test('finops D17: a bare decimal reads as a number and writes back bare; an integer stays an integer', () => {
+  const p = parseDocFrontmatter(
+    '---\nactual_usd: 38.42\nactual_mtok: 1.9 # tokens\nbuild_order: 40\nv: "1.5"\n---\n'
+  );
+  assert.equal(p.error, null);
+  assert.equal(p.data.actual_usd, 38.42);
+  assert.equal(p.data.actual_mtok, 1.9);
+  assert.equal(p.data.build_order, 40);
+  assert.equal(p.data.v, '1.5', 'a quoted decimal stays a string');
+  assert.equal(formatScalar(38.42), '38.42');
+  assert.equal(
+    formatScalar('1.5'),
+    '"1.5"',
+    'a decimal-looking STRING is quoted so it reads back as a string'
+  );
+  const back = parseDocFrontmatter(`---\n${serializeFields({ a: 38.42, b: '1.5' }, ['a', 'b'])}\n---\n`);
+  assert.deepEqual(back.data, { a: 38.42, b: '1.5' });
+});
+
+test('finops D6: the six fields are declared once, and each bad value is named', () => {
+  assert.deepEqual(FINOPS_FIELDS, [
+    'quote_low_usd',
+    'quote_high_usd',
+    'quote_basis',
+    'actual_usd',
+    'actual_mtok',
+    'actual_basis',
+  ]);
+  assert.deepEqual(validateFinopsFields({}), [], 'absent is fine — an unquoted epic is not a zero');
+  assert.deepEqual(
+    validateFinopsFields({
+      quote_low_usd: 30,
+      quote_high_usd: 55,
+      quote_basis: 'M, n=6, p25–p75',
+      actual_usd: 38.42,
+      actual_mtok: 1.9,
+      actual_basis: 'this machine',
+    }),
+    []
+  );
+  const rules = (fm) => validateFinopsFields(fm).map((o) => o.detail);
+  assert.match(rules({ actual_usd: 'lots' }).join(), /actual_usd: "lots" is not a number/);
+  assert.match(rules({ actual_mtok: -1 }).join(), /actual_mtok: "-1"/);
+  assert.match(rules({ quote_basis: 5 }).join(), /quote_basis: "5" is not a string/);
+  assert.match(rules({ quote_low_usd: 60, quote_high_usd: 55 }).join(), /above quote_high_usd/);
+  assert.match(rules({ quote_low_usd: 60 }).join(), /needs both/);
+});
+
+test('finops D6: validateEpicFrontmatter carries the FinOps check', () => {
+  const md =
+    '---\nstatus: shipped\ntitle: T\narea: 09-x\nrisk: low\ntype: feature\nphase: Shipped\nsprints_total: 1\nstories_total: 1\nactual_usd: nope\n---\n';
+  const offenses = validateEpicFrontmatter(parseDocFrontmatter(md));
+  assert.deepEqual(
+    offenses.map((o) => o.rule),
+    ['contract-finops-invalid']
+  );
 });

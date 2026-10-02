@@ -165,9 +165,10 @@ const TYPES_KNOWN = ['feature', 'spike', 'bug', 'chore'];
 
 /**
  * What the branch names, longest reading first: an epic, else a seed (a seed that carries `epic:` is that
- * epic — once scaffolded the seed is funnel-only), else null.
+ * epic — once scaffolded the seed is funnel-only), else null. Exported for epic-actuals.mjs (finops D16): spend is
+ * attributed to an epic by exactly this reading of a branch, never a second one.
  */
-function resolveTarget(root, branch) {
+export function resolveTarget(root, branch) {
   for (const c of branchCandidates(branch)) {
     const epic = readEpic(root, c.slug);
     if (epic) return { kind: 'epic', epic, sprint: c.sprint, match: c.exact ? 'exact' : 'prefix' };
@@ -257,6 +258,57 @@ export function prFromFacts(facts, branch) {
 }
 
 const notInFlight = (reason, extra = {}) => ({ in_flight: false, reason, ...extra });
+
+// ── Spend (finops S1.3, D5) ─────────────────────────────────────────────────────────────────────────────
+// The band only READS: `<main checkout>/.golden-frijoles/usage-summary.json`, written by epic-actuals.mjs (refreshed
+// by the mod off the hot path, and by any CLI run). Nothing here scans a transcript. No summary, or no row for this
+// epic, means no Spend line — never a zero.
+export const USAGE_SUMMARY = ['.golden-frijoles', 'usage-summary.json'];
+
+/** The main checkout of `root` (the parent of git's common dir) — where the usage summary lives (finops D19). */
+function mainCheckoutOf(git, root) {
+  const common = tryGit(git, ['rev-parse', '--path-format=absolute', '--git-common-dir']);
+  if (!common) return root;
+  return /[\\/]\.git$/.test(common) ? dirname(common) : root;
+}
+
+/** This epic's row of the usage summary, or null. Never throws. */
+export function spendFor(root, git, slug) {
+  try {
+    const path = join(mainCheckoutOf(git, root), ...USAGE_SUMMARY);
+    if (!existsSync(path)) return null;
+    const summary = JSON.parse(readFileSync(path, 'utf8'));
+    // A first scan that ran out of its time budget is not a total yet: no row until it completes, never a low number.
+    if (summary?.complete === false) return null;
+    const row = summary?.epics?.[slug];
+    if (!row || typeof row.usd !== 'number') return null;
+    return {
+      usd: row.usd,
+      usd_known: row.usd_known !== false,
+      mtok: typeof row.mtok === 'number' ? row.mtok : null,
+      sessions: Number.isInteger(row.sessions) ? row.sessions : null,
+      basis: typeof summary.basis === 'string' ? summary.basis : 'this machine',
+      generated_at: summary.generated_at ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** `≈$38` (a lower bound reads `≥$38`: some turns could not be priced — finops D4). */
+export function dollars(usd, known = true) {
+  const sign = known ? '≈' : '≥';
+  return usd > 0 && usd < 1 ? `${sign}$${usd.toFixed(2)}` : `${sign}$${Math.round(usd)}`;
+}
+
+/** The Spend line's value (finops S1.3): `≈$38 · 1.9M tok · 4 sessions · this machine`. */
+export function spendValue(spend) {
+  const parts = [dollars(spend.usd, spend.usd_known)];
+  if (spend.mtok !== null) parts.push(`${spend.mtok}M tok`);
+  if (spend.sessions !== null) parts.push(`${spend.sessions} session${spend.sessions === 1 ? '' : 's'}`);
+  parts.push(spend.basis);
+  return parts.join(' · ');
+}
 
 /** Does `text` name `slug` as a whole slug — `aws` in "aws S1.1", but not inside "aws-s3 S1.1"? */
 export function namesSlug(text, slug) {
@@ -596,6 +648,7 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     kind: 'epic',
     branch,
     branch_match: target.match,
+    spend: spendFor(root, git, epic.slug),
     lifecycle: epic.lifecycle,
     epic: {
       slug: epic.slug,
@@ -744,6 +797,7 @@ export function renderLines(state) {
   const storyPart = `Story ${progress.story ?? '?'} of ${progress.stories}`;
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
   lines.push(`${pad('Progress')}${storyPart} · ${sprintPart}`);
+  if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend)}`);
   lines.push(`${pad('Status')}${statusValue(state)}`);
   return [...lines, ...also, ...boardLines(state, pad)];
 }

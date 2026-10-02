@@ -34,7 +34,8 @@ export const ENTRY = 'build-state.mjs';
 // installed plugin cannot reach `template/scripts/` any more than the hook can. Each bundle is one entry plus its
 // real import closure, written next to the code that imports it.
 export const BUNDLES = Object.freeze([
-  { name: 'the build-view bundle', entry: ENTRY, vendorDir: VENDOR_DIR, fix: 'hooks/vendor/' },
+  // + the usage refresh the mod runs on session.measure (finops S1.3, D24) — an entry of its own, same rule.
+  { name: 'the build-view bundle', entry: ENTRY, also: ['epic-actuals.mjs'], vendorDir: VENDOR_DIR, fix: 'hooks/vendor/' },
   {
     name: 'the groom kickoff bundle',
     entry: 'lib/epic-kickoff.mjs',

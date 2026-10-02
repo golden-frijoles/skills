@@ -27,9 +27,10 @@
 // Deliberately small, so a zero-dependency parser owns it completely: top-level `key: scalar` lines
 // (an unquoted value may carry a trailing ` # comment`), whole-line `#` comments at any indent, and a
 // top-level `key:` followed by a list of flat maps (`  - k: v` then `    k: v`). A scalar is `null`,
-// `~` or empty (→ null), `[]` (an empty list), an integer, a double-quoted JSON string, a single-quoted
-// YAML string, or a bare string; any of them may carry a trailing ` # comment`. Booleans and floats are
-// not in the subset (no contract field uses one). Anything else is a parse error, not guessed around.
+// `~` or empty (→ null), `[]` (an empty list), an integer, a decimal (`38.42`, finops D17 — the FinOps
+// fields carry dollars), a double-quoted JSON string, a single-quoted YAML string, or a bare string; any of
+// them may carry a trailing ` # comment`. Booleans are not in the subset (no contract field uses one), and
+// neither are exponents or a bare `.5`. Anything else is a parse error, not guessed around.
 
 export const PHASES = ['Shaping', 'Locking architecture', 'Building', 'Verifying', 'In review', 'Shipped'];
 export const STORY_STATUSES = ['planned', 'in-progress', 'done'];
@@ -39,6 +40,53 @@ export const TYPES = ['feature', 'spike', 'bug', 'chore'];
 export const EPIC_FIELDS = ['title', 'area', 'risk', 'type', 'phase', 'sprints_total', 'stories_total'];
 export const SPRINT_FIELDS = ['epic', 'sprint', 'title', 'risk', 'phase', 'stories_total', 'stories'];
 export const STORY_FIELDS = ['id', 'title', 'as_a', 'i_want', 'so_that', 'risk', 'status'];
+
+// finops D6/D17 — an epic's quote (written at grooming) and its actual (stamped at close), declared ONCE here.
+// All optional: an epic scaffolded before FinOps has none, and an absent field is never a zero (D4). The numeric
+// ones are numbers >= 0 or null; a `*_basis` says where the number came from, in words.
+export const FINOPS_NUMERIC_FIELDS = ['quote_low_usd', 'quote_high_usd', 'actual_usd', 'actual_mtok'];
+export const FINOPS_BASIS_FIELDS = ['quote_basis', 'actual_basis'];
+export const FINOPS_FIELDS = [
+  'quote_low_usd',
+  'quote_high_usd',
+  'quote_basis',
+  'actual_usd',
+  'actual_mtok',
+  'actual_basis',
+];
+
+/** The FinOps fields of an epic's frontmatter data → offenses (`contract-finops-invalid`). Absent/null is fine. */
+export function validateFinopsFields(fm) {
+  const offenses = [];
+  for (const key of FINOPS_NUMERIC_FIELDS) {
+    const v = fm[key];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 0)
+      offenses.push({
+        rule: 'contract-finops-invalid',
+        detail: `${key}: "${v}" is not a number >= 0 (or null)`,
+      });
+  }
+  for (const key of FINOPS_BASIS_FIELDS) {
+    const v = fm[key];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== 'string')
+      offenses.push({ rule: 'contract-finops-invalid', detail: `${key}: "${v}" is not a string (or null)` });
+  }
+  const lo = fm.quote_low_usd;
+  const hi = fm.quote_high_usd;
+  if (typeof lo === 'number' && typeof hi === 'number' && lo > hi)
+    offenses.push({
+      rule: 'contract-finops-invalid',
+      detail: `quote_low_usd ${lo} is above quote_high_usd ${hi}`,
+    });
+  if ((typeof lo === 'number') !== (typeof hi === 'number'))
+    offenses.push({
+      rule: 'contract-finops-invalid',
+      detail: 'a quote needs both quote_low_usd and quote_high_usd',
+    });
+  return offenses;
+}
 
 // A story id names its sprint: S<sprint>.<ordinal>. The commit convention D2 derives from uses it.
 export const STORY_ID_RE = /^S(\d+)\.(\d+)$/;
@@ -58,6 +106,9 @@ function parseScalar(raw, where) {
   if (v === '' || v === 'null' || v === '~') return null;
   if (v === '[]') return [];
   if (/^-?\d+$/.test(v)) return Number(v);
+  // finops D17 — decimals. The corpus held no bare decimal frontmatter value when this was added (2026-10-02),
+  // so no existing reading changed.
+  if (/^-?\d+\.\d+$/.test(v)) return Number(v);
   if (v.startsWith('"')) {
     try {
       return JSON.parse(v);
@@ -139,7 +190,8 @@ export function formatScalar(v) {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'number') return String(v);
   const s = String(v);
-  if (BARE_SAFE.test(s) && !/^-?\d+$/.test(s) && !RESERVED.has(s.toLowerCase()) && !s.endsWith(' ')) return s;
+  if (BARE_SAFE.test(s) && !/^-?\d+(\.\d+)?$/.test(s) && !RESERVED.has(s.toLowerCase()) && !s.endsWith(' '))
+    return s;
   return JSON.stringify(s);
 }
 
@@ -203,6 +255,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
     if (fm[key] != null && !isInt(fm[key]))
       offenses.push({ rule: 'contract-total-invalid', detail: `${key}: "${fm[key]}" is not a whole number` });
   }
+  offenses.push(...validateFinopsFields(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({
       rule: 'contract-total-mismatch',

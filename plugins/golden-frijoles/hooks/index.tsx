@@ -21,9 +21,23 @@
 // band moved off it). It advises and never acts: nothing here compacts, clears or ends a session (D5). Each
 // verdict CHANGE appends a row to `.golden-frijoles/session-budget.jsonl`, ignored by its own `.gitignore` (D7).
 //
+// THE SPEND ROW (finops S1.3, D5/D24): the resolver prints it from `.golden-frijoles/usage-summary.json`; this module
+// only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
+//
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
 import type { Register } from 'claude-code';
-import { attempt, bandRowsFrom, buildStateArgv, progressOf, repoFactsFrom, shouldRefresh, statusTextFrom } from './build-view.mjs';
+import {
+  USAGE_TIMEOUT_MS,
+  attempt,
+  bandRowsFrom,
+  buildStateArgv,
+  epicActualsArgv,
+  progressOf,
+  repoFactsFrom,
+  shouldRefresh,
+  shouldRefreshUsage,
+  statusTextFrom,
+} from './build-view.mjs';
 import {
   LOG_FILE,
   LOG_GITIGNORE,
@@ -49,6 +63,7 @@ let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not
 let loggedVerdict: string | null = null;
 let repoRoot: string | null = null; // from turn.start's rev-parse, so the log lands at the repo root
 let warnedNoState = false; // log an engine without `$.state` once per load, not on every draw
+let usageRefreshedAt: number | null = null; // finops D24 — the last usage refresh attempt, ok or not
 
 const lineNow = () => {
   const figures = { ...(measured ?? {}), questionsWaiting };
@@ -110,6 +125,19 @@ export const register: Register = (on) => {
       }
     } catch (err) {
       $.ui.log(`session line: ${String(err)}`);
+    }
+    // finops S1.3 (D24) — keep the Spend row's summary fresh, off the hot path: the BUNDLED epic-actuals.mjs, at most
+    // once a minute, timeout-bound. A slow or failed run logs and leaves the last row; a good one drops the cached view
+    // so the next turn.start re-resolves with the new figure.
+    if (shouldRefreshUsage(usageRefreshedAt, repoRoot)) {
+      usageRefreshedAt = Date.now();
+      try {
+        const run = await $.process.run(epicActualsArgv(repoRoot as string), { timeoutMs: USAGE_TIMEOUT_MS });
+        $.ui.log(`usage: refreshed (${run.exitCode === 0 ? 'ok' : `exit ${run.exitCode}`})`);
+        if (run.exitCode === 0) await $.store.set(STORE_KEY, null);
+      } catch (err) {
+        $.ui.log(`usage: ${String(err)}`);
+      }
     }
     return next(e);
   });
