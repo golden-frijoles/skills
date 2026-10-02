@@ -115,10 +115,10 @@ export function readExtract(run = spawnSync) {
 }
 
 /** The project's ingest key: `SELF_PROJECT_API_KEY` first, else the SDK's `GROWTH_ENGINE_API_KEY`. */
-// ⚠️ ORDER MATTERS (fresh review, #227): in this repo `GROWTH_ENGINE_API_KEY` already names ANOTHER project's key (the
-// Miyagi sync scripts), so preferring it would push this roadmap into a customer's project from any shell that has it
-// exported. `SELF_PROJECT_API_KEY` — the name that only ever means "this project's own key" — wins; a stranger who never
-// sets it uses the SDK's name.
+// ⚠️ ORDER MATTERS (fresh review, #227): a repo that ALSO syncs data from another project can hold that other project's
+// key in `GROWTH_ENGINE_API_KEY` (the SDK's name for "the engine key"), so preferring it would push this roadmap into
+// someone else's project from any shell that has it exported. `SELF_PROJECT_API_KEY` — the name that only ever means
+// "this project's own key" — wins; a project that never sets it uses the SDK's name.
 export const apiKeyFrom = (env = process.env) =>
   env.SELF_PROJECT_API_KEY || env.GROWTH_ENGINE_API_KEY || null;
 

@@ -185,7 +185,7 @@ test(
 
 test("apiKeyFrom: this project's own SELF_PROJECT_API_KEY first, the SDK's name second", async () => {
   const { apiKeyFrom } = await import('./roadmap-push.mjs');
-  // This project's own key wins: here GROWTH_ENGINE_API_KEY is ANOTHER project's (the Miyagi sync scripts).
+  // This project's own key wins: GROWTH_ENGINE_API_KEY can hold ANOTHER project's key in a repo that syncs from one.
   assert.equal(apiKeyFrom({ GROWTH_ENGINE_API_KEY: 'a', SELF_PROJECT_API_KEY: 'b' }), 'b');
   assert.equal(
     apiKeyFrom({ GROWTH_ENGINE_API_KEY: 'a' }),
