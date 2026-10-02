@@ -39,7 +39,8 @@ export function renderBoardText(rows, facts = { mode: 'docs' }) {
     out.push(`${stage} (${list.length})`);
     const shown = stage === 'Shipped' ? list.slice(0, SHIPPED_SHOWN) : list;
     for (const row of shown) out.push(cardLine(row));
-    if (stage === 'Shipped' && list.length > shown.length) out.push(`  … and ${list.length - shown.length} more`);
+    if (stage === 'Shipped' && list.length > shown.length)
+      out.push(`  … and ${list.length - shown.length} more`);
     if (list.length === 0) out.push('  —');
     out.push('');
   }

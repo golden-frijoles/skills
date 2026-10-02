@@ -459,7 +459,11 @@ const prOf = (pr) =>
  * Build the rows. `facts` is what lib/stage-facts.mjs gathered (`{ branches, prs, origin }`); the default is no
  * facts, so an import — doc-hygiene, pmo-report, a spec — never touches the network or the snapshot.
  */
-export function buildRows({ facts = { branches: [], prs: [], origin: null }, root = REPO, dates = true } = {}) {
+export function buildRows({
+  facts = { branches: [], prs: [], origin: null },
+  root = REPO,
+  dates = true,
+} = {}) {
   const ROADMAP = join(root, 'Roadmap');
   const AREA_NAMES = areaNames(ROADMAP);
   // `dates: false` skips the per-row `git log` (one per doc) — the build view runs inside a 5-second hook budget and
@@ -692,7 +696,8 @@ if (isMain) {
   const rows = buildRows({ facts });
   if (sink === null) writeSync(1, JSON.stringify(rows, null, 2) + '\n');
   else if (sink === 'terminal') writeSync(1, renderBoardText(rows, facts));
-  else if (sink === 'hub') process.exitCode = reportPush(await pushRoadmap(rows, { root: REPO }), rows.length);
+  else if (sink === 'hub')
+    process.exitCode = reportPush(await pushRoadmap(rows, { root: REPO }), rows.length);
   else {
     // Notion is opt-in (template/optional/notion/): a project that wants it copies roadmap-to-notion.mjs beside this.
     const notion = join(dirname(fileURLToPath(import.meta.url)), 'roadmap-to-notion.mjs');
@@ -703,9 +708,13 @@ if (isMain) {
       );
       process.exit(2);
     }
-    const r = spawnSync(process.execPath, [notion, '--sync', `--${mode === 'live' ? 'live' : mode === 'docs' ? 'docs-only' : 'offline'}`], {
-      stdio: 'inherit',
-    });
+    const r = spawnSync(
+      process.execPath,
+      [notion, '--sync', `--${mode === 'live' ? 'live' : mode === 'docs' ? 'docs-only' : 'offline'}`],
+      {
+        stdio: 'inherit',
+      }
+    );
     process.exitCode = r.status ?? 1;
   }
 }

@@ -8,13 +8,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const LIBS = ['project-root.mjs', 'stage.mjs', 'work-branch.mjs', 'stage-facts.mjs', 'epic-kickoff.mjs'];
 
 function epic(root, macro, slug, status, order) {
   const dir = join(root, 'Roadmap', macro, slug);
@@ -34,8 +41,13 @@ function fixture() {
   mkdirSync(join(root, 'scripts', 'lib'), { recursive: true });
   for (const f of ['build-order.mjs', 'roadmap-extract.mjs'])
     writeFileSync(join(root, 'scripts', f), readFileSync(join(HERE, f)));
-  for (const lib of LIBS)
-    writeFileSync(join(root, 'scripts', 'lib', lib), readFileSync(join(HERE, 'lib', lib)));
+  // The extractor's whole import closure — every lib module, and the push it imports. A hand-kept list of libs broke
+  // this fixture twice as the extractor grew (board-sinks-and-scrumban S1, S3), so the closure is copied, not listed.
+  for (const name of readdirSync(join(HERE, 'lib')).filter(
+    (n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')
+  ))
+    writeFileSync(join(root, 'scripts', 'lib', name), readFileSync(join(HERE, 'lib', name)));
+  writeFileSync(join(root, 'scripts', 'roadmap-push.mjs'), readFileSync(join(HERE, 'roadmap-push.mjs')));
   epic(root, '02-commercial', 'late-epic', 'scaffolded', 40);
   epic(root, '02-commercial', 'early-epic', 'scaffolded', 18);
   epic(root, '09-platform-infra', 'done-epic', 'shipped', 3);

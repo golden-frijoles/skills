@@ -228,7 +228,8 @@ jobs:
           cp template/scripts/roadmap-extract.mjs template/optional/notion/roadmap-to-notion.mjs "$work/scripts/"
           cp template/scripts/lib/project-root.mjs "$work/scripts/lib/" # the extractor resolves the project through it
           # …and computes each row's stage through these (board-sinks-and-scrumban D13/D14/D17).
-          cp template/scripts/lib/stage.mjs template/scripts/lib/work-branch.mjs template/scripts/lib/stage-facts.mjs template/scripts/lib/epic-kickoff.mjs "$work/scripts/lib/"
+          # The extractor's whole closure (every lib module + the push it imports): a hand list broke this step as it grew.
+          cp template/scripts/lib/*.mjs template/scripts/roadmap-push.mjs "$work/scripts/lib/" && mv "$work/scripts/lib/roadmap-push.mjs" "$work/scripts/"
           test "$(PR_ACTION=opened PR_DRAFT=true node "$work/scripts/roadmap-to-notion.mjs" --lifecycle)" = "In progress"
           test "$(PR_ACTION=closed PR_DRAFT=false node "$work/scripts/roadmap-to-notion.mjs" --lifecycle)" = "clear"
           ( cd "$work" && node scripts/roadmap-to-notion.mjs --pr some-epic --dry --status "In review" > /dev/null )
@@ -340,7 +341,8 @@ jobs:
           printf -- '---\nstatus: ready\nepic: 09-platform-infra/ci-smoke\n---\n# CI smoke\n' > "$work/Roadmap/00-ideas/seeds/ci-smoke.md"
           cp template/scripts/doc-format.mjs template/scripts/roadmap-extract.mjs template/scripts/doc-format.enforced.json "$work/scripts/"
           cp template/scripts/lib/roadmap-contract.mjs template/scripts/lib/project-root.mjs "$work/scripts/lib/"
-          cp template/scripts/lib/stage.mjs template/scripts/lib/work-branch.mjs template/scripts/lib/stage-facts.mjs template/scripts/lib/epic-kickoff.mjs "$work/scripts/lib/"
+          # The extractor's whole closure (every lib module + the push it imports): a hand list broke this step as it grew.
+          cp template/scripts/lib/*.mjs template/scripts/roadmap-push.mjs "$work/scripts/lib/" && mv "$work/scripts/lib/roadmap-push.mjs" "$work/scripts/"
           ( cd "$work" && node scripts/doc-format.mjs --check )
           echo "doc-format: the scaffolder's own output is clean."
           rm -rf "$work"

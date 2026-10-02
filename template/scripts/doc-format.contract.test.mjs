@@ -5,7 +5,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  copyFileSync,
+  rmSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,14 +82,13 @@ function repo({ readme = README(EPIC_FM), sprint = SPRINT(SPRINT_FM) } = {}) {
   );
   // roadmap-extract.mjs resolves the project through lib/project-root.mjs (golden-frijoles-plugin D2) and computes
   // each row's stage through the board-sinks-and-scrumban libs (D13/D14/D17).
-  for (const lib of [
-    'project-root.mjs',
-    'stage.mjs',
-    'work-branch.mjs',
-    'stage-facts.mjs',
-    'epic-kickoff.mjs',
-  ])
-    copyFileSync(join(HERE, 'lib', lib), join(root, 'scripts', 'lib', lib));
+  // The extractor's whole import closure — every lib module, and the push it imports. A hand-kept list of libs broke
+  // this fixture twice as the extractor grew (board-sinks-and-scrumban S1, S3), so the closure is copied, not listed.
+  for (const name of readdirSync(join(HERE, 'lib')).filter(
+    (n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')
+  ))
+    writeFileSync(join(root, 'scripts', 'lib', name), readFileSync(join(HERE, 'lib', name)));
+  writeFileSync(join(root, 'scripts', 'roadmap-push.mjs'), readFileSync(join(HERE, 'roadmap-push.mjs')));
   writeFileSync(join(root, 'scripts', 'doc-format.enforced.json'), '{ "enforced": ["Roadmap/"] }\n');
   const epic = join(root, 'Roadmap', '09-platform-infra', 'fixture-epic');
   mkdirSync(epic, { recursive: true });
