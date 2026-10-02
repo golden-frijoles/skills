@@ -290,7 +290,8 @@ export function boardState({ root, facts, state, now = new Date() }) {
   return {
     stage: row ? row.stage : null,
     stage_source: row ? row.stage_source : null,
-    stage_age: facts?.mode === 'live' ? 'just now' : facts?.generated_at ? ageOf(facts.generated_at, now) : null,
+    stage_age:
+      facts?.mode === 'live' ? 'just now' : facts?.generated_at ? ageOf(facts.generated_at, now) : null,
     facts_mode: facts?.mode ?? 'docs',
     board: {
       building: cols.Building.length,
@@ -678,7 +679,8 @@ export function statusValue(state) {
       : state.facts_mode === 'snapshot'
         ? `snapshot, ${state.stage_age ?? 'age unknown'}`
         : 'docs only, no snapshot yet';
-  const phase = state.phase_written && state.phase_written !== state.stage ? ` · phase ${state.phase_written}` : '';
+  const phase =
+    state.phase_written && state.phase_written !== state.stage ? ` · phase ${state.phase_written}` : '';
   return `${state.stage} · from ${source} (${age})${phase}`;
 }
 
@@ -686,7 +688,9 @@ export function statusValue(state) {
 function boardLines(state, pad) {
   const b = state.board;
   if (!b) return [];
-  const next = b.next ? ` · next to pull: ${clip(b.next.name, 40)}${b.next.build_order !== null ? ` (#${b.next.build_order})` : ''}` : '';
+  const next = b.next
+    ? ` · next to pull: ${clip(b.next.name, 40)}${b.next.build_order !== null ? ` (#${b.next.build_order})` : ''}`
+    : '';
   const counts = `Building ${b.building} · QA ${b.qa} · Ready to build ${b.ready}${next}`;
   return [`${pad('Board')}${counts}`, ...(b.url ? [`${pad('')}↗ ${b.url}`] : [])];
 }
