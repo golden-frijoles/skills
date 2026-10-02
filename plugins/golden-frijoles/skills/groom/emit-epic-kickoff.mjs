@@ -46,6 +46,7 @@ import {
   epicKickoffFromDir,
   EPIC_KICKOFF_TEMPLATE,
 } from './vendor/lib/epic-kickoff.mjs';
+import { wipWarning } from './vendor/lib/wip.mjs';
 export {
   sprintNumFromFilename,
   listSprintFiles,
@@ -119,6 +120,10 @@ function main() {
         `  (Emitting the epic-mode prompt anyway.)\n\n`
     );
   }
+
+  // S3.4 — scrumban's pull as advice: one line on stderr when Building is at its WIP limit; the kickoff still prints.
+  const wip = wipWarning({ root: repoRoot, excluding: slug });
+  if (wip) process.stderr.write(`${wip}\n\n`);
 
   process.stdout.write(built.kickoff);
 }

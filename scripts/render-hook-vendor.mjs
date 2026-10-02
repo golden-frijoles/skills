@@ -38,6 +38,9 @@ export const BUNDLES = Object.freeze([
   {
     name: 'the groom kickoff bundle',
     entry: 'lib/epic-kickoff.mjs',
+    // + the WIP advice the kickoff prints (S3.4). A second ENTRY, not an import of the builder: the extractor imports
+    // the builder, and wip imports the extractor, so one file importing the other would be a cycle.
+    also: ['lib/wip.mjs'],
     vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor'),
     fix: 'skills/groom/vendor/',
   },
@@ -49,6 +52,12 @@ export function vendorManifest({ sourceDir = SOURCE_DIR, read = readFileSync, ex
   if (broken.length)
     throw new Error(`${entry}'s closure has a broken import: ${broken.map((b) => `${b.from} → ${b.to}`).join(', ')}`);
   return [entry, ...files].sort();
+}
+
+/** A bundle's files: the union of its entries' closures (`entry` plus any `also`). */
+export function bundleManifest(bundle, opts = {}) {
+  const all = [bundle.entry, ...(bundle.also ?? [])].flatMap((entry) => vendorManifest({ ...opts, entry }));
+  return [...new Set(all)].sort();
 }
 
 function listFiles(dir, base = dir) {
@@ -91,7 +100,7 @@ const isMain = (() => {
 if (isMain) {
   let failed = false;
   for (const bundle of BUNDLES) {
-    const manifest = vendorManifest({ entry: bundle.entry });
+    const manifest = bundleManifest(bundle);
     if (process.argv.includes('--check')) {
       const { stale, extra } = vendorDrift({ manifest, vendorDir: bundle.vendorDir });
       if (stale.length || extra.length) {

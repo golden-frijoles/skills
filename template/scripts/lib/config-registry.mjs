@@ -50,6 +50,23 @@ export const REGISTRY = Object.freeze([
     choices: ['terminal', 'golden-frijoles', 'notion'],
     question: 'Where should the board live?',
   },
+  // board-sinks-and-scrumban D22 — scrumban's pull, as advice: the kickoff warns when Building is at its limit, the Hub
+  // board says when a column is over. `null` = no limits, so nothing warns until a project sets them.
+  {
+    key: 'board.wip',
+    module: 'Plan',
+    askWhen: 'never-yet',
+    default: null,
+    question: 'How many initiatives may be Building and in QA at once (e.g. { "Building": 2, "QA": 3 })? Advice only.',
+  },
+  // The project's Hub base (https://…/hub/<slug>): the build view links each card to it. `null` = no link, no error.
+  {
+    key: 'board.hubUrl',
+    module: 'Plan',
+    askWhen: 'never-yet',
+    default: null,
+    question: "Your project's Golden Frijoles Hub URL (https://goldenfrijoles.com/hub/<project>), for the build view's board link?",
+  },
   {
     key: 'verify.depth',
     module: 'Build',

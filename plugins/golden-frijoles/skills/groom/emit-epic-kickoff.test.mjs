@@ -169,3 +169,32 @@ test('S1.4 — the kickoff STARTS with pushing the epic branch (board-sinks-and-
     '`git switch -c feat/demo origin/main && git push -u origin feat/demo` (resuming? `git switch feat/demo`).'
   );
 });
+
+test('S3.4 — at the WIP limit the CLI warns in ONE stderr line and still prints the whole kickoff (advice, never a gate)', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, dirname } = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const root = mkdtempSync(join(tmpdir(), 'kickoff-wip-'));
+  for (const slug of ['busy', 'next']) {
+    const dir = join(root, 'Roadmap', '02-commercial', slug);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'README.md'), `---\nstatus: scaffolded\nslug: ${slug}\n---\n\n# Epic: Epic ${slug}\n\n**Risk:** low\n`);
+    writeFileSync(join(dir, 'sprint-1.md'), `# Epic ${slug} — Sprint 1: One\n\n**Status:** ⬜ not started\n\n### Story 1.1 — A\n`);
+  }
+  writeFileSync(join(root, 'golden-frijoles.config.json'), JSON.stringify({ board: { wip: { Building: 1 } } }));
+  mkdirSync(join(root, '.golden-frijoles'));
+  writeFileSync(
+    join(root, '.golden-frijoles', 'board.json'),
+    JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/busy'], prs: [] })
+  );
+  const cli = join(dirname(fileURLToPath(import.meta.url)), 'emit-epic-kickoff.mjs');
+  const r = spawnSync(process.execPath, [cli, '--epic', 'next', '--repo-root', root], { encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  const warnings = r.stderr.split('\n').filter((l) => l.startsWith('⚠ WIP'));
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Building is at its limit of 1 — Epic busy/);
+  assert.match(r.stdout, /^Start by pushing the epic branch/);
+  assert.match(r.stdout, /git switch -c feat\/next origin\/main/);
+});
