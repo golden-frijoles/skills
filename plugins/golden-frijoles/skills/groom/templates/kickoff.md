@@ -1,5 +1,6 @@
 Start by pushing this sprint's branch, before anything else — it is what moves the card to Building on the board:
-`git switch -c feat/{{SLUG}}-s{{N}} origin/main && git push -u origin feat/{{SLUG}}-s{{N}}` (resuming? `git switch feat/{{SLUG}}-s{{N}}`).
+`git switch -c {{BRANCH}} {{BASE}} && git push -u origin {{BRANCH}}` (stacked on the previous sprint; branch from
+`origin/main` instead once that sprint has merged. Resuming? `git switch {{BRANCH}}`).
 
 Read AGENTS.md, Roadmap/WAYS-OF-WORKING.md and Roadmap/LEARNINGS.md. Skim team memory.
 Then read Roadmap/{{MACRO}}/{{SLUG}}/README.md and Roadmap/{{MACRO}}/{{SLUG}}/sprint-{{N}}.md.

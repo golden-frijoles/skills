@@ -4,6 +4,7 @@
 //   node scripts/roadmap-extract.mjs              # rows as JSON; stage from the docs + the last snapshot of facts
 //   node scripts/roadmap-extract.mjs --live       # gather git/GitHub facts now (one ls-remote, one gh call)
 //   node scripts/roadmap-extract.mjs --docs-only  # no facts at all — what the committed BUILD-ORDER.md reads
+//   … --live --require-live                        # exit 3 instead of falling back (what a publisher passes)
 //
 // ── One extractor (board-sinks-and-scrumban D15) ─────────────────────────────────────────────────────────
 // This file is THE projection, byte-identical in every project's scripts/ and in the kit. It used to have a fork in
@@ -62,7 +63,7 @@ import { join } from 'node:path';
 import { projectRoot } from './lib/project-root.mjs';
 import { attributeFacts, resolveStage } from './lib/stage.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
-import { epicKickoffFromDir } from './lib/epic-kickoff.mjs';
+import { epicKickoffFromDir, sprintBranch } from './lib/epic-kickoff.mjs';
 
 const REPO = projectRoot(); // D2
 const ROADMAP = join(REPO, 'Roadmap');
@@ -389,7 +390,7 @@ function sprintKickoff({ epicKey, slug, n, risk }) {
     `Read <AGENTS-path> (Start here) + Roadmap/LEARNINGS.md, then`,
     `Roadmap/${epicKey}/README.md + sprint-${n}.md.`,
     `Build Sprint ${n} of "${slug}" per WAYS-OF-WORKING, in your OWN git worktree off latest main on`,
-    `feat/${slug}. Plan mode → confirm stories with me → build one story at a time. Commit per story`,
+    `${sprintBranch(slug, n)} (stacked). Plan mode → confirm stories with me → build one story at a time. Commit per story`,
     `PATH-SCOPED (git add <your files> && git commit -- <those paths>; never -A). One api spec`,
     `per testable story. Keep the CI gate green; open a draft PR declaring risk ${tier}, and flip it`,
     `ready-for-review (+ sprint Status → 🟦 In review) once the gate is green and self-QA is posted.`,
@@ -648,5 +649,12 @@ if (isMain) {
   // offline run with no snapshot is the normal case for the six callers that spawn this with no flags — one of them
   // in the pre-commit hook — so it stays quiet.
   if (facts.note && mode === 'live') process.stderr.write(`roadmap-extract: ${facts.note}\n`);
+  // --require-live: a publisher (roadmap-push in CI) must never send a board whose live facts silently fell back. A
+  // fresh CI checkout has no snapshot, so the fallback is docs-only — every Building/QA card would drop to its docs
+  // stage on the public Hub and the unchanged-board check would store it as a new version. Fail instead.
+  if (process.argv.includes('--require-live') && facts.mode !== 'live') {
+    process.stderr.write('roadmap-extract: --require-live, and live facts could not be gathered — nothing printed.\n');
+    process.exit(3);
+  }
   writeSync(1, JSON.stringify(buildRows({ facts }), null, 2) + '\n');
 }

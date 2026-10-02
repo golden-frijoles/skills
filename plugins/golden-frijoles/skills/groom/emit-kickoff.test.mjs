@@ -218,8 +218,16 @@ test('S1.4 — the per-sprint kickoff STARTS with pushing feat/<slug>-s<N> (boar
   });
   const [first, second] = out.split('\n');
   assert.match(first, /^Start by pushing this sprint's branch, before anything else/);
-  assert.equal(
-    second,
-    '`git switch -c feat/demo-s3 origin/main && git push -u origin feat/demo-s3` (resuming? `git switch feat/demo-s3`).'
-  );
+  assert.equal(second, '`git switch -c feat/demo-s3 origin/feat/demo-s2 && git push -u origin feat/demo-s3` (stacked on the previous sprint; branch from');
+});
+
+test('S1.4 — sprint 1 is the epic branch off main, sprint 2 stacks on it (WAYS-OF-WORKING: feat/<slug> → -s2)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const templateText = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'templates', 'kickoff.md'), 'utf8');
+  const second = (n) =>
+    buildKickoff({ macro: 'm', slug: 'demo', sprintNum: n, epicTitle: 'D', sprintTitle: 'T', storyList: '', templateText }).split('\n')[1];
+  assert.match(second(1), /^`git switch -c feat\/demo origin\/main && git push -u origin feat\/demo`/);
+  assert.match(second(2), /^`git switch -c feat\/demo-s2 origin\/feat\/demo && git push -u origin feat\/demo-s2`/);
 });

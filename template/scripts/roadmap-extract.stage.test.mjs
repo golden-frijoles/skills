@@ -160,3 +160,25 @@ test('a seed card carries its problem as the goal and links to itself', () => {
   });
   assert.equal(raw.kickoff, null);
 });
+
+test('--live --require-live exits 3 and prints nothing when live facts cannot be gathered (a publisher never sends a degraded board)', () => {
+  const root = fixture(); // no git remote here, so `git ls-remote origin` fails
+  const r = spawnSync(
+    process.execPath,
+    [join(root, 'scripts', 'roadmap-extract.mjs'), '--live', '--require-live'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    }
+  );
+  assert.equal(r.status, 3);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /--require-live/);
+  // Without the flag the same run falls back to the snapshot and says so.
+  const soft = spawnSync(process.execPath, [join(root, 'scripts', 'roadmap-extract.mjs'), '--live'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  assert.equal(soft.status, 0);
+  assert.match(soft.stderr, /live facts unavailable/);
+});

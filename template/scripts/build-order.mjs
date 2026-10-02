@@ -83,13 +83,13 @@ function render(rows) {
   out.push('# Build order — the six stages');
   out.push('');
   out.push(`> **Generated ${now} — do not hand-edit.** One stage per initiative, decided in one place`);
-  out.push(
-    '> (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped. This committed'
-  );
-  out.push(
-    '> file reads the docs alone, so **Building and QA are not here** — they are facts git and GitHub hold.'
-  );
-  out.push('> For the live board run `node scripts/build-order.mjs --live`, or open the Hub board.');
+  out.push('> (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped.');
+  if (LIVE) {
+    out.push('> **Live:** Building and QA come from git and GitHub as of this run. Printed, never written.');
+  } else {
+    out.push('> This committed file reads the docs alone, so **Building and QA are not here** — they are facts git');
+    out.push('> and GitHub hold. For the live board run `node scripts/build-order.mjs --live`, or open the Hub board.');
+  }
   out.push('');
   for (const stage of STAGES) {
     const list = columns[stage];

@@ -50,6 +50,8 @@ import {
   parseEpicTitle,
   parseSprintHeader,
   parseStoryHeadings,
+  sprintBranch,
+  sprintBase,
 } from './vendor/lib/epic-kickoff.mjs';
 export { sub, parseFrontmatter, stripFrontmatter, parseEpicTitle, parseSprintHeader, parseStoryHeadings };
 
@@ -63,6 +65,8 @@ export function buildKickoff({ macro, slug, sprintNum, epicTitle, sprintTitle, s
     MACRO: macro,
     SLUG: slug,
     N: String(sprintNum),
+    BRANCH: sprintBranch(slug, sprintNum),
+    BASE: sprintBase(slug, sprintNum),
     EPIC_TITLE: epicTitle,
     SPRINT_TITLE: sprintTitle,
     STORY_LIST: storyList,

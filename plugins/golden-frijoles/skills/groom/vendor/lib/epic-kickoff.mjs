@@ -184,6 +184,16 @@ export function parseEpicRisk(text) {
   return m ? m[1].toLowerCase() : 'high';
 }
 
+/**
+ * A sprint's branch, STACKED (WAYS-OF-WORKING → *Epic-mode builds*: `feat/<slug>` → `-s2` → …): sprint 1 is the epic
+ * branch itself, sprint N is `feat/<slug>-s<N>`. One function, so the per-sprint kickoff, the Notion sprint card and
+ * the stage resolver's branch reading (`lib/work-branch.mjs`: `-s<N>` is sprint N, no suffix is sprint 1) agree.
+ */
+export const sprintBranch = (slug, n) => (Number(n) <= 1 ? `feat/${slug}` : `feat/${slug}-s${Number(n)}`);
+/** What sprint N branches FROM: main for sprint 1, else the previous sprint's branch (stacked; main once it merged). */
+export const sprintBase = (slug, n) =>
+  Number(n) <= 1 ? 'origin/main' : `origin/${sprintBranch(slug, Number(n) - 1)}`;
+
 // The prompt POINTS at the process instead of restating it (WAYS-OF-WORKING → *Epic-mode builds* is the one copy of
 // the doctrine). Its FIRST step pushes the epic branch (S1.4): Building is a git fact the moment work starts, not a
 // status somebody remembers to write — the push is what moves the card on the board (README § lock, D13).
