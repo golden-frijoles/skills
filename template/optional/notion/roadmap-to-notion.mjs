@@ -80,11 +80,14 @@ async function main() {
 
   const sel = (v) => (v ? { select: { name: String(v) } } : { select: null });
   const rt = richText;
+  let stageProp = false;
   function props(row, epicId) {
     const p = {
       Name: { title: [{ text: { content: row.name } }] },
       Slug: rt(row.slug),
       Status: sel(row.status),
+      // board-sinks-and-scrumban S3.3 — the six-stage word, only when the board has a `Stage` select (see stageProp).
+      ...(stageProp ? { Stage: sel(row.stage) } : {}),
       Area: sel(row.area),
       Priority: sel(row.priority),
       Type: sel(row.type),
@@ -156,6 +159,17 @@ async function main() {
     console.log(`pr-sync done — ${clearing ? 'cleared overlay' : `set ${PR_PROP}="${status}"`} on ${targets.size} row(s) for ${prSlugs.join(', ')}`);
     return;
   }
+
+  // board-sinks-and-scrumban S3.3 — the `Stage` column. Written only when the database already has a select property
+  // named Stage: this sync never changes the board's schema (columns are the board owner's to add, as Lifecycle was).
+  // Without it the run says once what to add, and every other column syncs as before.
+  const schema = await api(`/databases/${DB}`);
+  stageProp = schema?.properties?.Stage?.type === 'select';
+  if (!stageProp)
+    console.error(
+      'notion: no "Stage" select property on this database — add one (options: To groom, Grooming, Ready to build, ' +
+        'Building, QA, Shipped) to see each card\'s stage. Syncing every other column.'
+    );
 
   // 1. Snapshot existing rows by slug
   const existing = new Map();
