@@ -13,8 +13,8 @@
 //   node scripts/roadmap-push.mjs --dry-run             # print the envelope, send nothing
 //   node scripts/roadmap-push.mjs --url http://localhost:3000
 //
-// Env: GROWTH_ENGINE_URL (default http://localhost:3000) and the project's ingest key in GROWTH_ENGINE_API_KEY (the
-// SDK's name; this repo's CI passes SELF_PROJECT_API_KEY, still read as a fallback).
+// Env: GROWTH_ENGINE_URL (default http://localhost:3000) and the project's ingest key: SELF_PROJECT_API_KEY FIRST (it only
+// ever means this project's own key), else the SDK's GROWTH_ENGINE_API_KEY. Not the other way round — see apiKeyFrom.
 // A missing key is a CLEAN SKIP (exit 0), not a failure — see the note in the CI step.
 
 import { spawnSync } from 'node:child_process';
@@ -172,7 +172,7 @@ export function reportPush(result, count) {
     // Clean skip, not a failure: a repo without the key must not turn every CI run red over an observability-grade
     // nicety — same stance as the Telegram workflow.
     process.stderr.write(
-      'GROWTH_ENGINE_API_KEY (or SELF_PROJECT_API_KEY) not set — skipping the roadmap push cleanly.\n' +
+      'SELF_PROJECT_API_KEY (or GROWTH_ENGINE_API_KEY) not set — skipping the roadmap push cleanly.\n' +
         `  ${count} rows were generated and discarded. Set the project's ingest key to enable this.\n`
     );
     return 0;

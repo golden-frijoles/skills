@@ -12,7 +12,8 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 ### Added
 
 - **One projector, every sink.** `roadmap-extract --sink terminal` prints the six-stage board; `--sink hub` pushes it to
-  a Golden Frijoles Hub (`GROWTH_ENGINE_URL` + the project's ingest key in `GROWTH_ENGINE_API_KEY`) — so
+  a Golden Frijoles Hub (`GROWTH_ENGINE_URL` + the project's ingest key: `SELF_PROJECT_API_KEY`, else the SDK's
+  `GROWTH_ENGINE_API_KEY`) — so
   `npx -y @golden-frijoles/kit roadmap-extract --sink hub` feeds the hosted board from any repo; `--sink notion` runs the
   optional Notion sync copied beside it. `roadmap-push.mjs` ships in the kit.
 - **WIP as advice at the moment of pulling.** `board.wip` (`{ "Building": 2, "QA": 3 }`) in
