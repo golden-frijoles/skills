@@ -5,9 +5,6 @@
 //   node scripts/roadmap-extract.mjs --live       # gather git/GitHub facts now (one ls-remote, one gh call)
 //   node scripts/roadmap-extract.mjs --docs-only  # no facts at all — what the committed BUILD-ORDER.md reads
 //   … --live --require-live                        # exit 3 instead of falling back (what a publisher passes)
-//   node scripts/roadmap-extract.mjs --sink terminal  # the six-stage board as text (live facts unless told otherwise)
-//   node scripts/roadmap-extract.mjs --sink hub       # push the board to the Hub (GROWTH_ENGINE_URL + GROWTH_ENGINE_API_KEY)
-//   node scripts/roadmap-extract.mjs --sink notion    # run the optional Notion sync copied beside this file
 //
 // ── One extractor (board-sinks-and-scrumban D15) ─────────────────────────────────────────────────────────
 // This file is THE projection, byte-identical in every project's scripts/ and in the kit. It used to have a fork in
@@ -60,15 +57,13 @@
 //   Legacy freeform lines are still mapped best-effort below.
 
 import { readFileSync, readdirSync, existsSync, statSync, writeSync, realpathSync } from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { projectRoot } from './lib/project-root.mjs';
 import { attributeFacts, resolveStage } from './lib/stage.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { epicKickoffFromDir, sprintBranch } from './lib/epic-kickoff.mjs';
-import { renderBoardText } from './lib/board-text.mjs';
-import { pushRoadmap, reportPush } from './roadmap-push.mjs';
 
 const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
 
@@ -629,17 +624,6 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null }, roo
   return rows;
 }
 
-/** The sinks one projector feeds (board-sinks-and-scrumban S3.2): no `--sink` prints the rows as JSON. */
-export const SINKS = Object.freeze(['terminal', 'hub', 'notion']);
-
-/** `--sink <name>` / `--sink=<name>` → the name, `''` for a bare `--sink`, or null when absent. */
-export function sinkFrom(argv) {
-  const eq = argv.find((a) => a.startsWith('--sink='));
-  if (eq) return eq.slice('--sink='.length);
-  const i = argv.indexOf('--sink');
-  return i === -1 ? null : (argv[i + 1] ?? '');
-}
-
 /** `--live` · `--offline` (the default) · `--docs-only` → a facts mode. The last one given wins. */
 export function factsModeFrom(argv) {
   let mode = 'snapshot';
@@ -664,48 +648,18 @@ const isMain = (() => {
   }
 })();
 if (isMain) {
-  const argv = process.argv.slice(2);
-  const sink = sinkFrom(argv);
-  if (sink !== null && !SINKS.includes(sink)) {
-    process.stderr.write(`roadmap-extract: --sink takes one of ${SINKS.join(' | ')} (got "${sink}")\n`);
-    process.exit(2);
-  }
-  // A sink shows or sends the board, so it wants Building and QA: live facts unless a mode was asked for.
-  const explicit = argv.some((a) => a === '--live' || a === '--offline' || a === '--docs-only');
-  const mode = sink !== null && !explicit ? 'live' : factsModeFrom(argv);
+  const mode = factsModeFrom(process.argv.slice(2));
   const facts = gatherFacts({ root: REPO, mode });
   // A FAILED --live run says why on stderr (the rows say where their facts came from in every stage_source). An
   // offline run with no snapshot is the normal case for the six callers that spawn this with no flags — one of them
   // in the pre-commit hook — so it stays quiet.
   if (facts.note && mode === 'live') process.stderr.write(`roadmap-extract: ${facts.note}\n`);
-  // --require-live: a publisher must never send a board whose live facts silently fell back (a fresh CI checkout has
-  // no snapshot, so the fallback is docs-only: every Building/QA card would drop to its docs stage on the Hub and the
-  // unchanged-board check would store it as a new version). The Hub sink implies it whenever it asked for live facts.
-  const requireLive = argv.includes('--require-live') || (sink === 'hub' && mode === 'live');
-  if (requireLive && facts.mode !== 'live') {
-    process.stderr.write(
-      'roadmap-extract: live facts could not be gathered — nothing printed or pushed. ' +
-        '(The Hub sink needs git and an authenticated `gh`; pass --docs-only to push the docs-only stages.)\n'
-    );
+  // --require-live: a publisher (roadmap-push in CI) must never send a board whose live facts silently fell back. A
+  // fresh CI checkout has no snapshot, so the fallback is docs-only — every Building/QA card would drop to its docs
+  // stage on the public Hub and the unchanged-board check would store it as a new version. Fail instead.
+  if (process.argv.includes('--require-live') && facts.mode !== 'live') {
+    process.stderr.write('roadmap-extract: --require-live, and live facts could not be gathered — nothing printed.\n');
     process.exit(3);
   }
-  const rows = buildRows({ facts });
-  if (sink === null) writeSync(1, JSON.stringify(rows, null, 2) + '\n');
-  else if (sink === 'terminal') writeSync(1, renderBoardText(rows, facts));
-  else if (sink === 'hub') process.exitCode = reportPush(await pushRoadmap(rows, { root: REPO }), rows.length);
-  else {
-    // Notion is opt-in (template/optional/notion/): a project that wants it copies roadmap-to-notion.mjs beside this.
-    const notion = join(dirname(fileURLToPath(import.meta.url)), 'roadmap-to-notion.mjs');
-    if (!existsSync(notion)) {
-      process.stderr.write(
-        'roadmap-extract: no roadmap-to-notion.mjs beside this script — the Notion sink is opt-in: copy ' +
-          'template/optional/notion/roadmap-to-notion.mjs into scripts/ and set NOTION_TOKEN + NOTION_DB_ID.\n'
-      );
-      process.exit(2);
-    }
-    const r = spawnSync(process.execPath, [notion, '--sync', `--${mode === 'live' ? 'live' : mode === 'docs' ? 'docs-only' : 'offline'}`], {
-      stdio: 'inherit',
-    });
-    process.exitCode = r.status ?? 1;
-  }
+  writeSync(1, JSON.stringify(buildRows({ facts }), null, 2) + '\n');
 }

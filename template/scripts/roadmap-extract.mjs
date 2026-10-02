@@ -5,6 +5,9 @@
 //   node scripts/roadmap-extract.mjs --live       # gather git/GitHub facts now (one ls-remote, one gh call)
 //   node scripts/roadmap-extract.mjs --docs-only  # no facts at all — what the committed BUILD-ORDER.md reads
 //   … --live --require-live                        # exit 3 instead of falling back (what a publisher passes)
+//   node scripts/roadmap-extract.mjs --sink terminal  # the six-stage board as text (live facts unless told otherwise)
+//   node scripts/roadmap-extract.mjs --sink hub       # push the board to the Hub (GROWTH_ENGINE_URL + GROWTH_ENGINE_API_KEY)
+//   node scripts/roadmap-extract.mjs --sink notion    # run the optional Notion sync copied beside this file
 //
 // ── One extractor (board-sinks-and-scrumban D15) ─────────────────────────────────────────────────────────
 // This file is THE projection, byte-identical in every project's scripts/ and in the kit. It used to have a fork in
@@ -57,35 +60,37 @@
 //   Legacy freeform lines are still mapped best-effort below.
 
 import { readFileSync, readdirSync, existsSync, statSync, writeSync, realpathSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { projectRoot } from './lib/project-root.mjs';
 import { attributeFacts, resolveStage } from './lib/stage.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { epicKickoffFromDir, sprintBranch } from './lib/epic-kickoff.mjs';
+import { renderBoardText } from './lib/board-text.mjs';
+import { pushRoadmap, reportPush } from './roadmap-push.mjs';
 
-const REPO = projectRoot(); // D2
-const ROADMAP = join(REPO, 'Roadmap');
-const SEEDS = join(ROADMAP, '00-ideas', 'seeds');
+const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
 
 // Area labels are DERIVED from the project's own macro-section folders (`Roadmap/NN-slug/` → "NN Slug Title-Cased"),
 // never hardcoded: a hardcoded map was another product's area list and mislabeled every line it touched. A number
 // with no folder yet (a seed for a future area) falls back to the raw number.
-const AREA_NAMES = existsSync(ROADMAP)
-  ? Object.fromEntries(
-      readdirSync(ROADMAP)
-        .filter((d) => /^\d{2}-/.test(d) && statSync(join(ROADMAP, d)).isDirectory())
-        .map((d) => {
-          const [, num, slug] = d.match(/^(\d{2})-(.+)$/);
-          const label = slug
-            .split('-')
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' ');
-          return [num, `${num} ${label}`];
-        })
-    )
-  : {};
+export function areaNames(roadmapDir) {
+  if (!existsSync(roadmapDir)) return {};
+  return Object.fromEntries(
+    readdirSync(roadmapDir)
+      .filter((d) => /^\d{2}-/.test(d) && statSync(join(roadmapDir, d)).isDirectory())
+      .map((d) => {
+        const [, num, slug] = d.match(/^(\d{2})-(.+)$/);
+        const label = slug
+          .split('-')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        return [num, `${num} ${label}`];
+      })
+  );
+}
+
 const SEED_STATUS_LABEL = {
   raw: 'Raw',
   ready: 'Ready',
@@ -129,12 +134,12 @@ function parseFrontmatter(md) {
   return fm;
 }
 
-function readSeeds() {
-  if (!existsSync(SEEDS)) return [];
-  return readdirSync(SEEDS)
+function readSeeds(seedsDir) {
+  if (!existsSync(seedsDir)) return [];
+  return readdirSync(seedsDir)
     .filter((f) => f.endsWith('.md'))
     .map((f) => {
-      const fm = parseFrontmatter(readFileSync(join(SEEDS, f), 'utf8'));
+      const fm = parseFrontmatter(readFileSync(join(seedsDir, f), 'utf8'));
       seedStatusLabel(fm.status, `Roadmap/00-ideas/seeds/${f}`); // hard-fail on an invalid enum value
       seedAppetite(fm.appetite, `Roadmap/00-ideas/seeds/${f}`); // hard-fail on an invalid appetite
       return { ...fm, _file: `Roadmap/00-ideas/seeds/${f}` };
@@ -172,11 +177,11 @@ export function seedAppetite(appetite, file = 'seed') {
   return appetite;
 }
 
-function listEpicDirs() {
+function listEpicDirs(roadmapDir) {
   const out = [];
-  for (const macro of readdirSync(ROADMAP)) {
+  for (const macro of readdirSync(roadmapDir)) {
     if (!/^[0-9]{2}-/.test(macro)) continue; // macro-section folders only
-    const macroPath = join(ROADMAP, macro);
+    const macroPath = join(roadmapDir, macro);
     if (!statSync(macroPath).isDirectory()) continue;
     for (const slug of readdirSync(macroPath)) {
       const epicPath = join(macroPath, slug);
@@ -337,10 +342,10 @@ export function buildOrderNum(v) {
 
 // When a row ENTERED its current status: the last commit whose diff touched the status-bearing line, else the
 // file's last commit, else today (a brand-new uncommitted scaffold entered its status now). Docs + git stay the SSOT.
-function gitDate(args) {
+function gitDate(root, args) {
   try {
     return execFileSync('git', ['log', '-1', '--format=%as', ...args], {
-      cwd: REPO,
+      cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
@@ -348,10 +353,10 @@ function gitDate(args) {
     return '';
   }
 }
-function statusDate(relFile, statusLineRegex) {
+function statusDate(root, relFile, statusLineRegex) {
   return (
-    (statusLineRegex && gitDate([`-G${statusLineRegex}`, '--', relFile])) ||
-    gitDate(['--', relFile]) ||
+    (statusLineRegex && gitDate(root, [`-G${statusLineRegex}`, '--', relFile])) ||
+    gitDate(root, ['--', relFile]) ||
     new Date().toISOString().slice(0, 10)
   );
 }
@@ -454,13 +459,18 @@ const prOf = (pr) =>
  * Build the rows. `facts` is what lib/stage-facts.mjs gathered (`{ branches, prs, origin }`); the default is no
  * facts, so an import — doc-hygiene, pmo-report, a spec — never touches the network or the snapshot.
  */
-export function buildRows({ facts = { branches: [], prs: [], origin: null } } = {}) {
-  const seeds = readSeeds();
+export function buildRows({ facts = { branches: [], prs: [], origin: null }, root = REPO, dates = true } = {}) {
+  const ROADMAP = join(root, 'Roadmap');
+  const AREA_NAMES = areaNames(ROADMAP);
+  // `dates: false` skips the per-row `git log` (one per doc) — the build view runs inside a 5-second hook budget and
+  // reads no date; every other field is the same either way.
+  const when = (rel, re) => (dates ? statusDate(root, rel, re) : null);
+  const seeds = readSeeds(join(ROADMAP, '00-ideas', 'seeds'));
   const seedByEpic = new Map();
   for (const s of seeds) if (s.epic) seedByEpic.set(s.epic, s);
 
   const rows = [];
-  const epicDirs = listEpicDirs();
+  const epicDirs = listEpicDirs(ROADMAP);
 
   // Which initiative each branch and PR belongs to (D13): epic slugs and funnel-seed slugs are the names a branch can
   // carry; a seed that carries `epic:` names that epic.
@@ -508,7 +518,7 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null } } = 
       sprints: sprints.map((sp) => ({ n: sp.n, status: sp.status })), // each sprint's OWN docs status, not floored
       sprints_total: sprints.length,
     });
-    const statusDay = statusDate(readmePath, '^status:');
+    const statusDay = when(readmePath, '^status:');
     let kickoff = null;
     if (stage === 'Ready to build') {
       try {
@@ -562,7 +572,7 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null } } = 
         slug: `${e.slug}--s${sp.n}`,
         grain: 'Sprint',
         status: sp.status,
-        status_date: statusDate(`Roadmap/${epicKey}/sprint-${sp.n}.md`, '^(\\*\\*)?Status:'),
+        status_date: when(`Roadmap/${epicKey}/sprint-${sp.n}.md`, '^(\\*\\*)?Status:'),
         area,
         priority,
         type: 'Sprint',
@@ -580,7 +590,7 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null } } = 
   // Seed rows: only seeds with no scaffolded epic (epic == null)
   for (const s of seeds.filter((x) => !x.epic)) {
     const { stage, source: stageSource, pr } = stageFor(s.slug, { grain: 'Seed', status: s.status });
-    const statusDay = statusDate(s._file, '^status:');
+    const statusDay = when(s._file, '^status:');
     const name = s.title || s.slug;
     rows.push({
       name,
@@ -601,7 +611,7 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null } } = 
       build_order_num: buildOrderNum(s.build_order),
       doc_link: s._file,
       epic_slug: null,
-      goal: firstParagraph(readFileSync(join(REPO, s._file), 'utf8'), [
+      goal: firstParagraph(readFileSync(join(root, s._file), 'utf8'), [
         'Problem',
         'Why',
         'Outcome & signal',
@@ -617,6 +627,17 @@ export function buildRows({ facts = { branches: [], prs: [], origin: null } } = 
     });
   }
   return rows;
+}
+
+/** The sinks one projector feeds (board-sinks-and-scrumban S3.2): no `--sink` prints the rows as JSON. */
+export const SINKS = Object.freeze(['terminal', 'hub', 'notion']);
+
+/** `--sink <name>` / `--sink=<name>` → the name, `''` for a bare `--sink`, or null when absent. */
+export function sinkFrom(argv) {
+  const eq = argv.find((a) => a.startsWith('--sink='));
+  if (eq) return eq.slice('--sink='.length);
+  const i = argv.indexOf('--sink');
+  return i === -1 ? null : (argv[i + 1] ?? '');
 }
 
 /** `--live` · `--offline` (the default) · `--docs-only` → a facts mode. The last one given wins. */
@@ -643,18 +664,48 @@ const isMain = (() => {
   }
 })();
 if (isMain) {
-  const mode = factsModeFrom(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const sink = sinkFrom(argv);
+  if (sink !== null && !SINKS.includes(sink)) {
+    process.stderr.write(`roadmap-extract: --sink takes one of ${SINKS.join(' | ')} (got "${sink}")\n`);
+    process.exit(2);
+  }
+  // A sink shows or sends the board, so it wants Building and QA: live facts unless a mode was asked for.
+  const explicit = argv.some((a) => a === '--live' || a === '--offline' || a === '--docs-only');
+  const mode = sink !== null && !explicit ? 'live' : factsModeFrom(argv);
   const facts = gatherFacts({ root: REPO, mode });
   // A FAILED --live run says why on stderr (the rows say where their facts came from in every stage_source). An
   // offline run with no snapshot is the normal case for the six callers that spawn this with no flags — one of them
   // in the pre-commit hook — so it stays quiet.
   if (facts.note && mode === 'live') process.stderr.write(`roadmap-extract: ${facts.note}\n`);
-  // --require-live: a publisher (roadmap-push in CI) must never send a board whose live facts silently fell back. A
-  // fresh CI checkout has no snapshot, so the fallback is docs-only — every Building/QA card would drop to its docs
-  // stage on the public Hub and the unchanged-board check would store it as a new version. Fail instead.
-  if (process.argv.includes('--require-live') && facts.mode !== 'live') {
-    process.stderr.write('roadmap-extract: --require-live, and live facts could not be gathered — nothing printed.\n');
+  // --require-live: a publisher must never send a board whose live facts silently fell back (a fresh CI checkout has
+  // no snapshot, so the fallback is docs-only: every Building/QA card would drop to its docs stage on the Hub and the
+  // unchanged-board check would store it as a new version). The Hub sink implies it whenever it asked for live facts.
+  const requireLive = argv.includes('--require-live') || (sink === 'hub' && mode === 'live');
+  if (requireLive && facts.mode !== 'live') {
+    process.stderr.write(
+      'roadmap-extract: live facts could not be gathered — nothing printed or pushed. ' +
+        '(The Hub sink needs git and an authenticated `gh`; pass --docs-only to push the docs-only stages.)\n'
+    );
     process.exit(3);
   }
-  writeSync(1, JSON.stringify(buildRows({ facts }), null, 2) + '\n');
+  const rows = buildRows({ facts });
+  if (sink === null) writeSync(1, JSON.stringify(rows, null, 2) + '\n');
+  else if (sink === 'terminal') writeSync(1, renderBoardText(rows, facts));
+  else if (sink === 'hub') process.exitCode = reportPush(await pushRoadmap(rows, { root: REPO }), rows.length);
+  else {
+    // Notion is opt-in (template/optional/notion/): a project that wants it copies roadmap-to-notion.mjs beside this.
+    const notion = join(dirname(fileURLToPath(import.meta.url)), 'roadmap-to-notion.mjs');
+    if (!existsSync(notion)) {
+      process.stderr.write(
+        'roadmap-extract: no roadmap-to-notion.mjs beside this script — the Notion sink is opt-in: copy ' +
+          'template/optional/notion/roadmap-to-notion.mjs into scripts/ and set NOTION_TOKEN + NOTION_DB_ID.\n'
+      );
+      process.exit(2);
+    }
+    const r = spawnSync(process.execPath, [notion, '--sync', `--${mode === 'live' ? 'live' : mode === 'docs' ? 'docs-only' : 'offline'}`], {
+      stdio: 'inherit',
+    });
+    process.exitCode = r.status ?? 1;
+  }
 }

@@ -94,6 +94,7 @@ const LABEL_GLYPHS = {
   Status: '●',
   Open: '○',
   Also: '↳',
+  Board: '▦',
 };
 
 /** A tone for a status/phase word — a colour hint only; the word itself is always shown as written. */
@@ -101,7 +102,7 @@ export function toneOf(value) {
   const v = String(value || '').toLowerCase();
   if (/^unknown|blocked|failed|stale/.test(v)) return 'bad';
   if (/shipped|done|live|merged|complete/.test(v)) return 'good';
-  if (/verifying|review|smoke/.test(v)) return 'info';
+  if (/^qa\b|verifying|review|smoke/.test(v)) return 'info';
   if (/building|in progress|groom|planning|ready/.test(v)) return 'busy';
   return 'plain';
 }

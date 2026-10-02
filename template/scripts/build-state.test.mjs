@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -159,15 +159,15 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
 test('the default branch, a branch naming no epic, and a detached HEAD all say "nothing in flight"', () => {
   const f = fixture();
   try {
-    const main = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const main = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(main.in_flight, false);
     assert.match(main.reason, /on main — not an epic branch/);
     f.git('switch', '-qc', 'feat/some-other-epic');
-    const other = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const other = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(other.in_flight, false);
     assert.match(other.reason, /names no epic under Roadmap\//);
     f.git('checkout', '-q', '--detach');
-    const detached = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const detached = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(detached.in_flight, false);
     assert.match(detached.reason, /detached HEAD/);
     // Nothing here — but the Roadmap says the fixture's epic is in progress, so the view names it.
@@ -185,7 +185,7 @@ test('commits with no story convention and no journal → story unknown, never a
   try {
     f.git('switch', '-qc', 'feat/arranged-only');
     f.commit('wip: tidy things');
-    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(s.story, null);
     assert.equal(s.story_source, 'unknown');
     assert.equal(s.sprint, null, 'no -s<N> and no story → no sprint either, not "the first unshipped one"');
@@ -510,7 +510,7 @@ test('codex round 2: a sprint whose frontmatter cannot be read says so', () => {
     f.git('add', '-A');
     f.git('commit', '-qm', 'break sprint 2');
     f.git('switch', '-qc', 'feat/arranged-only-s2');
-    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.match(s.warning, /sprint-2\.md frontmatter could not be read/);
     assert.equal(s.story, null);
     // …and it does not borrow the epic's phase to fill the gap.
@@ -524,7 +524,7 @@ test('codex round 2: a sprint whose frontmatter cannot be read says so', () => {
     // A commit naming S2.1 does NOT lift it either: with sprint-2 unreadable, no story list says S2.1
     // exists, so the id is unlisted and the honest answer stays unknown.
     f.commit('S2.1 — work on the branch anyway');
-    const after = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const after = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.deepEqual([after.status, after.status_source], [null, 'unknown']);
     assert.match(after.story_note, /names S2\.1, which no sprint of this epic lists/);
   } finally {
@@ -627,13 +627,13 @@ test('a branch naming a seed with no epic is that bug/chore/spike — with its o
   try {
     addSeed(f, 'checkout-typo', 'bug');
     f.git('switch', '-qc', 'fix/checkout-typo');
-    let s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    let s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.deepEqual(
       [s.in_flight, s.kind, s.seed.slug, s.status, s.status_source],
       [true, 'bug', 'checkout-typo', 'ready', 'written']
     );
     f.commit('fix the typo');
-    s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(s.status, 'Building', 'a commit on the branch is the evidence');
     assert.deepEqual(renderLines(s), [
       'Currently fixing',
@@ -642,11 +642,11 @@ test('a branch naming a seed with no epic is that bug/chore/spike — with its o
       '  Status   Building',
     ]);
     const gh = ghWith({ number: 9, url: 'u' });
-    assert.equal(resolveBuildState({ root: f.root, gh }).status, 'In review');
+    assert.equal(resolveBuildState({ board: false, root: f.root, gh }).status, 'In review');
     addSeed(f, 'why-slow', 'spike');
     f.git('switch', '-qc', 'spike/why-slow');
     assert.equal(
-      renderLines(resolveBuildState({ root: f.root, offline: true, gh: noGh }))[0],
+      renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }))[0],
       'Currently investigating'
     );
   } finally {
@@ -659,7 +659,7 @@ test('a seed that carries epic: is that epic — the seed is funnel-only once sc
   try {
     addSeed(f, 'arranged', 'feature', '"04-shipping/arranged-only"');
     f.git('switch', '-qc', 'feat/arranged-s2');
-    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.deepEqual([s.kind, s.epic.slug, s.sprint.n, s.branch_match], ['epic', 'arranged-only', 2, 'seed']);
   } finally {
     f.done();
@@ -694,7 +694,7 @@ test('on main with a builder in a worktree: the view names the worktree, and the
     inWt('add', 'work.txt');
     inWt('commit', '-qm', 'S2.1 — agent surface parity');
 
-    const main = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const main = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(main.in_flight, false);
     assert.equal(main.elsewhere.worktrees.length, 1);
     assert.deepEqual(
@@ -710,7 +710,7 @@ test('on main with a builder in a worktree: the view names the worktree, and the
       '  Worktree Arranged-only delivery · S2.1 · Building · feat/arranged-only-s2',
     ]);
 
-    const there = resolveBuildState({ root: wt, offline: true, gh: noGh });
+    const there = resolveBuildState({ board: false, root: wt, offline: true, gh: noGh });
     assert.equal(there.in_flight, true);
     assert.equal(there.elsewhere.worktrees.length, 0, 'the root is on main, so nothing else is in flight');
     assert.equal(renderLines(there).length, 6, 'no Also line');
@@ -729,9 +729,149 @@ test('a shipped epic is never "open", and a worktree on it is not in flight else
     const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
     writeFileSync(readme, EPIC_README('Shipped').replace('status: in-progress', 'status: shipped'));
     f.git('commit', '-qam', 'ship');
-    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.deepEqual(s.elsewhere, { worktrees: [], open_epics: [] });
     assert.deepEqual(renderLines(s), [`No epic in flight — ${s.reason}`]);
+  } finally {
+    f.done();
+  }
+});
+
+// ── board-sinks-and-scrumban S3.1 — the CLI mod is a client of the resolver ──────────────────────────────────────
+
+const liveFacts = (prs = [], branches = []) => {
+  const calls = [];
+  const gather = ({ mode }) => (
+    calls.push(mode),
+    { mode: 'live', branches, prs, origin: null, generated_at: '2026-10-02T10:00:00.000Z', note: null }
+  );
+  gather.calls = calls;
+  return gather;
+};
+
+test('S3.1: the stage comes from the resolver, said with its source; ONE facts gather per run', () => {
+  const f = fixture();
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    f.commit('S2.1 wire it');
+    const gather = liveFacts(
+      [{ number: 7, head: 'feat/arranged-only-s2', state: 'OPEN', draft: false, url: 'https://x/pull/7' }],
+      ['feat/arranged-only-s2']
+    );
+    const s = resolveBuildState({ root: f.root, gather, elsewhere: false });
+    assert.deepEqual(gather.calls, ['live'], 'one gather, live');
+    assert.equal(s.stage, 'QA');
+    assert.equal(s.stage_source, 'github: PR #7 ready');
+    assert.equal(s.evidence.pr.number, 7, 'the PR comes from the same facts — no second gh call');
+    const status = renderLines(s).find((l) => l.startsWith('  Status'));
+    assert.equal(status, '  Status   QA · from github: PR #7 ready (live) · phase Building');
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.1: offline, the stage is read from the snapshot and says how old it is; no snapshot says so too', () => {
+  const f = fixture();
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.golden-frijoles', 'board.json'),
+      JSON.stringify({
+        generated_at: '2026-10-02T09:00:00.000Z',
+        branches: ['feat/arranged-only-s2'],
+        prs: [],
+      })
+    );
+    const s = resolveBuildState({
+      root: f.root,
+      offline: true,
+      now: new Date('2026-10-02T12:00:00.000Z'),
+      elsewhere: false,
+    });
+    assert.equal(s.stage, 'Building');
+    assert.match(
+      renderLines(s).find((l) => l.startsWith('  Status')),
+      /^ {2}Status {3}Building · from git: feat\/arranged-only-s2 \(snapshot, 3h ago\)/
+    );
+
+    rmSync(join(f.root, '.golden-frijoles'), { recursive: true, force: true });
+    const none = resolveBuildState({ root: f.root, offline: true, elsewhere: false });
+    assert.match(
+      renderLines(none).find((l) => l.startsWith('  Status')),
+      /\(docs only, no snapshot yet\)/
+    );
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.1: the Board line links to the card on the Hub when board.hubUrl is set, and is silent about it when not', () => {
+  const f = fixture();
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const plain = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
+    assert.ok(plain.some((l) => l.startsWith('  Board    ')));
+    assert.ok(!plain.some((l) => l.includes('↗')), 'no hub URL configured → no link, no error');
+
+    writeFileSync(
+      join(f.root, 'golden-frijoles.config.json'),
+      JSON.stringify({ board: { hubUrl: 'https://goldenfrijoles.com/hub/demo/' } })
+    );
+    const linked = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
+    assert.ok(
+      linked.includes('           ↗ https://goldenfrijoles.com/hub/demo/board?card=arranged-only'),
+      linked.join('\n')
+    );
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.1: an epic shipped in ONE merged PR, every sprint ✅ by its own docs, reads QA — never Building (the 2026-10-01 mismatch)', () => {
+  const f = fixture();
+  try {
+    const dir = join(f.root, 'Roadmap', '04-shipping', 'arranged-only');
+    for (const n of [1, 2]) {
+      const p = join(dir, `sprint-${n}.md`);
+      writeFileSync(
+        p,
+        readFileSync(p, 'utf8').replace(/\n# Arranged/, '\n**Status:** ✅ Shipped — merged\n\n# Arranged')
+      );
+    }
+    f.git('add', '-A');
+    f.git('commit', '-qm', 'docs: sprints shipped');
+    const gather = liveFacts([
+      { number: 98, head: 'feat/arranged-only', state: 'MERGED', draft: false, url: 'https://x/pull/98' },
+    ]);
+    const s = resolveBuildState({ root: f.root, gather, elsewhere: false });
+    assert.equal(s.in_flight, false, 'on main');
+    assert.equal(s.board.qa, 1);
+    assert.equal(s.board.building, 0);
+  } finally {
+    f.done();
+  }
+});
+
+test('stage agreement: the build view, the extractor rows and the six-column board report ONE stage', async () => {
+  const { buildRows } = await import('./roadmap-extract.mjs');
+  const { groupByStage } = await import('./lib/stage.mjs');
+  const f = fixture();
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const facts = {
+      mode: 'live',
+      branches: ['feat/arranged-only-s2'],
+      prs: [],
+      origin: null,
+      generated_at: null,
+    };
+    const s = resolveBuildState({ root: f.root, gather: () => facts, elsewhere: false });
+    const row = buildRows({ facts, root: f.root, dates: false }).find((r) => r.slug === 'arranged-only');
+    const column = Object.entries(groupByStage(buildRows({ facts, root: f.root, dates: false }))).find(
+      ([, rows]) => rows.some((r) => r.slug === 'arranged-only')
+    )[0];
+    assert.deepEqual([s.stage, row.stage, column], ['Building', 'Building', 'Building']);
   } finally {
     f.done();
   }

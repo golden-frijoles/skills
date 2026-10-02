@@ -59,6 +59,10 @@ import { dirname, join, resolve } from 'node:path';
 import { PHASES, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
+import { buildRows } from './roadmap-extract.mjs';
+import { gatherFacts } from './lib/stage-facts.mjs';
+import { groupByStage } from './lib/stage.mjs';
+import { getKey } from './lib/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -239,18 +243,14 @@ function readJournalLocal(git) {
   return { entries: [], ref: null };
 }
 
-function ghOpenPr(root, branch) {
-  try {
-    const out = execFileSync(
-      'gh',
-      ['pr', 'list', '--head', branch, '--state', 'open', '--json', 'number,url', '--limit', '1'],
-      { cwd: root, encoding: 'utf8', timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'] }
-    );
-    const [pr] = JSON.parse(out);
-    return { ok: true, pr: pr || null };
-  } catch {
-    return { ok: false, pr: null };
-  }
+/**
+ * The open PR for `branch`, read from the run's facts (board-sinks-and-scrumban S3.1): the ONE `gh pr list` the facts
+ * made already holds every PR, so the build view asks GitHub nothing more. `ok` is whether those facts are live.
+ */
+export function prFromFacts(facts, branch) {
+  const open = (facts?.prs ?? []).filter((p) => p.head === branch && p.state === 'OPEN');
+  const pr = open.reduce((best, p) => (best === null || p.number > best.number ? p : best), null);
+  return { ok: facts?.mode === 'live', pr: pr ? { number: pr.number, url: pr.url } : null };
 }
 
 const notInFlight = (reason, extra = {}) => ({ in_flight: false, reason, ...extra });
@@ -261,6 +261,47 @@ export function namesSlug(text, slug) {
   return new RegExp(`(^|[^A-Za-z0-9-])${esc}($|[^A-Za-z0-9-])`).test(String(text));
 }
 
+/** "just now", "12m ago", "3h ago", "2 days ago" — how old the facts behind a stage are. */
+export function ageOf(iso, now = new Date()) {
+  const ms = now.getTime() - new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return null;
+  const m = Math.floor(ms / 60_000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'yesterday' : `${d} days ago`;
+}
+
+/**
+ * The stage of what is in flight, and the board around it (board-sinks-and-scrumban S3.1, D2/D14). The stage is the
+ * EXTRACTOR's row for this initiative — the same `buildRows()` the Hub's push and BUILD-ORDER.md read — so the build
+ * view cannot say a different word than the board. `dates: false` keeps it inside the hook's budget (~50 ms).
+ */
+export function boardState({ root, facts, state, now = new Date() }) {
+  const rows = buildRows({ facts: facts ?? undefined, root, dates: false });
+  const slug = state.in_flight ? (state.epic?.slug ?? state.seed?.slug ?? null) : null;
+  const row = slug ? rows.find((r) => r.grain !== 'Sprint' && r.slug === slug) : null;
+  const cols = groupByStage(rows);
+  const next = cols['Ready to build'][0] ?? null;
+  const hub = getKey('board.hubUrl', { root });
+  const hubUrl = typeof hub === 'string' && /^https:\/\//.test(hub) ? hub.replace(/\/+$/, '') : null;
+  return {
+    stage: row ? row.stage : null,
+    stage_source: row ? row.stage_source : null,
+    stage_age: facts?.mode === 'live' ? 'just now' : facts?.generated_at ? ageOf(facts.generated_at, now) : null,
+    facts_mode: facts?.mode ?? 'docs',
+    board: {
+      building: cols.Building.length,
+      qa: cols.QA.length,
+      ready: cols['Ready to build'].length,
+      next: next ? { name: next.name, slug: next.slug, build_order: next.build_order_num ?? null } : null,
+      url: hubUrl ? `${hubUrl}/board${slug && row ? `?card=${encodeURIComponent(slug)}` : ''}` : null,
+    },
+  };
+}
+
 /**
  * Resolve the build state. Every external read is injectable so the tests drive real fixture repos with
  * a fake `gh`: { root, offline, git, gh }. It NEVER throws — it runs once per turn inside a CLI hook, and
@@ -268,13 +309,30 @@ export function namesSlug(text, slug) {
  * `elsewhere: false` skips the other-worktrees / open-epics scan (used when resolving those worktrees).
  */
 export function resolveBuildState(opts = {}) {
+  // board-sinks-and-scrumban S3.1 — ONE facts gather per run: the snapshot offline (the hook never goes online), else
+  // one `git ls-remote` + one `gh pr list`, which also refreshes the snapshot. Injectable for the spec.
+  let facts = null;
+  if (opts.board !== false) {
+    try {
+      facts = (opts.gather ?? gatherFacts)({ root: opts.root, mode: opts.offline ? 'snapshot' : 'live' });
+    } catch {
+      facts = null;
+    }
+  }
   let state;
   try {
-    state = resolve_(opts);
+    state = resolve_({ ...opts, facts });
   } catch (err) {
     state = notInFlight(
       `the resolver could not read this checkout (${err && err.message ? err.message : err})`
     );
+  }
+  if (opts.board !== false) {
+    try {
+      Object.assign(state, boardState({ root: opts.root, facts, state, now: opts.now ?? new Date() }));
+    } catch {
+      // A roadmap this extractor cannot read (an out-of-enum status) leaves the view without a stage, never blank.
+    }
   }
   if (opts.elsewhere === false) return state;
   try {
@@ -326,7 +384,7 @@ function elsewhere_({ root, git, state }) {
     if (!w.branch || w.bare || w.prunable || samePath(w.path, top) || !existsSync(w.path)) continue;
     if (!branchCandidates(w.branch).length) continue; // main, release branches: nothing to resolve
     if (resolved++ >= MAX_WORKTREES) break;
-    const s = resolveBuildState({ root: w.path, offline: true, elsewhere: false });
+    const s = resolveBuildState({ root: w.path, offline: true, elsewhere: false, board: false });
     if (!s.in_flight || DONE_LIFECYCLES.includes(s.lifecycle)) continue;
     const item = s.epic
       ? { kind: 'epic', slug: s.epic.slug, title: s.epic.title }
@@ -401,7 +459,8 @@ function seedState({ root, git, gh, offline, branch, seed, match }) {
   };
 }
 
-function resolve_({ root, offline = false, git = makeGit(root), gh = ghOpenPr } = {}) {
+function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh } = {}) {
+  gh = gh ?? ((_root, branch) => prFromFacts(facts, branch));
   if (tryGit(git, ['rev-parse', '--is-inside-work-tree']) !== 'true')
     return notInFlight('not inside a git checkout (or git is not installed)');
   const branch = tryGit(git, ['symbolic-ref', '-q', '--short', 'HEAD']);
@@ -605,9 +664,37 @@ function elsewhereLines(state, pad) {
  * work in other worktrees appears as one `Also` line when this checkout is building, and as the list
  * itself when it isn't.
  */
+/**
+ * The stage, said with where it came from and how old that is (board-sinks-and-scrumban S3.1): "Building · from git:
+ * feat/x · facts from the snapshot, 3h ago". The written `phase:` stays only as a detail (D12). Without a stage (the
+ * roadmap could not be read) it falls back to the old written-phase status, labelled as such.
+ */
+export function statusValue(state) {
+  if (!state.stage) return state.status || `unknown${state.warning ? ` — ${state.warning}` : ''}`;
+  const source = String(state.stage_source || '').replace(/ · snapshot@\S+$/, '');
+  const age =
+    state.facts_mode === 'live'
+      ? 'live'
+      : state.facts_mode === 'snapshot'
+        ? `snapshot, ${state.stage_age ?? 'age unknown'}`
+        : 'docs only, no snapshot yet';
+  const phase = state.phase_written && state.phase_written !== state.stage ? ` · phase ${state.phase_written}` : '';
+  return `${state.stage} · from ${source} (${age})${phase}`;
+}
+
+/** The board around this work in one line, and the link to it when `board.hubUrl` is set (S3.1). */
+function boardLines(state, pad) {
+  const b = state.board;
+  if (!b) return [];
+  const next = b.next ? ` · next to pull: ${clip(b.next.name, 40)}${b.next.build_order !== null ? ` (#${b.next.build_order})` : ''}` : '';
+  const counts = `Building ${b.building} · QA ${b.qa} · Ready to build ${b.ready}${next}`;
+  return [`${pad('Board')}${counts}`, ...(b.url ? [`${pad('')}↗ ${b.url}`] : [])];
+}
+
 export function renderLines(state) {
   const pad = (label) => `  ${label.padEnd(9)}`;
-  if (!state.in_flight) return [`No epic in flight — ${state.reason}`, ...elsewhereLines(state, pad)];
+  if (!state.in_flight)
+    return [`No epic in flight — ${state.reason}`, ...elsewhereLines(state, pad), ...boardLines(state, pad)];
   const others = state.elsewhere?.worktrees?.length || 0;
   const also = others
     ? [
@@ -627,8 +714,9 @@ export function renderLines(state) {
       HEADINGS[seed.type] || 'Currently working on',
       `${pad(label)}${seed.title}${meta ? `    ${meta}` : ''}`,
       `${pad('Seed')}${seed.path}`,
-      `${pad('Status')}${state.status || 'unknown'}`,
+      `${pad('Status')}${statusValue(state)}`,
       ...also,
+      ...boardLines(state, pad),
     ];
   }
   const { epic, story, progress } = state;
@@ -649,8 +737,8 @@ export function renderLines(state) {
   const storyPart = `Story ${progress.story ?? '?'} of ${progress.stories}`;
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
   lines.push(`${pad('Progress')}${storyPart} · ${sprintPart}`);
-  lines.push(`${pad('Status')}${state.status || `unknown${state.warning ? ` — ${state.warning}` : ''}`}`);
-  return [...lines, ...also];
+  lines.push(`${pad('Status')}${statusValue(state)}`);
+  return [...lines, ...also, ...boardLines(state, pad)];
 }
 
 // realpath on both sides: a plugin or checkout reached through a symlink (macOS /tmp → /private/tmp) would

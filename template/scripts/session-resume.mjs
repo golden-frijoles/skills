@@ -52,6 +52,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { listPulls, getPullMergeability, getStatusRollup } from './lib/gh-rest.mjs';
 import { readLogFromBranch } from './lib/log-branch.mjs';
+import { gatherFacts } from './lib/stage-facts.mjs';
 import {
   parseJournal,
   lastNEntries,
@@ -858,6 +859,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     homeDir = process.env.HOME,
     now,
     resolveReposFn = resolveRepos,
+    gatherFactsFn = gatherFacts,
   } = deps;
 
   let args;
@@ -875,6 +877,15 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   try {
     const { repos, note: reposNote } = resolveReposFn({ root: args.root, spawn });
     if (reposNote) warn(`⚠ session-resume: ${reposNote}`);
+    // board-sinks-and-scrumban S3.1 — refresh the board snapshot (.golden-frijoles/board.json) once per session start.
+    // The build view's hook never goes online, so this is what keeps the age it prints short. Best-effort: a failed
+    // gather keeps the old snapshot, and the build view says how old that one is.
+    try {
+      const facts = gatherFactsFn({ root: args.root, mode: 'live', run: spawn });
+      if (facts.note) warn(`⚠ session-resume: board snapshot not refreshed — ${facts.note}`);
+    } catch {
+      // never block a resume on the board
+    }
     const repoStates = repos.map((r) => ({
       repo: r.repo,
       dir: r.dir,
