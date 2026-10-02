@@ -17,7 +17,9 @@
 import { writeSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { buildRows } from './roadmap-extract.mjs';
+import { buildRows, factsModeFrom } from './roadmap-extract.mjs';
+import { gatherFacts } from './lib/stage-facts.mjs';
+import { projectRoot } from './lib/project-root.mjs';
 
 // Notion caps ONE rich-text object at 2000 characters, and a property may carry up to 100 of them. An epic row carries
 // its whole epic kickoff, often longer than that, so long text is SPLIT across objects, never cut: the kickoff on a
@@ -65,7 +67,12 @@ async function main() {
   }
 
   const mode = hasFlag('--pr') ? 'pr' : 'sync';
-  const rows = buildRows();
+  // The same facts modes as roadmap-extract.mjs (--live · --offline, the default · --docs-only), so the Stage column
+  // carries Building and QA when asked to (board-sinks-and-scrumban S3.3; fresh review, #227).
+  const factsMode = factsModeFrom(args);
+  const facts = gatherFacts({ root: projectRoot(), mode: factsMode });
+  if (facts.note && factsMode === 'live') process.stderr.write(`roadmap-to-notion: ${facts.note}\n`);
+  const rows = buildRows({ facts });
 
   // --- sync mode: upsert into Notion by slug (docs always win) ---
   const TOKEN = process.env.NOTION_TOKEN;

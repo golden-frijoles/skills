@@ -186,3 +186,32 @@ test('--live --require-live exits 3 and prints nothing when live facts cannot be
   assert.equal(soft.status, 0);
   assert.match(soft.stderr, /live facts unavailable/);
 });
+
+test('--sink notion from the INSTALLED kit runs the project’s own scripts/roadmap-to-notion.mjs, passing the facts mode', () => {
+  // A kit layout (…/kit/dist/roadmap-extract.mjs beside a package.json named @golden-frijoles/kit) and a project whose
+  // scripts/ holds a stub sink that prints its arguments — the copy the optional Notion sink tells a project to make.
+  const project = fixture();
+  const kit = realpathSync(mkdtempSync(join(tmpdir(), 'kit-')));
+  mkdirSync(join(kit, 'dist', 'lib'), { recursive: true });
+  writeFileSync(join(kit, 'package.json'), JSON.stringify({ name: '@golden-frijoles/kit' }));
+  writeFileSync(join(kit, 'dist', 'roadmap-extract.mjs'), readFileSync(join(HERE, 'roadmap-extract.mjs')));
+  writeFileSync(join(kit, 'dist', 'roadmap-push.mjs'), readFileSync(join(HERE, 'roadmap-push.mjs')));
+  for (const name of readdirSync(join(HERE, 'lib')).filter(
+    (n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')
+  ))
+    writeFileSync(join(kit, 'dist', 'lib', name), readFileSync(join(HERE, 'lib', name)));
+  writeFileSync(
+    join(project, 'scripts', 'roadmap-to-notion.mjs'),
+    "console.log('notion-stub', process.argv.slice(2).join(' '));\n"
+  );
+  const r = spawnSync(
+    process.execPath,
+    [join(kit, 'dist', 'roadmap-extract.mjs'), '--sink', 'notion', '--docs-only'],
+    {
+      cwd: project,
+      encoding: 'utf8',
+    }
+  );
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^notion-stub --sync --docs-only$/m);
+});

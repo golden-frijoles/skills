@@ -183,10 +183,15 @@ test(
 
 // ── board-sinks-and-scrumban S3.2 — the push, in-process ─────────────────────────────────────────────────────────
 
-test("apiKeyFrom reads the SDK name first and this repo's CI name as a fallback", async () => {
+test("apiKeyFrom: this project's own SELF_PROJECT_API_KEY first, the SDK's name second", async () => {
   const { apiKeyFrom } = await import('./roadmap-push.mjs');
-  assert.equal(apiKeyFrom({ GROWTH_ENGINE_API_KEY: 'a', SELF_PROJECT_API_KEY: 'b' }), 'a');
-  assert.equal(apiKeyFrom({ SELF_PROJECT_API_KEY: 'b' }), 'b');
+  // This project's own key wins: here GROWTH_ENGINE_API_KEY is ANOTHER project's (the Miyagi sync scripts).
+  assert.equal(apiKeyFrom({ GROWTH_ENGINE_API_KEY: 'a', SELF_PROJECT_API_KEY: 'b' }), 'b');
+  assert.equal(
+    apiKeyFrom({ GROWTH_ENGINE_API_KEY: 'a' }),
+    'a',
+    'a stranger who never sets SELF_ uses the SDK name'
+  );
   assert.equal(apiKeyFrom({}), null);
 });
 
@@ -210,4 +215,17 @@ test('pushRoadmap: no key is a clean skip that sends nothing; with a key it POST
   const body = JSON.parse(calls[0].init.body);
   assert.deepEqual(body.items, [{ slug: 'a' }]);
   assert.equal(body.schemaVersion, 1);
+});
+
+test('pushRoadmap: an unreachable engine is a failed push with its reason, never a thrown stack', async () => {
+  const { pushRoadmap } = await import('./roadmap-push.mjs');
+  const r = await pushRoadmap([{ slug: 'a' }], {
+    apiKey: 'k',
+    baseUrl: 'https://nowhere.example',
+    fetchFn: async () => {
+      throw new Error('fetch failed');
+    },
+  });
+  assert.deepEqual([r.ok, r.skipped, r.status], [false, false, null]);
+  assert.match(r.text, /could not reach https:\/\/nowhere\.example: fetch failed/);
 });

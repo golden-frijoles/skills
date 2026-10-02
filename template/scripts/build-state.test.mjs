@@ -876,3 +876,25 @@ test('stage agreement: the build view, the extractor rows and the six-column boa
     f.done();
   }
 });
+
+test('S3.1: an online run whose gather FELL BACK to the snapshot never lifts the status to In review from a stale PR', () => {
+  const f = fixture();
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    f.commit('S2.1 wire it');
+    const stale = () => ({
+      mode: 'snapshot',
+      branches: ['feat/arranged-only-s2'],
+      prs: [
+        { number: 7, head: 'feat/arranged-only-s2', state: 'OPEN', draft: false, url: 'https://x/pull/7' },
+      ],
+      origin: 'snapshot@2026-10-01T00:00:00.000Z',
+      generated_at: '2026-10-01T00:00:00.000Z',
+    });
+    const s = resolveBuildState({ root: f.root, gather: stale, elsewhere: false });
+    assert.equal(s.evidence.pr, null, 'no PR claimed from fallen-back facts');
+    assert.notEqual(s.status, 'In review');
+  } finally {
+    f.done();
+  }
+});

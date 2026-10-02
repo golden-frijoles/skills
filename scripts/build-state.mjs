@@ -250,7 +250,10 @@ function readJournalLocal(git) {
 export function prFromFacts(facts, branch) {
   const open = (facts?.prs ?? []).filter((p) => p.head === branch && p.state === 'OPEN');
   const pr = open.reduce((best, p) => (best === null || p.number > best.number ? p : best), null);
-  return { ok: facts?.mode === 'live', pr: pr ? { number: pr.number, url: pr.url } : null };
+  // Only LIVE facts may lift the status to In review: a failed online gather that fell back to the snapshot must not
+  // claim a PR from hours ago (before this, a failed gh call meant no lift; fresh review, #227).
+  const live = facts?.mode === 'live';
+  return { ok: live, pr: live && pr ? { number: pr.number, url: pr.url } : null };
 }
 
 const notInFlight = (reason, extra = {}) => ({ in_flight: false, reason, ...extra });

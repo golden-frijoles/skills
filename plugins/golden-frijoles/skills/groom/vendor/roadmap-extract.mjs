@@ -700,8 +700,12 @@ if (isMain) {
     process.exitCode = reportPush(await pushRoadmap(rows, { root: REPO }), rows.length);
   else {
     // Notion is opt-in (template/optional/notion/): a project that wants it copies roadmap-to-notion.mjs beside this.
-    const notion = join(dirname(fileURLToPath(import.meta.url)), 'roadmap-to-notion.mjs');
-    if (!existsSync(notion)) {
+    // Beside this file when it IS the project's copy; the project's scripts/ when this runs from the kit (fresh review, #227).
+    const notion = [
+      join(dirname(fileURLToPath(import.meta.url)), 'roadmap-to-notion.mjs'),
+      join(REPO, 'scripts', 'roadmap-to-notion.mjs'),
+    ].find((p) => existsSync(p));
+    if (!notion) {
       process.stderr.write(
         'roadmap-extract: no roadmap-to-notion.mjs beside this script — the Notion sink is opt-in: copy ' +
           'template/optional/notion/roadmap-to-notion.mjs into scripts/ and set NOTION_TOKEN + NOTION_DB_ID.\n'

@@ -114,9 +114,13 @@ export function readExtract(run = spawnSync) {
   return items;
 }
 
-/** The project's ingest key: the SDK's `GROWTH_ENGINE_API_KEY`, else this repo's CI name `SELF_PROJECT_API_KEY`. */
+/** The project's ingest key: `SELF_PROJECT_API_KEY` first, else the SDK's `GROWTH_ENGINE_API_KEY`. */
+// ⚠️ ORDER MATTERS (fresh review, #227): in this repo `GROWTH_ENGINE_API_KEY` already names ANOTHER project's key (the
+// Miyagi sync scripts), so preferring it would push this roadmap into a customer's project from any shell that has it
+// exported. `SELF_PROJECT_API_KEY` — the name that only ever means "this project's own key" — wins; a stranger who never
+// sets it uses the SDK's name.
 export const apiKeyFrom = (env = process.env) =>
-  env.GROWTH_ENGINE_API_KEY || env.SELF_PROJECT_API_KEY || null;
+  env.SELF_PROJECT_API_KEY || env.GROWTH_ENGINE_API_KEY || null;
 
 /** The envelope for `items` as pushed from the checkout at `root`: provenance, the WIP limits, the repo base. */
 export function envelopeFor(items, root = REPO_ROOT) {
@@ -147,12 +151,18 @@ export async function pushRoadmap(
   } = {}
 ) {
   if (!apiKey) return { ok: true, skipped: true, status: null, text: '' };
-  const res = await fetchFn(`${String(baseUrl).replace(/\/$/, '')}/api/v1/roadmap/push`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(envelopeFor(items, root)),
-    signal: AbortSignal.timeout(30_000),
-  });
+  let res;
+  try {
+    res = await fetchFn(`${String(baseUrl).replace(/\/$/, '')}/api/v1/roadmap/push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(envelopeFor(items, root)),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    // An unreachable engine is a failed push with its reason — never a stack trace (fresh review, #227).
+    return { ok: false, skipped: false, status: null, text: `could not reach ${baseUrl}: ${err.message}` };
+  }
   return { ok: res.ok, skipped: false, status: res.status, text: await res.text() };
 }
 
