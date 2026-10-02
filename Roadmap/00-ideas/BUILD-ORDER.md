@@ -5,7 +5,7 @@
 
 # Build order — the six stages
 
-> **Generated 2026-10-01 — do not hand-edit.** One stage per initiative, decided in one place
+> **Generated 2026-10-02 — do not hand-edit.** One stage per initiative, decided in one place
 > (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped. This committed
 > file reads the docs alone, so **Building and QA are not here** — they are facts git and GitHub hold.
 > For the live board run `node scripts/build-order.mjs --live`, or open the Hub board.

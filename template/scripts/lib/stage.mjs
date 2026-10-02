@@ -141,10 +141,13 @@ const orderKey = (row) =>
 
 /**
  * Rows with a stage, grouped into the six columns in board order. Ready to build runs in build order (D1); Shipped
- * runs newest first by `shipped_at`; every other column runs in build order, then name. Rows whose stage is null
- * (archived) or that are not initiatives (sprint rows) are left out — cards are initiatives (D7).
+ * runs newest first — by `shipped_at` (`shipped: 'recent'`, the default), or by build order, highest first
+ * (`shipped: 'build-order'`). The second exists for a COMMITTED view: `shipped_at` is a git date, and a depth-1 CI
+ * clone dates every row to its one commit, so a file sorted by it is not reproducible (build-order-guard went red on
+ * exactly that). Every other column runs in build order, then name. Rows whose stage is null (archived) or that are
+ * not initiatives (sprint rows) are left out — cards are initiatives (D7).
  */
-export function groupByStage(rows) {
+export function groupByStage(rows, { shipped = 'recent' } = {}) {
   const columns = Object.fromEntries(STAGES.map((s) => [s, []]));
   for (const row of rows) {
     if (row.grain === 'Sprint' || !row.stage || !(row.stage in columns)) continue;
@@ -152,9 +155,13 @@ export function groupByStage(rows) {
   }
   for (const stage of STAGES) {
     columns[stage].sort((a, b) =>
-      stage === 'Shipped'
-        ? String(b.shipped_at ?? '').localeCompare(String(a.shipped_at ?? '')) || orderKey(a) - orderKey(b)
-        : orderKey(a) - orderKey(b) || String(a.name).localeCompare(String(b.name))
+      stage !== 'Shipped'
+        ? orderKey(a) - orderKey(b) || String(a.name).localeCompare(String(b.name))
+        : shipped === 'build-order'
+          ? (Number.isFinite(b.build_order_num) ? b.build_order_num : -1) -
+              (Number.isFinite(a.build_order_num) ? a.build_order_num : -1) ||
+            String(a.name).localeCompare(String(b.name))
+          : String(b.shipped_at ?? '').localeCompare(String(a.shipped_at ?? '')) || orderKey(a) - orderKey(b)
     );
   }
   return columns;

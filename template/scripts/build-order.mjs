@@ -67,7 +67,8 @@ function line(r) {
 }
 
 function render(rows) {
-  const columns = groupByStage(rows);
+  // Shipped by build order, never by `shipped_at`: that is a git date, and a depth-1 CI clone would reorder the file.
+  const columns = groupByStage(rows, { shipped: 'build-order' });
   const now = new Date().toISOString().slice(0, 10);
   const out = [];
   out.push('<!-- GENERATED FILE — do not edit by hand.');

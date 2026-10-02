@@ -208,3 +208,19 @@ test('groupByStage: six columns, Ready to build in build order, Shipped newest f
   );
   assert.equal(cols.Building.length, 0);
 });
+
+test('groupByStage can order Shipped by build order, highest first — the committed board must not read git dates', () => {
+  const rows = [
+    { grain: 'Epic', name: 'Early', stage: 'Shipped', build_order_num: 3, shipped_at: '2026-09-30' },
+    { grain: 'Epic', name: 'Late', stage: 'Shipped', build_order_num: 30, shipped_at: '2026-08-01' },
+    { grain: 'Epic', name: 'Unordered', stage: 'Shipped', build_order_num: null, shipped_at: '2026-10-01' },
+  ];
+  assert.deepEqual(
+    groupByStage(rows, { shipped: 'build-order' }).Shipped.map((r) => r.name),
+    ['Late', 'Early', 'Unordered']
+  );
+  assert.deepEqual(
+    groupByStage(rows).Shipped.map((r) => r.name),
+    ['Unordered', 'Early', 'Late']
+  );
+});
