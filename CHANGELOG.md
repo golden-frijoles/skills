@@ -7,6 +7,29 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-02
+
+### Added
+
+- **One projector, every sink.** `roadmap-extract --sink terminal` prints the six-stage board; `--sink hub` pushes it to
+  a Golden Frijoles Hub (`GROWTH_ENGINE_URL` + the project's ingest key in `GROWTH_ENGINE_API_KEY`) — so
+  `npx -y @golden-frijoles/kit roadmap-extract --sink hub` feeds the hosted board from any repo; `--sink notion` runs the
+  optional Notion sync copied beside it. `roadmap-push.mjs` ships in the kit.
+- **WIP as advice at the moment of pulling.** `board.wip` (`{ "Building": 2, "QA": 3 }`) in
+  `golden-frijoles.config.json`: when Building is at its limit, `emit-epic-kickoff` prints one warning line naming the
+  limit and the cards in Building — and the kickoff still prints. Default: no limits, no advice.
+- **`board.hubUrl`**: the build view ends with a `Board ↗` link to this work's card on the Hub.
+
+### Changed
+
+- **The build view is a client of the stage resolver.** Its Status line is the stage — the same row the Hub and
+  BUILD-ORDER.md read — with where it came from and how old the facts are ("QA · from github: PR #7 ready (snapshot, 3h
+  ago)"); the written `phase:` stays as a detail. A Board line counts Building, QA and Ready to build and names the next
+  pull. Online it makes one facts gather (no separate PR lookup); the hook stays offline and reads the snapshot, which
+  `session-resume` now refreshes at session start.
+- **The optional Notion sink writes a `Stage` select** when the database has one (it never changes the schema), and
+  splits long text across Notion's 2000-character objects instead of failing.
+
 ## [0.20.0] - 2026-10-01
 
 ### Added
