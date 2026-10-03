@@ -899,3 +899,15 @@ test('stripGeneratedFileDiffs strips jev-eval.fixtures.json (machine-written Jev
   const { strippedFiles } = stripGeneratedFileDiffs(hunk);
   assert.deepEqual(strippedFiles, ['scripts/jev-eval.fixtures.json']);
 });
+
+// ── devinErrorLine — the reason, not the trailing brace (2026-10-03) ─────────────────────────────────
+// Devin ends an error with a JSON detail block; the rail logged only stderr's last line, `}`, for ten days.
+test('devinErrorLine keeps the Error: line, not the JSON tail', async () => {
+  const { devinErrorLine } = await import('./cross-agent-cli.mjs');
+  const stderr =
+    'Error: Agent error: Your weekly usage quota has been exhausted. (trace ID: abc): {\n' +
+    '  "cognition.ai/errorKind": "resource_exhausted"\n}';
+  assert.equal(devinErrorLine(stderr), 'Error: Agent error: Your weekly usage quota has been exhausted. (trace ID: abc)');
+  assert.equal(devinErrorLine('warming up\nsomething broke\n}'), 'something broke');
+  assert.equal(devinErrorLine(''), 'unknown error');
+});

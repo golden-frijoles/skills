@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-10-03
+
+### Fixed
+
+- **A failed Devin run now says why.** `runDevin` logged only the last line of Devin's stderr, which is the closing `}`
+  of its JSON detail block, so a quota cap, an auth lapse and a capacity refusal all read as `devin -p failed: }`. It now
+  keeps the `Error:` line (`devinErrorLine`), e.g. "Your weekly usage quota has been exhausted".
+- **agy pin 1.2.15 → 1.2.16** (`AGY_PINNED`, re-verified by `cross-agent-doctor agy --fix`: contract and both live
+  probes green).
+
+### Added
+
+- **A guard that every `writeProse(` call is awaited** (`lib/prose-writer.test.mjs`, scripts and `lib/`). It went
+  async in 0.21 and two of the origin project's callers kept calling it bare, so their reports died silently.
+
 ## [0.24.0] - 2026-10-02
 
 ### Added

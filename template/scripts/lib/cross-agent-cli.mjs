@@ -53,10 +53,10 @@ export const AGENT_BIN = {
 // Harmless here since AGY_MODEL/AGY_FALLBACK_MODEL below are always valid, listed model names (checked via
 // `agy models`), but it means a future typo in either constant would silently review with the WRONG model
 // instead of failing loud — watch for that if either constant is ever edited.
-// agy-doctor: last verified 2026-10-02 against 1.2.15.
+// agy-doctor: last verified 2026-10-03 against 1.2.16.
 //   ^ machine-managed marker — `node scripts/cross-agent-doctor.mjs agy --fix` rewrites it (with the constant
 //   below) after a green live contract probe. Don't hand-edit the marker's shape.
-export const AGY_PINNED = '1.2.15';
+export const AGY_PINNED = '1.2.16';
 
 // agy's `--print` mode prints NOTHING unless `--model` names a model — and, crucially, it ALSO prints
 // nothing (exit 0, empty stdout — the error lands only in agy's log, see --log-file) when the model is
@@ -1405,6 +1405,18 @@ export function runClaudeCode(prompt, stdin, opts = {}, deps = {}) {
 // over agy's argv path for large diffs. Empty stdout is a failure (a quota-capped devin, like agy, exits 0
 // with nothing). Uses the account default model. `deps` is injectable so a node:test drives it without a
 // real devin binary or touching the real filesystem.
+/**
+ * The line of devin's stderr that says what went wrong. Devin ends its errors with a JSON detail block, so the LAST
+ * line is a bare `}` — which is all the 📝 rail logged for ten days while the real line read "Your weekly usage quota
+ * has been exhausted". Prefer the first `Error:` line, else the last line that is not JSON punctuation.
+ */
+export function devinErrorLine(stderr) {
+  const lines = String(stderr || '').trim().split('\n').map((l) => l.trim()).filter(Boolean);
+  const error = lines.find((l) => /^error\b/i.test(l));
+  if (error) return error.replace(/:?\s*\{\s*$/, '');
+  return lines.filter((l) => !/^[{}\[\],]+$/.test(l)).pop() || 'unknown error';
+}
+
 export function runDevin(prompt, opts = {}, deps = {}) {
   const { spawn = spawnSync, writeFile = writeFileSync, mkdtemp = mkdtempSync, rm = rmSync } = deps;
   let dir;
@@ -1425,10 +1437,7 @@ export function runDevin(prompt, opts = {}, deps = {}) {
         opts.soft,
         `devin not found or failed to spawn (${r.error.message}) — install the Devin CLI or use --agent codex/antigravity.`
       );
-    if (r.status !== 0) {
-      const last = (r.stderr || '').trim().split('\n').filter(Boolean).pop() || 'unknown error';
-      return fail(opts.soft, `devin -p failed: ${last}`);
-    }
+    if (r.status !== 0) return fail(opts.soft, `devin -p failed: ${devinErrorLine(r.stderr)}`);
     const out = (r.stdout || '').trim();
     if (!out) {
       return fail(

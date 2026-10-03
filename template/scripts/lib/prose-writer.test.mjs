@@ -444,3 +444,30 @@ test('the retry loop AWAITS an async guard (judgeProse is async) — a rejected 
   assert.equal(r.text, 'second draft.');
   assert.deepEqual(seen, ['first draft.', 'second draft.']);
 });
+
+// ── Every caller AWAITS writeProse (2026-10-03) ──────────────────────────────────────────────────────
+// writeProse went async in #159; commit-report and standup-report kept calling it bare, so `result.text` was
+// undefined and the 📝 rail died silently for ten days. Pinned for the whole class, not the two instances.
+// Line-based on purpose: it catches the shape that actually shipped. An import alias or a call split across lines
+// can slip past it; `return writeProse(` / `.then(` are flagged though correct — await them instead.
+test('no script calls writeProse without await', async () => {
+  const { readdirSync, readFileSync: read } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const bare = [];
+  const files = ['', 'lib/'].flatMap((d) =>
+    readdirSync(join(root, d))
+      .filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs'))
+      .map((n) => `${d}${n}`)
+  );
+  for (const f of files) {
+    read(join(root, f), 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        if (/\bwriteProse\(/.test(line) && !/\b(await\s+|function\s+)writeProse\(/.test(line) && !/^\s*(\/\/|\*)/.test(line))
+          bare.push(`${f}:${i + 1}`);
+      });
+  }
+  assert.deepEqual(bare, [], `writeProse is async — await it: ${bare.join(', ')}`);
+});
