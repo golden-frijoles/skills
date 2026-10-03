@@ -138,6 +138,25 @@ export function progressOf(value) {
   return total > 0 ? { done, total } : null;
 }
 
+export const SPEND_BAR_WIDTH = 10;
+
+/**
+ * The Spend row's decoration (finops S2.4), parsed from the resolver's OWN words — never computed from anything else
+ * (D3): `≈$38 of quote $30–55 (M) …` → a bar of 38 ÷ 55, tone good; `… % over quote …` → a full bar, tone bad (D8);
+ * anything else (`no quote`, Sprint 1's line) → no bar, tone plain.
+ */
+export function spendOf(value) {
+  const v = String(value || '');
+  if (/(?:<1|\d+)% over quote \$/.test(v) || /· over quote \$/.test(v))
+    return { tone: 'bad', bar: { filled: SPEND_BAR_WIDTH, width: SPEND_BAR_WIDTH } };
+  const m = /^[≈≥]\$(\d+(?:\.\d+)?) of quote \$(\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)/.exec(v);
+  if (!m) return { tone: 'plain', bar: null };
+  const actual = Number(m[1]);
+  const high = Number(m[3]);
+  const filled = high > 0 ? Math.max(0, Math.min(SPEND_BAR_WIDTH, Math.round((actual / high) * SPEND_BAR_WIDTH))) : 0;
+  return { tone: 'good', bar: { filled, width: SPEND_BAR_WIDTH } };
+}
+
 /**
  * The view text (the resolver's lines, joined) as band rows:
  *   heading — the first line (`Currently building`, `No epic in flight — …`)
@@ -156,7 +175,12 @@ export function bandRowsFrom(text) {
     const field = /^ {2}([A-Z][A-Za-z]*) +(\S.*)$/.exec(line);
     if (field && field[1] in LABEL_GLYPHS) {
       const [, label, value] = field;
-      const tone = label === 'Status' || label === 'Open' ? toneOf(label === 'Open' ? value.split(' · ')[1] : value) : 'plain';
+      const tone =
+        label === 'Status' || label === 'Open'
+          ? toneOf(label === 'Open' ? value.split(' · ')[1] : value)
+          : label === 'Spend'
+            ? spendOf(value).tone
+            : 'plain';
       // `title    area · risk X`: the resolver separates the meta with four spaces; drawn dim beside it.
       const [main, ...rest] = value.split(/ {4,}/);
       const meta = rest.join('  ') || null;

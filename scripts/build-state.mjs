@@ -137,6 +137,7 @@ function readEpic(root, slug) {
     risk: readme.data.risk ?? null,
     phase: readme.data.phase ?? null,
     lifecycle: readme.data.status ?? null,
+    quote: quoteOf(readme.data),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
     sprints,
   };
@@ -301,13 +302,50 @@ export function dollars(usd, known = true) {
   return usd > 0 && usd < 1 ? `${sign}$${usd.toFixed(2)}` : `${sign}$${Math.round(usd)}`;
 }
 
-/** The Spend line's value (finops S1.3): `≈$38 · 1.9M tok · 4 sessions · this machine`. */
-export function spendValue(spend) {
-  const parts = [dollars(spend.usd, spend.usd_known)];
-  if (spend.mtok !== null) parts.push(`${spend.mtok}M tok`);
-  if (spend.sessions !== null) parts.push(`${spend.sessions} session${spend.sessions === 1 ? '' : 's'}`);
-  parts.push(spend.basis);
-  return parts.join(' · ');
+/**
+ * The quote's label (finops S2.4): `(M)` for a calibrated quote, `(M · 2 past epics, wide)` while history is thin. Read
+ * from the `quote_basis` quote.mjs writes (`M, n=2, wide` / `M, n=5, p25–p75`); an unreadable basis shows as written.
+ */
+export function quoteLabel(basis, appetite = null) {
+  const m = /^\s*([SML])\s*,\s*n=(\d+)\s*,\s*(wide|p25–p75)\s*$/.exec(String(basis ?? ''));
+  if (m)
+    return m[3] === 'wide' ? `(${m[1]} · ${m[2]} past epic${m[2] === '1' ? '' : 's'}, wide)` : `(${m[1]})`;
+  if (basis) return `(${basis})`;
+  return appetite ? `(${appetite})` : '';
+}
+
+/**
+ * The Spend line's value — the four states of the approved mockup (finops S2.4; the resolver owns the words, D3):
+ *   inside    ≈$38 of quote $30–55 (M) · 1.9M tok · 4 sessions
+ *   over      ≈$71 · 29% over quote $30–55 (M) · 3.4M tok              (D8: alert-only)
+ *   no quote  ≈$22 · no quote · 1.1M tok · 2 sessions                   (never an invented quote)
+ *   thin      ≈$9 of quote $25–90 (M · 2 past epics, wide) · …
+ * With no quote object at all (a seed, an old caller) it is Sprint 1's line, which names where it was measured.
+ */
+export function spendValue(spend, quote) {
+  const tok = spend.mtok !== null ? `${spend.mtok}M tok` : null;
+  const sessions =
+    spend.sessions !== null ? `${spend.sessions} session${spend.sessions === 1 ? '' : 's'}` : null;
+  const usd = dollars(spend.usd, spend.usd_known);
+  if (quote === undefined) return [usd, tok, sessions, spend.basis].filter(Boolean).join(' · ');
+  if (!quote) return [usd, 'no quote', tok, sessions].filter(Boolean).join(' · ');
+  const label = quoteLabel(quote.basis, quote.appetite);
+  const range = `$${quote.low}–${quote.high}${label ? ` ${label}` : ''}`;
+  if (spend.usd > quote.high) {
+    const pct = quote.high > 0 ? Math.round(((spend.usd - quote.high) / quote.high) * 100) : null;
+    // `<1% over`, never `0% over`: the comparison is on the raw dollars, so a rounded 0 would read as "not over".
+    const over = pct === null ? 'over' : pct < 1 ? '<1% over' : `${pct}% over`;
+    return [usd, `${over} quote ${range}`, tok].filter(Boolean).join(' · ');
+  }
+  return [`${usd} of quote ${range}`, tok, sessions].filter(Boolean).join(' · ');
+}
+
+/** The epic's quote off its README frontmatter, or null (an unquoted epic — never a $0 quote, D4). */
+export function quoteOf(readme) {
+  const lo = readme.quote_low_usd;
+  const hi = readme.quote_high_usd;
+  if (typeof lo !== 'number' || typeof hi !== 'number' || lo > hi) return null;
+  return { low: lo, high: hi, basis: readme.quote_basis ?? null, appetite: readme.appetite ?? null };
 }
 
 /** Does `text` name `slug` as a whole slug — `aws` in "aws S1.1", but not inside "aws-s3 S1.1"? */
@@ -649,6 +687,7 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     branch,
     branch_match: target.match,
     spend: spendFor(root, git, epic.slug),
+    quote: epic.quote,
     lifecycle: epic.lifecycle,
     epic: {
       slug: epic.slug,
@@ -797,7 +836,7 @@ export function renderLines(state) {
   const storyPart = `Story ${progress.story ?? '?'} of ${progress.stories}`;
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
   lines.push(`${pad('Progress')}${storyPart} · ${sprintPart}`);
-  if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend)}`);
+  if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend, state.quote ?? null)}`);
   lines.push(`${pad('Status')}${statusValue(state)}`);
   return [...lines, ...also, ...boardLines(state, pad)];
 }

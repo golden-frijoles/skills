@@ -10,6 +10,9 @@ type: {{TYPE_KEY}}
 sprints_total: {{SPRINTS_TOTAL}}
 stories_total: {{STORIES_TOTAL}}   # the sum of every sprint's stories_total — keep it in step when a story is added
 intent_match: {{INTENT_MATCH}}   # copied from the seed by scaffold-epic (intent-match); the reader at the lock may update it
+quote_low_usd: {{QUOTE_LOW}}    # ≈ API $ — copied from the seed's `quote:` by scaffold-epic (finops); null = not quoted, never 0
+quote_high_usd: {{QUOTE_HIGH}}
+quote_basis: {{QUOTE_BASIS}}
 build_order: null    # integer position in the ONE global build sequence — the SSOT once the epic
                      # exists (the seed's value is only a fallback). Fill it in at the betting
                      # table; plain integers, no "#2a" suffixes. See 00-ideas/README.md → Ordering.

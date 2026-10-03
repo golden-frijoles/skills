@@ -497,3 +497,20 @@ test('intent-answered: an answer inside a comment, or mid-sentence, is not an an
   assert.equal(intentScore({ intent_match: '150' }), null);
   assert.equal(intentScore({ intent_match: '100' }), 100);
 });
+
+test('finops 2.5: a shipped epic with no actual_usd is a WARNING naming the command — never a failure', () => {
+  const none = evaluate({ ...closedEpic });
+  assert.equal(none.ok, true, 'still done');
+  assert.equal(none.warnings.length, 1);
+  assert.match(none.warnings[0], /epic-actuals\.mjs --epic demo --write/);
+  const stamped = evaluate({
+    ...closedEpic,
+    readme: README_SHIPPED.replace('slug: demo', 'slug: demo\nactual_usd: 33.08'),
+  });
+  assert.deepEqual(stamped.warnings, []);
+  const held = evaluate({
+    ...closedEpic,
+    readme: README_SHIPPED.replace('slug: demo', 'slug: demo\nactual_usd: null\nactual_basis: "held — C14"'),
+  });
+  assert.deepEqual(held.warnings, [], 'a held actual is recorded, not missing');
+});

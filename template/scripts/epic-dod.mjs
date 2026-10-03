@@ -339,7 +339,17 @@ export function evaluate({
     }
   }
   const ok = ITEMS.every((k) => ['pass', 'exempt'].includes(items[k].state));
-  return { ok, items };
+  // finops S2.5 — a WARNING, never a failure: epics shipped before FinOps have no actual, and this must not turn them
+  // red (epic-dod.exemptions.json stays untouched). An actual held on purpose (`actual_basis` says why) is recorded.
+  const warnings = [];
+  const actual = String(fm?.actual_usd ?? '').trim();
+  const held =
+    String(fm?.actual_basis ?? '').trim() && !['null', '~'].includes(String(fm?.actual_basis).trim());
+  if (fm?.status === 'shipped' && !(actual && Number.isFinite(Number(actual))) && !held)
+    warnings.push(
+      `no actual_usd — stamp what it cost: node scripts/epic-actuals.mjs --epic ${slug} --write (finops; a warning, not a failure)`
+    );
+  return { ok, items, warnings };
 }
 
 /** `_Closed: YYYY-MM-DD_` with a date that EXISTS — `2026-99-99` matched the shape and meant nothing. */
@@ -507,7 +517,7 @@ function main() {
           .filter(Boolean)
           .map((l) => l.split('refs/heads/')[1])
       : null;
-  const { ok, items } = evaluate({
+  const { ok, items, warnings } = evaluate({
     slug,
     readme: readmeText,
     externalDocs,
@@ -529,6 +539,7 @@ function main() {
     process.stdout.write(
       `  ${icon[items[k].state]} ${k.padEnd(15)} ${items[k].state.padEnd(11)} ${items[k].detail}\n`
     );
+  for (const w of warnings) process.stdout.write(`  ⚠ ${w}\n`);
   process.stdout.write(
     ok
       ? '✓ the derivable half of the DoD holds. Still yours: poster honest, retro true + learnings promoted, smoke walkthroughs followable.\n'

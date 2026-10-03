@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-02
+
+### Added
+
+- **Quotes, calibrated from your own history** (finops S2). `quote.mjs --appetite S|M|L` prints the p25–p75 of
+  `actual_usd` over shipped epics at that appetite — `$24–35 (M, n=4, p25–p75)` — or, with fewer than 3, a wide default
+  labelled `wide` with its n. `--report` says how many actuals landed inside their quote; `--json` for tools.
+- **Groom writes the quote.** Stage 1.5 runs `quote.mjs` and records the line in the seed's new `quote:` line;
+  `scaffold-epic` copies it into the epic README (`quote_low_usd`, `quote_high_usd`, `quote_basis`), or takes
+  `--quote <lo>-<hi> [--quote-basis "…"]`. Absent is `null`, never 0. Nobody types a quote.
+- **The band compares spend with the quote** — the four states of the approved mockup: `≈$38 of quote $30–55 (M)`
+  with a green bar; `≈$71 · 29% over quote $30–55 (M)` with a full red bar (an alert — nothing is stopped); `no quote`
+  with no bar; and a thin history shown as `(M · 2 past epics, wide)`.
+- **Close stamps the actual.** `epic-dod --check` warns (never fails) on a shipped epic with no `actual_usd`, naming
+  `epic-actuals --epic <slug> --write`; the retrospective template gains a `Quote vs actual:` line and the epic
+  Definition of Done names the stamp.
+
+### Changed
+
+- `roadmap-extract` emits the six FinOps fields on epic rows, and reads an epic's appetite from its README first, then
+  its seed.
+
 ## [0.22.0] - 2026-10-02
 
 ### Added

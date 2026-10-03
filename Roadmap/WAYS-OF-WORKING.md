@@ -190,6 +190,8 @@ mechanical half (sprints merged, README `status: shipped`, sprint statuses ticke
 retrospective, no leftover branch) — **and** the judgment items below are true:
 
 - [ ] The **product poster** reflects what is now live (✅ = enforced in code).
+- [ ] **The actual is stamped** — `node scripts/epic-actuals.mjs --epic <slug> --write` writes `actual_*` into the
+      epic README (`epic-dod` warns when it is missing), and the retro's `Quote vs actual:` line carries it.
 - [ ] **`RETROSPECTIVE.md`** says what actually happened, and its durable learnings are promoted into
       `Roadmap/LEARNINGS.md` — sharpen the existing line, don't append a near-duplicate.
 - [ ] **Each sprint has a smoke walkthrough** a person can follow blind, with real URLs; money/auth steps

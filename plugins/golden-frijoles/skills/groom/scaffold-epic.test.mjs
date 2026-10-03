@@ -99,3 +99,43 @@ test('intent_match: copied from the seed when it is a whole number 0–100, othe
     }
   }
 });
+
+test('finops 2.3: the quote comes from --quote, else the seed’s quote: line; absent is null, never 0 — and it validates', () => {
+  const seed = '---\nslug: tmp-check\n---\n## Appetite\nM\nquote: $24–35 (M, n=4, p25–p75)\n';
+  const cases = [
+    [[], null, ['null', 'null', 'null']],
+    [[], seed, ['24', '35', '"M, n=4, p25–p75"']],
+    [['--quote', '30-55', '--quote-basis', 'M, n=6, p25–p75'], seed, ['30', '55', '"M, n=6, p25–p75"']],
+    [['--quote', '$12.5–40'], null, ['12.5', '40', 'null']],
+  ];
+  for (const [extra, s, [lo, hi, basis]] of cases) {
+    const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One', ...extra], { seed: s });
+    try {
+      const readme = readFileSync(join(dir, 'README.md'), 'utf8');
+      assert.match(readme, new RegExp(`^quote_low_usd: ${lo.replace('.', '\\.')}\\s`, 'm'), JSON.stringify(extra));
+      assert.match(readme, new RegExp(`^quote_high_usd: ${hi}\\s*$`, 'm'));
+      assert.match(readme, new RegExp(`^quote_basis: ${basis.replace(/[()]/g, '\\$&')}\\s*$`, 'm'));
+      const parsed = parseDocFrontmatter(readme);
+      assert.equal(parsed.error, null);
+      assert.deepEqual(validateEpicFrontmatter(parsed, { sprintCount: 1, storyCount: 1 }), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('finops 2.3: a malformed --quote is refused before anything is written', () => {
+  assert.throws(() => scaffold(['--risk', 'low', '--sprints', 'One', '--quote', '55-30']));
+  assert.throws(() => scaffold(['--risk', 'low', '--sprints', 'One', '--quote', 'lots']));
+  assert.throws(() => scaffold(['--risk', 'low', '--sprints', 'One', '--quote']), undefined, 'a value-less --quote');
+  assert.throws(() => scaffold(['--risk', 'low', '--sprints', 'One', '--quote', '0-0']), undefined, 'a $0 quote');
+  assert.throws(() => scaffold(['--risk', 'low', '--sprints', 'One', '--quote', '0.001-0.004']), undefined, 'rounds to $0');
+  const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One', '--quote', '30.456-55.004']);
+  try {
+    const readme = readFileSync(join(dir, 'README.md'), 'utf8');
+    assert.match(readme, /^quote_low_usd: 30\.46\s/m);
+    assert.match(readme, /^quote_high_usd: 55\s*$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

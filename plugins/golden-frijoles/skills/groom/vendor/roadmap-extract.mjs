@@ -68,6 +68,7 @@ import { attributeFacts, resolveStage } from './lib/stage.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { epicKickoffFromDir, sprintBranch } from './lib/epic-kickoff.mjs';
 import { renderBoardText } from './lib/board-text.mjs';
+import { FINOPS_FIELDS, FINOPS_NUMERIC_FIELDS } from './lib/roadmap-contract.mjs';
 import { pushRoadmap, reportPush } from './roadmap-push.mjs';
 
 const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
@@ -108,6 +109,23 @@ const PRIORITY_LABEL = {
   'wave-4': 'Wave 4',
 };
 const TYPE_LABEL = { feature: 'Feature', spike: 'Spike', chore: 'Chore', bug: 'Bug', epic: 'Epic' };
+
+/**
+ * finops D6 — an epic's quote and actual, off its README frontmatter (this file's own line reader yields strings).
+ * A number field that does not read as a finite number >= 0 is null, never 0: doc-format reports the bad value, and
+ * the board must not show a quote nobody wrote. The field list is the contract's, not a second copy.
+ */
+export function finopsFields(fm) {
+  const out = {};
+  for (const key of FINOPS_FIELDS) {
+    const raw = fm[key];
+    if (FINOPS_NUMERIC_FIELDS.includes(key)) {
+      const n = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+      out[key] = Number.isFinite(n) && n >= 0 ? n : null;
+    } else out[key] = typeof raw === 'string' && raw ? raw : null;
+  }
+  return out;
+}
 
 function parseFrontmatter(md) {
   if (!md.startsWith('---')) return {};
@@ -546,7 +564,8 @@ export function buildRows({
       priority,
       type: TYPE_LABEL[epicFm.type || seed.type] || 'Epic',
       risk,
-      appetite: seed.appetite || null,
+      // finops D20 — the README's own appetite first (an epic groomed after FinOps carries it), else the seed's.
+      appetite: epicFm.appetite || seed.appetite || null,
       underwritten_by: seed.underwritten_by || null,
       sprint_progress: totStories ? `${doneStories}/${totStories} stories` : `${sprints.length} sprints`,
       build_order: buildOrder,
@@ -564,6 +583,7 @@ export function buildRows({
       pr: prOf(pr),
       kickoff,
       shipped_at: stage === 'Shipped' ? statusDay : null,
+      ...finopsFields(epicFm),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries
@@ -707,7 +727,7 @@ if (isMain) {
     ].find((p) => existsSync(p));
     if (!notion) {
       process.stderr.write(
-        'roadmap-extract: no roadmap-to-notion.mjs beside this script or in the project\'s scripts/ — the Notion sink is opt-in: copy ' +
+        "roadmap-extract: no roadmap-to-notion.mjs beside this script or in the project's scripts/ — the Notion sink is opt-in: copy " +
           'template/optional/notion/roadmap-to-notion.mjs into scripts/ and set NOTION_TOKEN + NOTION_DB_ID.\n'
       );
       process.exit(2);

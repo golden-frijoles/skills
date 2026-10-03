@@ -11,6 +11,7 @@
 // Flags: --type <feature|spike|bug|chore> (default feature, matches SKILL.md's Stage-2 classification
 //        table exactly — rendered Capitalized into the epic README's header "Class:" field)
 //        · --repo-root <path> (default: cwd) · --dry-run (print, write nothing)
+//        · --quote <lo>-<hi> [--quote-basis "…"] (≈ API $; default: the seed’s `quote:` line, else null — finops S2.3)
 // It does NOT commit — it prints the exact path-scoped git command for you to run.
 //
 // ── Why --repo-root exists (a live bug, fixed 2026-08-03) ────────────────────────────────────────────
@@ -107,7 +108,34 @@ const seedPath = join(REPO_ROOT, 'Roadmap', '00-ideas', 'seeds', `${slug}.md`);
 const seedFm = existsSync(seedPath) ? /^---\n([\s\S]*?)\n---/.exec(readFileSync(seedPath, 'utf8'))?.[1] ?? '' : '';
 const seedScore = /^intent_match:\s*(\d{1,3})\s*(?:#.*)?$/m.exec(seedFm)?.[1];
 const intentMatch = seedScore != null && Number(seedScore) <= 100 ? seedScore : 'null';
+// finops S2.3 — the quote (≈ API $) travels the same way: `--quote <lo>-<hi> [--quote-basis "…"]` wins, else the seed's
+// `quote: $<lo>–<hi> (<basis>)` line, the one groom copies from `quote.mjs` at Stage 1.5. Anything else scaffolds null —
+// an unquoted epic, never a quote of $0.
+function quoteFrom(flag, basisFlag, seedText) {
+  if (flag === true) {
+    console.error('scaffold-epic: --quote needs a value like 30-55 (low-high, in ≈ API $)');
+    process.exit(1);
+  }
+  if (typeof flag === 'string') {
+    const m = /^\$?(\d+(?:\.\d+)?)\s*[-–]\s*\$?(\d+(?:\.\d+)?)$/.exec(flag.trim());
+    if (!m || Number(m[1]) > Number(m[2])) {
+      console.error(`scaffold-epic: --quote must look like 30-55 (low-high, in ≈ API $), got "${flag}"`);
+      process.exit(1);
+    }
+    const r2 = (v) => String(Math.round(Number(v) * 100) / 100); // D17 — writers round $ to 2 places
+    if (Number(r2(m[2])) <= 0) {
+      console.error(`scaffold-epic: a quote of $0 is not a quote — leave --quote out to scaffold an unquoted epic`);
+      process.exit(1);
+    }
+    return { low: r2(m[1]), high: r2(m[2]), basis: typeof basisFlag === 'string' ? yaml(basisFlag) : 'null' };
+  }
+  const m = /^quote:\s*\$(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)\s*\(([^)]+)\)/m.exec(seedText);
+  if (m && Number(m[1]) <= Number(m[2])) return { low: m[1], high: m[2], basis: yaml(m[3].trim()) };
+  return { low: 'null', high: 'null', basis: 'null' };
+}
+const quote = quoteFrom(args.quote, args['quote-basis'], existsSync(seedPath) ? readFileSync(seedPath, 'utf8') : '');
 const baseVars = {
+  QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.

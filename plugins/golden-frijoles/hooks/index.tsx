@@ -36,6 +36,7 @@ import {
   repoFactsFrom,
   shouldRefresh,
   shouldRefreshUsage,
+  spendOf,
   statusTextFrom,
 } from './build-view.mjs';
 import {
@@ -187,6 +188,18 @@ export const register: Register = (on) => {
       );
     };
 
+    // finops S2.4 — the Spend row's bar, from the resolver's own words (spendOf): green inside the quote, red when over.
+    const spendBar = (value: string) => {
+      const { bar, tone } = spendOf(value);
+      if (!bar) return null;
+      return (
+        <Text>
+          <Text color={TONE_COLORS[tone as keyof typeof TONE_COLORS]}>{'▰'.repeat(bar.filled)}</Text>
+          <Text dimColor>{'▱'.repeat(bar.width - bar.filled)}</Text>{' '}
+        </Text>
+      );
+    };
+
     return (
       <Box flexDirection="column" paddingX={1} width={e.props.bodyColumns}>
         {rows.map((row, i) => {
@@ -218,6 +231,7 @@ export const register: Register = (on) => {
               <Box flexShrink={1}>
                 <Text wrap="wrap">
                   {row.label === 'Progress' ? bar(row.main) : null}
+                  {row.label === 'Spend' ? spendBar(row.main) : null}
                   <Text bold={row.label === 'Epic'} color={TONE_COLORS[row.tone]}>{row.main}</Text>
                   {row.meta ? <Text dimColor>{'  ·  '}{row.risk ? row.meta.replace(/ ?· ?risk \w+/, '') : row.meta}</Text> : null}
                   {row.risk ? (

@@ -45,6 +45,8 @@ Moves: <input key> · Tests: <dimension>
 <!-- S | M | L and what that buys (WAYS-OF-WORKING → Betting & appetite). This is the budget the
      problem is WORTH, fixed before the solution — not an estimate. The solution below must fit
      it; if it can't, reshape or cut, don't grow the appetite. -->
+quote: <!-- the line `quote.mjs --appetite <A>` prints, e.g. $24–35 (M, n=4, p25–p75) — ≈ API $, never typed by hand;
+     scaffold-epic copies it into the epic README -->
 
 ## Outcome & signal
 <!-- What's true after this ships that isn't now? How will the product owner test it? -->

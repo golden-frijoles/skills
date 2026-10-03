@@ -199,3 +199,12 @@ test('finops 1.3 (D24): the usage refresh runs the BUNDLED script, at most once 
   assert.equal(view.shouldRefreshUsage(1_000_000 - 61_000, '/r', 1_000_000), true);
   assert.equal(view.shouldRefreshUsage(null, null, 1_000_000), false, 'no repo root, nothing to refresh');
 });
+
+test('finops 2.4: the Spend bar and tone come from the resolver’s own words', () => {
+  assert.deepEqual(view.spendOf('≈$38 of quote $30–55 (M) · 1.9M tok · 4 sessions'), { tone: 'good', bar: { filled: 7, width: 10 } });
+  assert.deepEqual(view.spendOf('≈$71 · 29% over quote $30–55 (M) · 3.4M tok'), { tone: 'bad', bar: { filled: 10, width: 10 } });
+  assert.deepEqual(view.spendOf('≈$22 · no quote · 1.1M tok · 2 sessions'), { tone: 'plain', bar: null });
+  assert.deepEqual(view.spendOf('≈$9 of quote $25–90 (M · 2 past epics, wide) · 0.4M tok'), { tone: 'good', bar: { filled: 1, width: 10 } });
+  assert.equal(view.bandRowsFrom('Currently building\n  Spend    ≈$71 · 29% over quote $30–55 (M) · 3.4M tok')[1].tone, 'bad');
+  assert.deepEqual(view.spendOf('≈$55 · <1% over quote $30–55 (M) · 1M tok'), { tone: 'bad', bar: { filled: 10, width: 10 } });
+});
