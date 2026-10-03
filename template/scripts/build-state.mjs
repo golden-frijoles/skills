@@ -290,6 +290,10 @@ export function spendFor(root, git, slug) {
       sessions: Number.isInteger(row.sessions) ? row.sessions : null,
       basis: typeof summary.basis === 'string' ? summary.basis : 'this machine',
       generated_at: summary.generated_at ?? null,
+      // finops S3 (round 3, #232): snapshots the engine refused as malformed, cumulative for this index. Shown on the
+      // Spend line so a refusal during the automatic refresh is never only a number in a file nobody opens.
+      push_rejected:
+        Number.isInteger(summary.push_rejected) && summary.push_rejected > 0 ? summary.push_rejected : 0,
     };
   } catch {
     return null;
@@ -323,6 +327,13 @@ export function quoteLabel(basis, appetite = null) {
  * With no quote object at all (a seed, an old caller) it is Sprint 1's line, which names where it was measured.
  */
 export function spendValue(spend, quote) {
+  const line = spendLine(spend, quote);
+  return spend.push_rejected
+    ? `${line} · ${spend.push_rejected} usage push${spend.push_rejected === 1 ? '' : 'es'} refused — epic-actuals --push --json`
+    : line;
+}
+
+function spendLine(spend, quote) {
   const tok = spend.mtok !== null ? `${spend.mtok}M tok` : null;
   const sessions =
     spend.sessions !== null ? `${spend.sessions} session${spend.sessions === 1 ? '' : 's'}` : null;

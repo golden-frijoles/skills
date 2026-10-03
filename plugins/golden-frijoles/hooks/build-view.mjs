@@ -79,12 +79,13 @@ export function buildStateArgv(root, script = VENDOR_BUILD_STATE) {
 // ── The usage refresh (finops S1.3, D24) ─────────────────────────────────────────────────────────────────
 // The Spend row reads a summary file; `session.measure` keeps it fresh by running the BUNDLED epic-actuals.mjs (never
 // the open repo's — same rule as the resolver) at most once per USAGE_REFRESH_MS, with a timeout. A refresh is local
-// file reads only; it never touches the network (the opt-in engine push is a separate, later switch).
+// file reads — plus, ONLY when the project opted in with `spend.telemetry: on`, the usage push to its engine (finops
+// S3.1, D24): after a complete scan, within 5 s, at most every 10 minutes.
 export const VENDOR_EPIC_ACTUALS = decodeURIComponent(
   new URL('./vendor/epic-actuals.mjs', import.meta.url).pathname
 ).replace(/^\/([A-Za-z]:\/)/, '$1');
 export const USAGE_REFRESH_MS = 60_000;
-export const USAGE_TIMEOUT_MS = 10_000;
+export const USAGE_TIMEOUT_MS = 15_000; // a ≤6 s scan + the opt-in push's ≤5 s budget (finops D24)
 
 /** The command the mod runs to refresh the usage index. The repo is only READ, via `--repo-root`. */
 export function epicActualsArgv(root, script = VENDOR_EPIC_ACTUALS) {

@@ -5,6 +5,7 @@
 //   node scripts/epic-actuals.mjs --refresh [--json]       # update the index + summary only (what the band's mod runs)
 //   node scripts/epic-actuals.mjs --backfill [--write]     # every shipped epic: measured, or why not; --write stamps
 //   node scripts/epic-actuals.mjs --epic <slug> --write    # stamp actual_* into that epic's README (at close)
+//   node scripts/epic-actuals.mjs --push                   # send changed sessions to the engine (opt-in: spend.telemetry)
 //   options: --repo-root <dir> (default: the project) · --projects-dir <dir> (default: ~/.claude/projects)
 //
 // ── Where the numbers come from (README § Architecture lock) ────────────────────────────────────────
@@ -52,6 +53,8 @@ import { resolveTarget } from './build-state.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 import { formatScalar, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
+import { needSetting } from './lib/config.mjs';
+import { apiKeyFrom } from './roadmap-push.mjs';
 import { PRICES_AS_OF, PRICES_SOURCE, TOKEN_KINDS, tokensOf, usdOf } from './lib/model-prices.mjs';
 
 export const INDEX_VERSION = 1;
@@ -490,7 +493,16 @@ export function epicOfBranch(root) {
 }
 
 /** Refresh index + summary under the main checkout's `.golden-frijoles/`. Returns { summary, changes, dir }. */
-export function refresh({ root, projectsDir = defaultProjectsDir(), now = new Date(), budgetMs = Infinity }) {
+export async function refresh({
+  root,
+  projectsDir = defaultProjectsDir(),
+  now = new Date(),
+  budgetMs = Infinity,
+  push = false,
+  throttle = false,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+}) {
   const dir = join(mainCheckout(root), STATE_DIR);
   const indexPath = join(dir, INDEX_FILE);
   const index = loadIndex(indexPath);
@@ -499,10 +511,27 @@ export function refresh({ root, projectsDir = defaultProjectsDir(), now = new Da
     paths: repoPaths(root),
     deadline: Date.now() + budgetMs,
   });
-  const summary = { ...summarize(index, { epicOf: epicOfBranch(root), now }), complete: changes.complete };
-  if (changes.files_read || !existsSync(indexPath)) writeJson(indexPath, index);
+  // The push runs only on a COMPLETE scan: a partial index would send understated snapshots (finops D24).
+  const pushed =
+    push && changes.complete
+      ? await pushUsage({ root, index, epicOf: epicOfBranch(root), env, fetchImpl, throttle })
+      : null;
+  const summary = {
+    ...summarize(index, { epicOf: epicOfBranch(root), now }),
+    complete: changes.complete,
+    pushed_at: Number.isFinite(index.pushed_at) ? new Date(index.pushed_at).toISOString() : null,
+    // Refusals since the last clean push — 0 once a later push went through with none.
+    push_rejected:
+      Number.isFinite(index.push_rejected_at) && !(index.push_clean_at > index.push_rejected_at)
+        ? (index.push_rejected ?? 0)
+        : 0,
+  };
+  // A push that TRIED the network changed the index (attempt time, 409/400 marks) even when no transcript moved — an
+  // idle machine must persist its backoff, or it retries every minute and re-sends what was refused (round 2, #232).
+  const triedNetwork = pushed && !/^(off|throttled|no ingest key|config unreadable)/.test(pushed.reason);
+  if (changes.files_read || triedNetwork || !existsSync(indexPath)) writeJson(indexPath, index);
   writeJson(join(dir, SUMMARY_FILE), summary);
-  return { summary, changes, dir };
+  return { summary, changes, dir, pushed };
 }
 
 /** One epic's report — the `--epic <slug> --json` shape (a spec pins the key set, D9). */
@@ -526,12 +555,175 @@ export function epicReport(summary, slug) {
     prices_as_of: summary.prices_as_of,
     prices_source: summary.prices_source,
     not_measured: summary.not_measured,
+    pushed_at: summary.pushed_at ?? null,
   };
 }
 
 /** `≈$38.42` / `≥$38.42` (a lower bound: some turns could not be priced — D4). */
 export function usdText(usd, known) {
   return `${known ? '≈' : '≥'}$${usd >= 100 ? Math.round(usd) : usd.toFixed(2)}`;
+}
+
+// ── The engine push (finops S3.1, D21–D24) ────────────────────────────────────────────────────────────
+// OPT-IN: nothing leaves this machine unless `spend.telemetry` is `on` (golden-frijoles.config.json; unset = off).
+// One `$agent_usage` event per (session, epic) on the EXISTING `POST /api/v1/track`, with the project's ingest key —
+// the same one the roadmap push reads (`apiKeyFrom`), so the engine resolves the project from the key and nothing in
+// the body names one (D23). Each event is a cumulative snapshot; the engine keeps the latest per (session, epic)
+// (D22), and the idempotency key makes an unchanged re-push a no-op. Metrics only: the payload is built field by
+// field from the index, which never held content (D9).
+
+export const AGENT_USAGE_EVENT = '$agent_usage';
+export const PUSH_EVERY_MS = 10 * 60_000;
+export const PUSH_BUDGET_MS = 5_000;
+
+const part = () => ({ tokens: zeroTokens(), usd: 0 });
+function addPart(p, t, usd) {
+  for (const k of TOKEN_KINDS) p.tokens[k] += t[k];
+  if (usd === null || p.usd === null) p.usd = null;
+  else p.usd += usd;
+}
+
+/**
+ * The index → one snapshot per (session, epic): the exact `$agent_usage` payload (the engine's lib/agent-usage.ts
+ * AGENT_USAGE_KEYS). Unattributed turns are never pushed — there is no epic to put them on (D11).
+ */
+export function sessionSnapshots(index, { epicOf }) {
+  const out = new Map();
+  for (const rec of Object.values(index.messages)) {
+    const [session, branch, skill, model, at, speed, geo] = rec;
+    const epic = branch ? epicOf(branch) : null;
+    if (!epic || !session || !at) continue;
+    const key = `${session}|${epic}`;
+    if (!out.has(key))
+      out.set(key, {
+        session_id: session,
+        epic,
+        branch,
+        model_breakdown: {},
+        skill_breakdown: {},
+        tokens_by_kind: zeroTokens(),
+        usd_estimate: 0,
+        price_table_date: PRICES_AS_OF,
+        first_at: at,
+        last_at: at,
+      });
+    const s = out.get(key);
+    const t = tokensFromRecord(rec);
+    const usd = usdOf(model, t, { speed, inferenceGeo: geo });
+    for (const k of TOKEN_KINDS) s.tokens_by_kind[k] += t[k];
+    if (usd !== null) s.usd_estimate += usd;
+    s.model_breakdown[model] ??= part();
+    addPart(s.model_breakdown[model], t, usd);
+    const sk = skill || NO_SKILL;
+    s.skill_breakdown[sk] ??= part();
+    addPart(s.skill_breakdown[sk], t, usd);
+    if (at < s.first_at) s.first_at = at;
+    if (at > s.last_at) {
+      s.last_at = at;
+      s.branch = branch;
+    }
+  }
+  const r = (p) => ({ tokens: p.tokens, usd: p.usd === null ? null : round2(p.usd) });
+  return [...out.values()].map((s) => ({
+    ...s,
+    usd_estimate: round2(s.usd_estimate),
+    model_breakdown: Object.fromEntries(Object.entries(s.model_breakdown).map(([k, p]) => [k, r(p)])),
+    skill_breakdown: Object.fromEntries(Object.entries(s.skill_breakdown).map(([k, p]) => [k, r(p)])),
+    // The engine wants ISO-8601 UTC with exactly milliseconds and a `Z`; the transcript writes that shape, copied as is.
+    first_at: s.first_at,
+    last_at: s.last_at,
+  }));
+}
+
+/**
+ * Push every snapshot that changed since the last push. Returns { sent, rejected, reason }. Never throws: a failure is a
+ * reason, and the snapshots it did not send go next time. `index.pushed` remembers what each (session, epic) last sent.
+ */
+export async function pushUsage({
+  root,
+  index,
+  epicOf,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  now = Date.now(),
+  throttle = false,
+}) {
+  // Never throws (fresh review, #232): a malformed golden-frijoles.config.json must not take the Spend row's refresh
+  // down with it — it is a reason, and the scan still saves.
+  let setting;
+  try {
+    setting = needSetting('spend.telemetry', { root });
+  } catch (err) {
+    return { sent: 0, reason: `config unreadable — ${err && err.message ? err.message : err}` };
+  }
+  if (setting !== 'on')
+    return { sent: 0, reason: 'off — spend.telemetry is not on (gf-kit config set spend.telemetry on)' };
+  // The throttle counts ATTEMPTS, not successes: a persistent 401 or 429 retries every 10 minutes, not every minute.
+  const last = Math.max(index.pushed_at ?? -Infinity, index.push_attempt_at ?? -Infinity);
+  if (throttle && Number.isFinite(last) && now - last < PUSH_EVERY_MS)
+    return { sent: 0, reason: 'throttled' };
+  const key = apiKeyFrom(env);
+  if (!key) return { sent: 0, reason: 'no ingest key — set SELF_PROJECT_API_KEY (or GROWTH_ENGINE_API_KEY)' };
+  const base = String(env.GROWTH_ENGINE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  index.pushed ??= {};
+  index.push_attempt_at = now;
+  const due = sessionSnapshots(index, { epicOf }).filter(
+    (s) => index.pushed[`${s.session_id}|${s.epic}`] !== s.last_at
+  );
+  const deadline = Date.now() + PUSH_BUDGET_MS;
+  let sent = 0;
+  let rejected = 0;
+  for (const s of due) {
+    const left = deadline - Date.now();
+    if (left <= 0) return { sent, rejected, reason: 'budget — the rest go next time' };
+    let res;
+    try {
+      res = await fetchImpl(`${base}/api/v1/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          userId: 'agent:claude-code',
+          event: AGENT_USAGE_EVENT,
+          metadata: s,
+          context: { version: 1, idempotencyKey: `agent_usage:${s.session_id}:${s.epic}:${s.last_at}` },
+        }),
+        // Clamped to what is left of the budget, so the run as a whole stays inside the hook's timeout.
+        signal: AbortSignal.timeout(Math.max(1, left)),
+      });
+    } catch (err) {
+      return { sent, rejected, reason: `network — ${err && err.message ? err.message : err}` };
+    }
+    // Per snapshot, never "one bad row stops everything forever" (fresh review, #232):
+    //   201 stored · 200 this exact snapshot was already there → done.
+    //   409 the engine already holds a snapshot at this (session, epic, last_at) with other numbers — a rebuilt index,
+    //       or a new price table re-pricing an old session. The engine's copy stands (append-only, latest-wins) → done.
+    //   400 this snapshot will never be accepted (say, a branch name over the limit) → recorded and counted (the CLI says so
+    //       and exits non-zero); not retried at this `last_at` — a grown session tries again.
+    //   anything else (401 wrong key, 429 quota, 5xx) → stop; it is about the run, not the row. Next try in 10 min.
+    if (res.status === 201 || res.status === 200 || res.status === 409) {
+      index.pushed[`${s.session_id}|${s.epic}`] = s.last_at;
+      if (res.status !== 409) sent++;
+      continue;
+    }
+    if (res.status === 400) {
+      index.pushed[`${s.session_id}|${s.epic}`] = s.last_at;
+      index.push_rejected = (index.push_rejected ?? 0) + 1;
+      index.push_rejected_at = now;
+      rejected++;
+      continue;
+    }
+    return { sent, rejected, reason: `engine answered ${res.status}` };
+  }
+  index.pushed_at = now;
+  // A run that finished with no refusal clears the alarm (round 4, #232): the band stops saying "refused" once a later
+  // push went through cleanly, so a signal that fired once does not become one people learn to ignore.
+  // CLEAN means something actually went through with no refusal — an idle run ("nothing changed") or one where every
+  // snapshot was a 409 proves nothing, and must not silence a refusal that is still current (round 5, #232).
+  if (sent > 0 && !rejected) {
+    index.push_clean_at = now;
+    index.push_rejected = 0;
+  }
+  return { sent, rejected, reason: due.length ? 'ok' : 'nothing changed' };
 }
 
 // ── Stamping actual_* (S1.4 backfill, S2.5 close) ───────────────────────────────────────────────────
@@ -674,7 +866,7 @@ function printEpic(r) {
   return lines.join('\n');
 }
 
-function main(argv) {
+async function main(argv) {
   const rootArg = arg(argv, '--repo-root');
   const root = resolve(rootArg ?? projectRoot());
   const projectsDir = arg(argv, '--projects-dir') ?? defaultProjectsDir();
@@ -683,11 +875,34 @@ function main(argv) {
   const today = new Date().toISOString().slice(0, 10);
   // --refresh is what the mod runs under a 10 s timeout (D24): it saves what it read within REFRESH_BUDGET_MS.
   const budgetMs = argv.includes('--refresh') ? REFRESH_BUDGET_MS : Infinity;
-  const { summary, changes } = refresh({ root, projectsDir, budgetMs });
+  // The push: `--push` asks for it now; `--refresh` (the mod) pushes too when `spend.telemetry` is on, at most every
+  // PUSH_EVERY_MS. With the setting off both are a no-op that says so (D21).
+  const wantsPush = argv.includes('--push') || argv.includes('--refresh');
+  const { summary, changes, pushed } = await refresh({
+    root,
+    projectsDir,
+    budgetMs,
+    push: wantsPush,
+    throttle: !argv.includes('--push'),
+  });
+  if (argv.includes('--push')) {
+    // This run's refusals, and every one before it (a refusal during the band's automatic refresh lands here too).
+    const total = summary.push_rejected ?? 0; // since the last clean push
+    const refused = total
+      ? ` · ${pushed?.rejected ?? 0} refused now, ${total} since the last clean push — the engine answered 400 (malformed); run --push --json and report it`
+      : '';
+    process.stdout.write(
+      `epic-actuals: pushed ${pushed?.sent ?? 0} session snapshot(s) — ${pushed?.reason ?? 'scan incomplete, nothing sent'}${refused}\n`
+    );
+    // The exit code is THIS run's: a refusal last week must not fail every --push after it.
+    return pushed && /^(ok|nothing changed)$/.test(pushed.reason) && !pushed.rejected ? 0 : 1;
+  }
 
   if (argv.includes('--refresh')) {
     if (json)
-      process.stdout.write(`${JSON.stringify({ changes, epics: Object.keys(summary.epics).length })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ changes, epics: Object.keys(summary.epics).length, pushed })}\n`
+      );
     return 0;
   }
   const slug = arg(argv, '--epic');
@@ -790,7 +1005,7 @@ const isMain = (() => {
 })();
 if (isMain) {
   try {
-    process.exitCode = main(process.argv.slice(2));
+    process.exitCode = await main(process.argv.slice(2));
   } catch (err) {
     process.stderr.write(`epic-actuals: ${err && err.message ? err.message : err}\n`);
     process.exitCode = 2;

@@ -969,7 +969,11 @@ test('finops 2.4: the four Spend lines are the approved mockup’s, word for wor
   assert.equal(spendValue(spend(38, 1.9, 4), q), '≈$38 of quote $30–55 (M) · 1.9M tok · 4 sessions');
   assert.equal(spendValue(spend(71, 3.4, 9), q), '≈$71 · 29% over quote $30–55 (M) · 3.4M tok');
   assert.equal(spendValue(spend(22, 1.1, 2), null), '≈$22 · no quote · 1.1M tok · 2 sessions');
-  assert.equal(spendValue(spend(55.1, 1, 1), q), '≈$55 · <1% over quote $30–55 (M) · 1M tok', 'never "0% over"');
+  assert.equal(
+    spendValue(spend(55.1, 1, 1), q),
+    '≈$55 · <1% over quote $30–55 (M) · 1M tok',
+    'never "0% over"'
+  );
   assert.equal(
     spendValue(spend(9, 0.4, 1), { low: 25, high: 90, basis: 'M, n=2, wide', appetite: 'M' }),
     '≈$9 of quote $25–90 (M · 2 past epics, wide) · 0.4M tok · 1 session'
@@ -1021,4 +1025,14 @@ test('finops 2.4: on a quoted epic branch the resolver prints the inside state',
   } finally {
     f.done();
   }
+});
+
+test('finops S3 (round 3, #232): a usage push the engine refused shows on the Spend line, never only in a file', async () => {
+  const { spendValue } = await import('./build-state.mjs');
+  const spend = { usd: 22, usd_known: true, mtok: 1.1, sessions: 2, basis: 'this machine', push_rejected: 2 };
+  assert.equal(
+    spendValue(spend, null),
+    '≈$22 · no quote · 1.1M tok · 2 sessions · 2 usage pushes refused — epic-actuals --push --json'
+  );
+  assert.equal(spendValue({ ...spend, push_rejected: 0 }, null), '≈$22 · no quote · 1.1M tok · 2 sessions');
 });

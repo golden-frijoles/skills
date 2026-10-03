@@ -25,6 +25,8 @@ import {
   projectDirName,
   readEntry,
   refresh,
+  pushUsage,
+  sessionSnapshots,
   stampEpic,
   repoPaths,
   stampFrontmatter,
@@ -282,6 +284,7 @@ test('D9: no content ever reaches the index, the summary or the report — and t
       'not_measured',
       'prices_as_of',
       'prices_source',
+      'pushed_at',
       'sessions',
       'skipped',
       'tokens',
@@ -353,11 +356,11 @@ test('1.2: totals survive the transcript being deleted (Claude Code’s 30-day c
   }
 });
 
-test('1.2: refresh writes the index and the summary into the MAIN checkout, from a worktree too (D19)', () => {
+test('1.2: refresh writes the index and the summary into the MAIN checkout, from a worktree too (D19)', async () => {
   const fx = repoFixture();
   try {
     write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.wt, branch: 'feat/alpha-s2' })]);
-    refresh({ root: fx.wt, projectsDir: fx.projects });
+    await refresh({ root: fx.wt, projectsDir: fx.projects });
     const summary = JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8'));
     assert.equal(summary.epics.alpha.sessions, 1);
     assert.equal(readFileSync(join(fx.root, '.golden-frijoles', '.gitignore'), 'utf8'), '*\n');
@@ -478,23 +481,23 @@ test('fresh review #230: a backfill never overwrites an actual already written; 
   }
 });
 
-test('round-2 review #230: refresh() under a budget writes complete:false to disk, at least one file per run, then true', () => {
+test('round-2 review #230: refresh() under a budget writes complete:false to disk, at least one file per run, then true', async () => {
   const fx = repoFixture();
   try {
     write(fx.projects, '-elsewhere', 'a.jsonl', [entry({ cwd: fx.root, session: 'A' })]);
     write(fx.projects, '-elsewhere', 'b.jsonl', [entry({ cwd: fx.root, session: 'B' })]);
     const summaryOnDisk = () =>
       JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8'));
-    const first = refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: -1 });
+    const first = await refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: -1 });
     assert.equal(first.changes.files_read, 1, 'an exhausted budget still reads one file');
     assert.equal(summaryOnDisk().complete, false);
-    refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: -1 });
+    await refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: -1 });
     assert.equal(summaryOnDisk().complete, true, 'the second run finishes the scan');
     assert.equal(summaryOnDisk().epics.alpha.sessions, 2);
     // A FINITE budget is relative to now: two new files inside a minute's budget are both read in one run.
     write(fx.projects, '-elsewhere', 'c.jsonl', [entry({ cwd: fx.root, session: 'C' })]);
     write(fx.projects, '-elsewhere', 'd.jsonl', [entry({ cwd: fx.root, session: 'D' })]);
-    const finite = refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: 60_000 });
+    const finite = await refresh({ root: fx.root, projectsDir: fx.projects, budgetMs: 60_000 });
     assert.deepEqual([finite.changes.files_read, summaryOnDisk().complete], [2, true]);
   } finally {
     fx.cleanup();
@@ -513,6 +516,148 @@ test('round-2 review #230: an empty or null actual_basis is not a written actual
       writeFileSync(readme, README('beta', 'shipped', extra));
       assert.ok(stampEpic({ root: fx.root, summary, slug: 'beta', date: 'd', keepStamped: true }), extra);
     }
+  } finally {
+    fx.cleanup();
+  }
+});
+
+// ── finops S3.1 — the opt-in push ─────────────────────────────────────────────────────────────────────────────────────
+const AGENT_USAGE_KEYS = [
+  'branch',
+  'epic',
+  'first_at',
+  'last_at',
+  'model_breakdown',
+  'price_table_date',
+  'session_id',
+  'skill_breakdown',
+  'tokens_by_kind',
+  'usd_estimate',
+];
+function fakeEngine(status = 201) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) });
+    return { status };
+  };
+  return { calls, fetchImpl };
+}
+const telemetry = (root, value) =>
+  writeFileSync(join(root, 'golden-frijoles.config.json'), JSON.stringify({ spend: { telemetry: value } }));
+const ENV = { SELF_PROJECT_API_KEY: 'gb_key_x', GROWTH_ENGINE_URL: 'https://engine.example/' };
+
+test('3.1: with spend.telemetry unset or off, nothing is sent (D10/D21)', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root })]);
+    const { index } = run(fx);
+    const engine = fakeEngine();
+    const unset = await pushUsage({
+      root: fx.root,
+      index,
+      epicOf: epicOfBranch(fx.root),
+      env: ENV,
+      fetchImpl: engine.fetchImpl,
+    });
+    telemetry(fx.root, 'off');
+    const off = await pushUsage({
+      root: fx.root,
+      index,
+      epicOf: epicOfBranch(fx.root),
+      env: ENV,
+      fetchImpl: engine.fetchImpl,
+    });
+    assert.equal(engine.calls.length, 0);
+    assert.match(unset.reason, /^off/);
+    assert.match(off.reason, /^off/);
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('3.1: on — one event per (session, epic) on /track, with the ingest key, the exact key set and no content (D9, D23)', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [
+      entry({ cwd: fx.root, session: 'S1', skill: 'golden-frijoles:groom' }),
+      entry({ cwd: fx.root, session: 'S1', at: '2026-10-01T11:00:00.000Z' }),
+      entry({ cwd: fx.root, session: 'S2', branch: 'main' }),
+    ]);
+    const { index } = run(fx);
+    telemetry(fx.root, 'on');
+    const engine = fakeEngine();
+    const r = await pushUsage({
+      root: fx.root,
+      index,
+      epicOf: epicOfBranch(fx.root),
+      env: ENV,
+      fetchImpl: engine.fetchImpl,
+    });
+    assert.deepEqual([r.sent, r.reason], [1, 'ok'], 'main is unattributed and never pushed');
+    const [call] = engine.calls;
+    assert.equal(call.url, 'https://engine.example/api/v1/track');
+    assert.equal(call.init.headers.Authorization, 'Bearer gb_key_x');
+    assert.equal(call.body.event, '$agent_usage');
+    assert.deepEqual(Object.keys(call.body.metadata).sort(), AGENT_USAGE_KEYS);
+    assert.equal(call.body.context.idempotencyKey, 'agent_usage:S1:alpha:2026-10-01T11:00:00.000Z');
+    assert.deepEqual(Object.keys(call.body.metadata.skill_breakdown).sort(), [
+      '(no skill)',
+      'golden-frijoles:groom',
+    ]);
+    assert.doesNotMatch(JSON.stringify(call.body), /SECRET PROMPT TEXT/);
+    assert.equal('projectId' in call.body || 'project' in call.body, false, 'the body never names a project');
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('3.1: idempotent — an unchanged session is not re-sent; a grown one is; a refused push stops and retries later', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, session: 'S1' })]);
+    const { index } = run(fx);
+    telemetry(fx.root, 'on');
+    const engine = fakeEngine();
+    const opts = {
+      root: fx.root,
+      index,
+      epicOf: epicOfBranch(fx.root),
+      env: ENV,
+      fetchImpl: engine.fetchImpl,
+    };
+    await pushUsage(opts);
+    assert.equal((await pushUsage(opts)).reason, 'nothing changed');
+    appendFileSync(
+      join(fx.projects, '-elsewhere', 's.jsonl'),
+      `${entry({ cwd: fx.root, session: 'S1', at: '2026-10-01T12:00:00.000Z' })}\n`
+    );
+    run(fx, index);
+    const refused = fakeEngine(401);
+    assert.equal((await pushUsage({ ...opts, fetchImpl: refused.fetchImpl })).reason, 'engine answered 401');
+    assert.equal((await pushUsage(opts)).sent, 1, 'the refused snapshot goes next time');
+    assert.equal(engine.calls.length, 2);
+    assert.equal(
+      (await pushUsage({ ...opts, throttle: true, now: index.pushed_at + 1000 })).reason,
+      'throttled',
+      'the mod pushes at most every 10 minutes'
+    );
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('3.1: sessionSnapshots sums per (session, epic) and marks an unpriced model null (a lower bound, D4)', () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [
+      entry({ cwd: fx.root, session: 'S1', output: 10, read: 1_000_000 }),
+      entry({ cwd: fx.root, session: 'S1', model: 'claude-future-9', output: 5 }),
+    ]);
+    const { index } = run(fx);
+    const [s] = sessionSnapshots(index, { epicOf: epicOfBranch(fx.root) });
+    assert.equal(s.tokens_by_kind.output, 15);
+    assert.equal(s.model_breakdown['claude-future-9'].usd, null);
+    assert.ok(s.usd_estimate > 0);
   } finally {
     fx.cleanup();
   }
@@ -565,6 +710,159 @@ test('round-3 review #230: D13 order — files are indexed oldest-born first, so
     const summary = summarize(index, { epicOf: epicOfBranch(fx.root) });
     assert.equal(summary.epics.alpha, undefined, 'the copy did not own the turn');
     assert.equal(summary.unattributed.main.sessions, 1);
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('fresh review #232: per snapshot — a 409 is done, a 400 is skipped and never retried, the rest still go', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [
+      entry({ cwd: fx.root, session: 'A' }),
+      entry({ cwd: fx.root, session: 'B' }),
+      entry({ cwd: fx.root, session: 'C' }),
+    ]);
+    const { index } = run(fx);
+    telemetry(fx.root, 'on');
+    const answers = [409, 400, 201];
+    const calls = [];
+    const fetchImpl = async (url, init) => (calls.push(JSON.parse(init.body)), { status: answers.shift() });
+    const opts = { root: fx.root, index, epicOf: epicOfBranch(fx.root), env: ENV, fetchImpl };
+    const r = await pushUsage(opts);
+    assert.deepEqual([r.sent, r.rejected, r.reason, calls.length], [1, 1, 'ok', 3]);
+    assert.equal((await pushUsage(opts)).reason, 'nothing changed', 'neither the 409 nor the 400 is re-sent');
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('fresh review #232: a failed run backs off like a good one — no retry every minute on a persistent 401', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root })]);
+    const { index } = run(fx);
+    telemetry(fx.root, 'on');
+    const failing = fakeEngine(401);
+    const opts = {
+      root: fx.root,
+      index,
+      epicOf: epicOfBranch(fx.root),
+      env: ENV,
+      fetchImpl: failing.fetchImpl,
+    };
+    await pushUsage({ ...opts, now: 1_000_000 });
+    assert.equal((await pushUsage({ ...opts, throttle: true, now: 1_060_000 })).reason, 'throttled');
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('fresh review #232: a malformed config is a reason, never a throw — the scan still saves', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root })]);
+    writeFileSync(join(fx.root, 'golden-frijoles.config.json'), '{ not json');
+    const r = await refresh({ root: fx.root, projectsDir: fx.projects, push: true });
+    assert.match(r.pushed.reason, /^config unreadable/);
+    assert.equal(
+      JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8')).complete,
+      true
+    );
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('round 2 #232: an idle run (no transcript moved) still persists the push attempt and what was refused', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, session: 'A' })]);
+    telemetry(fx.root, 'on');
+    const opts = { root: fx.root, projectsDir: fx.projects, push: true, throttle: true, env: ENV };
+    await refresh({ root: fx.root, projectsDir: fx.projects }); // index it first, no push
+    // An IDLE run whose push fails (401): nothing was scanned, but the attempt must still reach disk.
+    const failed = await refresh({ ...opts, fetchImpl: fakeEngine(401).fetchImpl });
+    assert.equal(failed.changes.files_read, 0);
+    // Second run, nothing changed on disk, within 10 minutes: throttled because the ATTEMPT was saved.
+    const again = fakeEngine(201);
+    const r = await refresh({ ...opts, fetchImpl: again.fetchImpl });
+    assert.equal(r.changes.files_read, 0);
+    assert.equal(r.pushed.reason, 'throttled');
+    assert.equal(again.calls.length, 0);
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('round 2 #232: a 400 is never silent — counted in the summary on disk, and not re-sent by an idle run', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, session: 'A' })]);
+    telemetry(fx.root, 'on');
+    const opts = { root: fx.root, projectsDir: fx.projects, push: true, env: ENV };
+    await refresh({ root: fx.root, projectsDir: fx.projects }); // index it first, no push
+    const r = await refresh({ ...opts, fetchImpl: fakeEngine(400).fetchImpl }); // an idle run that is refused
+    assert.equal(r.changes.files_read, 0);
+    assert.equal(r.pushed.rejected, 1);
+    const onDisk = JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8'));
+    assert.equal(onDisk.push_rejected, 1);
+    const again = fakeEngine(201);
+    await refresh({ ...opts, fetchImpl: again.fetchImpl });
+    assert.equal(again.calls.length, 0, 'the refused snapshot was recorded on disk, so it is not re-sent');
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('round 4 #232: the refusal alarm clears once a later push goes through cleanly', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, session: 'A' })]);
+    telemetry(fx.root, 'on');
+    const opts = { root: fx.root, projectsDir: fx.projects, push: true, env: ENV };
+    const summary = () =>
+      JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8'));
+    await refresh({ ...opts, fetchImpl: fakeEngine(400).fetchImpl });
+    assert.equal(summary().push_rejected, 1);
+    // The session grows; the next snapshot is accepted — a clean run.
+    appendFileSync(
+      join(fx.projects, '-elsewhere', 's.jsonl'),
+      `${entry({ cwd: fx.root, session: 'A', at: '2026-10-01T12:00:00.000Z' })}\n`
+    );
+    await new Promise((r) => setTimeout(r, 5));
+    const ok = await refresh({ ...opts, fetchImpl: fakeEngine(201).fetchImpl });
+    assert.deepEqual([ok.pushed.sent, ok.pushed.rejected], [1, 0]);
+    assert.equal(summary().push_rejected, 0, 'the band no longer says refused');
+  } finally {
+    fx.cleanup();
+  }
+});
+
+test('round 5 #232: an idle run never clears a refusal, and the count restarts after a clean push', async () => {
+  const fx = repoFixture();
+  try {
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, session: 'A' })]);
+    telemetry(fx.root, 'on');
+    const opts = { root: fx.root, projectsDir: fx.projects, push: true, env: ENV };
+    const summary = () =>
+      JSON.parse(readFileSync(join(fx.root, '.golden-frijoles', 'usage-summary.json'), 'utf8'));
+    const grow = (at) =>
+      appendFileSync(
+        join(fx.projects, '-elsewhere', 's.jsonl'),
+        `${entry({ cwd: fx.root, session: 'A', at })}\n`
+      );
+    await refresh({ ...opts, fetchImpl: fakeEngine(400).fetchImpl });
+    const idle = await refresh({ ...opts, fetchImpl: fakeEngine(201).fetchImpl });
+    assert.equal(idle.pushed.reason, 'nothing changed');
+    assert.equal(summary().push_rejected, 1, 'nothing went through, so the refusal is still current');
+    grow('2026-10-01T12:00:00.000Z');
+    await refresh({ ...opts, fetchImpl: fakeEngine(201).fetchImpl });
+    assert.equal(summary().push_rejected, 0, 'a push went through cleanly');
+    grow('2026-10-01T13:00:00.000Z');
+    await new Promise((r) => setTimeout(r, 5));
+    await refresh({ ...opts, fetchImpl: fakeEngine(400).fetchImpl });
+    assert.equal(summary().push_rejected, 1, 'one refusal since the last clean push, not two');
   } finally {
     fx.cleanup();
   }

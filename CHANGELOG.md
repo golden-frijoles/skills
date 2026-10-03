@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-02
+
+### Added
+
+- **`epic-actuals --push` — your usage, sent to your Golden Frijoles project, opt-in** (finops S3). With
+  `spend.telemetry: on` (`gf-kit config set spend.telemetry on`; unset = off, nothing leaves the machine), each changed
+  (session, epic) goes to the existing `POST /api/v1/track` as one `$agent_usage` event — tokens by kind, model and
+  skill breakdowns, ≈ API $, the price table's date, first/last turn. Metrics only, never content; the engine refuses
+  any other key. It uses the project ingest key the roadmap push already reads (`SELF_PROJECT_API_KEY`, else
+  `GROWTH_ENGINE_API_KEY`) and `GROWTH_ENGINE_URL`. Unchanged sessions are not re-sent; the engine keeps the latest
+  snapshot per (session, epic). The build view's refresh pushes too when the setting is on — only after a complete
+  scan, within 5 s, at most every 10 minutes. `--epic <slug> --json` reports `pushed_at`.
+- **A refused push is never silent.** A snapshot the engine refuses as malformed (400) is counted; the build view's Spend
+  row then ends `· N usage pushes refused — epic-actuals --push --json` until a later push goes through cleanly, and a
+  `--push` run with a refusal prints it and exits non-zero. A failed push backs off 10 minutes, and a malformed config is a reason, never a crash.
+
+### Changed
+
+- **`spend.telemetry` asks a real question** — what it sends, and that it never sends content.
+- The build view's usage refresh may take up to 15 s (a ≤ 6 s scan plus the opt-in push's ≤ 5 s).
+
 ## [0.23.0] - 2026-10-02
 
 ### Added

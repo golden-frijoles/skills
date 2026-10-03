@@ -185,7 +185,9 @@ export const REGISTRY = Object.freeze([
     askWhen: 'never-yet',
     default: 'off',
     choices: ['off', 'on'],
-    question: 'Export cost telemetry?',
+    // finops D21 — the opt-in for `epic-actuals --push`: one `$agent_usage` event per (session, epic), metrics only.
+    question:
+      "Send this project's Claude Code usage to its Golden Frijoles project (token counts, models, skills and ≈ API $ per session and epic — never message content)?",
   },
 ]);
 
