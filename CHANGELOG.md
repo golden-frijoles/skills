@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-03
+
+### Added
+
+- **The build view moves while the agent works** (live-build-view S1). The band used to refresh only when a person sent
+  a message, so a one-message epic build showed the same view for its whole run. It now re-checks after every Bash
+  call and every 30 s, and re-resolves only when every worktree's HEAD and branch, or the newest `Roadmap/` doc, has
+  changed. A check that resolves nothing costs about 48 ms on a 535-entry Roadmap.
+- **QA from an open PR, with no network on a turn's path.** A separate timer refreshes the PR facts online (60 s after
+  start, then every 5 min), and so does a `git push` or `gh pr create|ready|merge|close`, queued so the tool call
+  never waits. No `gh`, or a failing one, logs once and keeps the last snapshot.
+- **A `Plugin` row when your install is behind**: `Plugin  0.24.0 installed · 0.25.0 published — /plugin to update`.
+  It compares the installed manifest with the local marketplace clone's, never the network.
+- **`autoUpdate: true`** for the golden-frijoles marketplace in the template's `.claude/settings.json`.
+- **`claude plugin test`** in CI, over the mod's new `hooks/build-view.mod.test.ts` (the tick, the Bash re-check, the
+  push trigger, the online timer).
+
+### Changed
+
+- **Claude Code 2.1.288 is the floor the mod is checked against** (CI pin 2.1.278 → 2.1.288). Mods are on by default
+  from 2.1.287, so `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` is gone from the settings, `hooks.json` and CI.
+
 ## [0.24.1] - 2026-10-03
 
 ### Fixed

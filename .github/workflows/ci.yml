@@ -112,16 +112,21 @@ jobs:
       # used any way other than `$.noun.event(...)` all fail it. Written the way this repo's doctrine
       # says to treat a network install (see the gf step below): an install that cannot happen SKIPS
       # loudly rather than redding the run, because a broken npm is not a broken plugin.
-      - name: Claude plugin validate — the mod's hooks registration
+      - name: Claude plugin validate + test — the mod's hooks registration and behaviour
         run: |
-          # PINNED, like the cross-review families' CLIs: this is a pre-release hook API, and the only real
-          # check on index.tsx. An unpinned install can validate against a contract nobody probed — and it
-          # already bit this step once: the version CI installed required a `hooks` key that 2.1.278 does
-          # not. Bump the pin deliberately, after re-running the probe sessions in the sprint doc.
-          if npm i -g @anthropic-ai/claude-code@2.1.278 --no-audit --no-fund; then
-            CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude plugin validate plugins/golden-frijoles
+          # PINNED, like the cross-review families' CLIs: the only real check on index.tsx. An unpinned install
+          # can validate against a contract nobody probed — it already bit this step once (a `hooks` key one
+          # version required and another did not). Bumped 2.1.278 → 2.1.288 by live-build-view (C3): the mod
+          # uses `$.state` and `$.clock`, which 2.1.278 lacks, and mods are on by default from
+          # 2.1.287, so no CLAUDE_CODE_ENABLE_FUNCTION_HOOKS. Bump it deliberately, after `claude plugin
+          # validate` and `claude plugin test` pass locally on the new version.
+          if npm i -g @anthropic-ai/claude-code@2.1.288 --no-audit --no-fund; then
+            claude plugin validate plugins/golden-frijoles
+            # The mod's own *.test.ts under the engine (live-build-view D6): the hooks it registers, the timers it
+            # starts. No API key: the test's `on` stands in for the engine beneath it.
+            claude plugin test plugins/golden-frijoles
           else
-            echo "::warning::could not install @anthropic-ai/claude-code — plugin validate was SKIPPED, not passed."
+            echo "::warning::could not install @anthropic-ai/claude-code — plugin validate and test were SKIPPED, not passed."
           fi
 
       # The Golden Frijoles onboarding text is ONE surface across four shipped files plus the
@@ -150,7 +155,7 @@ jobs:
         run: |
           npm i -g @golden-frijoles/cli --no-audit --no-fund \
             || echo "::warning::could not install @golden-frijoles/cli — the gf probes were SKIPPED, not passed."
-          npm i -g @anthropic-ai/claude-code@2.1.278 --no-audit --no-fund \
+          npm i -g @anthropic-ai/claude-code@2.1.288 --no-audit --no-fund \
             || echo "::warning::could not install @anthropic-ai/claude-code — the claude-plugin probe was SKIPPED, not passed."
           node scripts/check-onboarding-parity.mjs --exec
 

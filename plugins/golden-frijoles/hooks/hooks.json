@@ -1,5 +1,5 @@
 {
-  "$comment": "The build view and the session budget line — one function-hooks module (build-visualization-claude-mods S4, session-budget S1). Removing the entry below disables BOTH with no deploy; nothing else depends on it. Function hooks are pre-release and gated behind CLAUDE_CODE_ENABLE_FUNCTION_HOOKS; without the flag this file is simply inert.",
+  "$comment": "The build view and the session budget line — one function-hooks module (build-visualization-claude-mods S4, session-budget S1). Removing the entry below disables BOTH with no deploy; nothing else depends on it. Mods are on by default from Claude Code 2.1.287; on an older engine this file is simply inert.",
   "$comment2": "`hooks: {}` is deliberate: this plugin registers no classic matcher hooks, and some CLI versions' schema requires the key to be present. It costs nothing and keeps `claude plugin validate` green across versions.",
   "hooks": {},
   "modules": ["./index.tsx"]

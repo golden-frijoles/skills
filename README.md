@@ -67,12 +67,16 @@ Currently building
 
 Every line comes from `scripts/build-state.mjs`, which reads the epic docs' **frontmatter contract**, git,
 and (outside the hook) one `gh` call. `plugins/golden-frijoles/hooks/` is a thin renderer on top of it: it
-runs the resolver on `turn.start`, caches the view in `$.store` against branch + HEAD, and prints it with
-`$.ui.status`. It never calls `gh`, and it never parses a doc itself.
+runs the bundled resolver offline on `turn.start`, after every Bash call and every 30 s. It re-resolves only when
+the key moved (every worktree's HEAD + branch, the newest `Roadmap/` mtime), caches the view in `$.store` and draws
+it as a band above the prompt. The PR facts behind the Status row are refreshed online on a separate timer (60 s
+after start, then every 5 min, and once after a `git push`/`gh pr …`), never on a turn's path. When the installed
+plugin is older than the marketplace clone's copy, the band adds a `Plugin` row. It never parses a doc itself.
 
 - **It needs `scripts/build-state.mjs` in the project** — a project spawned from `template/` has it.
-- **Function hooks are pre-release**: the mod only runs with `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`.
-  Without it, `hooks/hooks.json` is inert and nothing else changes.
+- **It needs Claude Code ≥ 2.1.287**, where mods are on by default. On an older engine `hooks/hooks.json` is
+  inert and nothing else changes. The template's settings turn on `autoUpdate` for this marketplace, so a
+  fixed band reaches every session without anyone running `/plugin`.
 - **The kill-switch is deleting `plugins/golden-frijoles/hooks/hooks.json`.** No runtime deploy — though for
   consuming projects it is still a commit that has to reach this repo's `main`, which is how they get the
   plugin at all.

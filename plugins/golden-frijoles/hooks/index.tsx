@@ -4,11 +4,12 @@
 // in `vendor/`, never the open repo's (distribute-what-we-use D5) — which is plain Node, tested, and useful
 // on its own. This file decides nothing about epics, stories or status.
 //
-// The latency budget (D4): one `git rev-parse` per turn, and a full resolve only when the branch or HEAD
-// moved or the cached view aged out — the view is kept in `$.store`, failures included, so a project
-// without the resolver re-tries occasionally rather than every turn. `--offline` is passed on purpose:
-// **no `gh` call ever happens inside the hook**, so a network stall cannot slow a turn. Both subprocesses
-// carry a timeout for the same reason: turn start waits on this hook.
+// LIVE (live-build-view S1, D1–D3): one check — `createViewer` in build-view.mjs — runs on turn.start, after every
+// Bash call and on a 30 s tick, and resolves only when the key moved (every worktree's HEAD + branch, the newest
+// Roadmap/ mtime). The view is kept in `$.store`, failures included. Every check is `--offline`: **no `gh` call ever
+// happens on a turn's path**, so a network stall cannot slow a turn. The online refresh (the PR facts the Status row
+// reads) runs on its own timer — 60 s after start, then every 5 min — and once after a `git push`/`gh pr …`, queued on
+// the clock so the tool call never waits for it. Every subprocess carries a timeout.
 //
 // WHERE IT DRAWS (fix/build-view-band): the band above the prompt, one wrapped row per resolver line. It
 // used to be `$.ui.status`, a single status row — newlines showed as U+FFFD and the view was cut off at the
@@ -25,19 +26,24 @@
 // only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
 //
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
-import type { Register } from 'claude-code';
+import type { EngineInterface, Register } from 'claude-code';
 import {
+  ONLINE_EVERY_MS,
+  ONLINE_FIRST_MS,
+  PLUGIN_DIR,
+  TICK_MS,
   USAGE_TIMEOUT_MS,
   attempt,
   bandRowsFrom,
-  buildStateArgv,
+  createViewer,
   epicActualsArgv,
+  isOnlineTrigger,
   progressOf,
-  repoFactsFrom,
-  shouldRefresh,
+  publishedManifestPath,
   shouldRefreshUsage,
   spendOf,
-  statusTextFrom,
+  versionOf,
+  versionRow,
 } from './build-view.mjs';
 import {
   LOG_FILE,
@@ -50,8 +56,6 @@ import {
 
 const STORE_KEY = 'golden-frijoles/build-view';
 const VIEW = { plugin: 'golden-frijoles', key: 'buildView' } as const;
-const GIT_TIMEOUT_MS = 2_000;
-const RESOLVE_TIMEOUT_MS = 5_000;
 
 const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', bad: 'red', plain: undefined } as const;
 const RISK_COLORS = { LOW: 'green', MEDIUM: 'yellow', HIGH: 'red' } as const;
@@ -62,7 +66,10 @@ const LABEL_WIDTH = 12; // glyph + space + the longest label (`Progress`) + gap
 let measured: { contextPct: number | null; fiveHourPct: number | null; sevenDayPct: number | null } | null = null;
 let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not observable here (D8)
 let loggedVerdict: string | null = null;
-let repoRoot: string | null = null; // from turn.start's rev-parse, so the log lands at the repo root
+// The live view (D1). Built in session.start, whose `$` its io closes over — the same way a `$.clock` timer's callback
+// uses the `$` of the hook that started it. A hot reload builds a new one (session.start fires again) and the engine
+// drops the old environment's timers with it.
+let viewer: ReturnType<typeof createViewer> | null = null;
 let warnedNoState = false; // log an engine without `$.state` once per load, not on every draw
 let usageRefreshedAt: number | null = null; // finops D24 — the last usage refresh attempt, ok or not
 
@@ -71,40 +78,67 @@ const lineNow = () => {
   return sessionLine(figures, sessionVerdict(figures)) ?? undefined;
 };
 
+// The view's I/O, spelled at its own call sites. The cache is one `$.store` slot PER CHECKOUT ROOT: the store is shared
+// by every session of the plugin, and one slot let two sessions in two worktrees serve each other's view (#240 review).
+function ioFor($: EngineInterface) {
+  return {
+    run: (argv: string[], opts: { timeoutMs: number }) => $.process.run(argv, opts),
+    list: (path: string) => $.fs.list(path),
+    getCached: (root: string) => $.store.get(`${STORE_KEY}@${root}`),
+    setCached: (root: string, entry: unknown) => $.store.set(`${STORE_KEY}@${root}`, entry),
+    show: (text: string | null) => $.state.set(VIEW, text),
+    log: (msg: string) => $.ui.log(msg),
+    now: () => Date.now(),
+  };
+}
+
 export const register: Register = (on) => {
-  on('turn.start', async ($, e, next) => {
+  on('session.start', async ($, e, next) => {
+    viewer = createViewer(ioFor($));
+    const live = viewer;
+    // D5 — the Plugin row: this module's own manifest vs the marketplace clone's (no network). Once per load.
     try {
-      const head = await $.process.run(['git', 'rev-parse', 'HEAD', '--abbrev-ref', 'HEAD', '--show-toplevel'], {
-        timeoutMs: GIT_TIMEOUT_MS,
-      });
-      const facts = repoFactsFrom(head.stdout, head.exitCode);
-      repoRoot = facts.root;
-      const cached = await $.store.get(STORE_KEY);
-      if (!shouldRefresh(cached, facts.key)) {
-        $.ui.log(`build view: cached (${facts.key})`);
-        // Always write the view — including an empty one for a cached failure — so a stale view from the
-        // previous branch can never stay on screen (the fresh reviewer's finding on #32).
-        await $.state.set(VIEW, cached.text || null);
-        return next(e);
+      const publishedPath = publishedManifestPath(PLUGIN_DIR);
+      if (publishedPath && (await $.fs.exists(publishedPath))) {
+        const installed = versionOf(await $.fs.read(`${PLUGIN_DIR}/.claude-plugin/plugin.json`));
+        const published = versionOf(await $.fs.read(publishedPath));
+        live.setPluginRow(versionRow(installed, published));
+        $.ui.log(`build view: plugin ${installed} installed, ${published} in the marketplace clone`);
       }
-      // The BUNDLED resolver, never one the open repo supplies (distribute-what-we-use D5).
-      const run = await $.process.run(buildStateArgv(facts.root), {
-        timeoutMs: RESOLVE_TIMEOUT_MS,
-      });
-      const text = statusTextFrom(run.stdout, run.exitCode);
-      $.ui.log(`build view: resolved (${facts.key}) (${run.exitCode === 0 ? 'ok' : `exit ${run.exitCode}`})`);
-      await $.store.set(STORE_KEY, { key: facts.key, at: Date.now(), text });
-      await $.state.set(VIEW, text || null);
     } catch (err) {
-      $.ui.log(`build view: ${String(err)}`);
-      // Guarded: on an engine without `$.state` (see `attempt` in build-view.mjs) the failure above IS that, and
-      // an unguarded clear would make the engine skip this hook with an error line.
-      await attempt(() => $.state.set(VIEW, null));
+      $.ui.log(`build view: plugin version: ${String(err)}`);
     }
+    // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
+    $.clock.every(TICK_MS, () => void live.check('tick'));
+    $.clock.after(ONLINE_FIRST_MS, () => {
+      void live.refreshOnline('timer');
+      $.clock.every(ONLINE_EVERY_MS, () => void live.refreshOnline('timer'));
+    });
     return next(e);
   });
 
+  on('turn.start', async ($, e, next) => {
+    // Awaited here (unlike the tick): the band should be right when the turn begins. Never throws (createViewer). A load
+    // whose session.start never ran (its hook failed, or a chain stopped short) still gets a view — just no timers.
+    if (!viewer) viewer = createViewer(ioFor($));
+    await viewer.check('turn');
+    return next(e);
+  });
+
+  // D1 — after every Bash call: the agent's own `git switch`/`git commit` moves the band mid-turn. The check is queued on
+  // the clock, so the call's result is never held up by it; a push or a PR command also queues ONE online refresh (D3).
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const result = await next(e);
+    const live = viewer;
+    if (live) {
+      $.clock.after(0, () => void live.check('bash'));
+      if (e.tool === 'Bash' && isOnlineTrigger(e.command)) $.clock.after(0, () => void live.refreshOnline('push'));
+    }
+    return result;
+  });
+
   on('session.measure', async ($, e, next) => {
+    const repoRoot = viewer?.root ?? null; // the view's own git root, so the log lands at the repo root (D7)
     try {
       measured = figuresFromMeasure(e);
       const figures = { ...measured, questionsWaiting };
@@ -128,14 +162,14 @@ export const register: Register = (on) => {
       $.ui.log(`session line: ${String(err)}`);
     }
     // finops S1.3 (D24) — keep the Spend row's summary fresh, off the hot path: the BUNDLED epic-actuals.mjs, at most
-    // once a minute, timeout-bound. A slow or failed run logs and leaves the last row; a good one drops the cached view
-    // so the next turn.start re-resolves with the new figure.
+    // once a minute, timeout-bound. A slow or failed run logs and leaves the last row; a good one makes the next check
+    // re-resolve with the new figure (a new figure moves no key).
     if (shouldRefreshUsage(usageRefreshedAt, repoRoot)) {
       usageRefreshedAt = Date.now();
       try {
         const run = await $.process.run(epicActualsArgv(repoRoot as string), { timeoutMs: USAGE_TIMEOUT_MS });
         $.ui.log(`usage: refreshed (${run.exitCode === 0 ? 'ok' : `exit ${run.exitCode}`})`);
-        if (run.exitCode === 0) await $.store.set(STORE_KEY, null);
+        if (run.exitCode === 0) viewer?.invalidate();
       } catch (err) {
         $.ui.log(`usage: ${String(err)}`);
       }

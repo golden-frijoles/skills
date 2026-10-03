@@ -4,7 +4,8 @@
       "source": {
         "source": "github",
         "repo": "golden-frijoles/skills"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {
