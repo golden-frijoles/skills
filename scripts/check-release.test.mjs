@@ -93,12 +93,20 @@ test('kitClosureFiles is derived live from requires_scripts (a fixture skills/ d
   const dir = mkdtempSync(join(tmpdir(), 'kit-closure-'));
   mkdirSync(join(dir, 'alpha'));
   writeFileSync(join(dir, 'alpha', 'SKILL.md'), skill(['alpha.mjs', 'lib/shared.mjs']));
-  const files = kitClosureFiles({ skillsDir: dir });
+  const files = kitClosureFiles({ skillsDir: dir, skeleton: [] });
   assert.deepEqual([...files].sort(), ['template/scripts/alpha.mjs', 'template/scripts/lib/shared.mjs']);
+  assert.ok(kitClosureFiles({ skillsDir: dir, skeleton: ['Roadmap/X.md'] }).has('template/Roadmap/X.md'), 'the skeleton joins the closure');
+});
+
+test('kitClosureFiles covers the Roadmap skeleton gf-kit init writes (kickoff-generator-path S2)', () => {
+  const files = kitClosureFiles();
+  assert.ok(files.has('template/Roadmap/WAYS-OF-WORKING.md'), 'the skeleton’s WAYS-OF-WORKING ships in the kit');
+  assert.equal(touchesShippedSurface(['template/Roadmap/WAYS-OF-WORKING.md'], files), true);
+  assert.equal(touchesShippedSurface(['template/Roadmap/SESSION-KICKOFFS.md'], files), false, 'not in the skeleton, not shipped by the kit');
 });
 
 test('kitClosureFiles against the REAL plugin lists every declared script under template/scripts/', () => {
-  const files = kitClosureFiles();
+  const files = kitClosureFiles({ skeleton: [] });
   assert.ok(files.size > 0, 'the real plugin declares scripts');
   assert.ok([...files].every((f) => f.startsWith('template/scripts/')), 'every entry is rooted under template/scripts/');
   assert.ok([...files].some((f) => f.endsWith('standup.mjs')), 'standup-post is one of the ten skills');

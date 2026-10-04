@@ -24,6 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
 import { listSkills, parseRequiresScripts } from './check-skill-scripts.mjs';
+import { SKELETON } from '../template/scripts/init.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -85,16 +86,20 @@ export function changelogSection(changelogText, version) {
 }
 
 /**
- * Pure — every file a version bump must cover: `plugins/**`, `kit/**` (S2 on) and the kit's script
+ * Pure — every file a version bump must cover: `plugins/**`, `kit/**` (S2 on) and what the kit carries: its script
  * closure (every skill's declared `requires_scripts:`, resolved against `template/scripts/` — the
- * root `check-skill-scripts.mjs` audits by default, and its own guard proves declared === actual).
+ * root `check-skill-scripts.mjs` audits by default, and its own guard proves declared === actual), plus the Roadmap
+ * skeleton `gf-kit init` writes (`init.mjs`'s `SKELETON`, the one list build-kit copies into `dist/skeleton/`).
+ * Before kickoff-generator-path S2 the skeleton was missing here, so an edit to `template/Roadmap/WAYS-OF-WORKING.md`
+ * changed what the kit hands a new project without asking for the version that would publish it.
  */
-export function kitClosureFiles({ skillsDir = SKILLS_DIR, read = readFileSync } = {}) {
+export function kitClosureFiles({ skillsDir = SKILLS_DIR, read = readFileSync, skeleton = SKELETON } = {}) {
   const files = new Set();
   for (const skill of listSkills(skillsDir)) {
     const declared = parseRequiresScripts(read(join(skillsDir, skill, 'SKILL.md'), 'utf8'));
     for (const rel of declared || []) files.add(`template/scripts/${rel}`);
   }
+  for (const rel of skeleton) files.add(`template/${rel}`);
   return files;
 }
 
