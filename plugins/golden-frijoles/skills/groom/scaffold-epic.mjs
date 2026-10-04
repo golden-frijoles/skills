@@ -7,12 +7,22 @@
 //     --slug checkout-state-hardening --area 02 \
 //     --macro 02-checkout-and-payments --title "Checkout state hardening" \
 //     --risk high --sprints "Durable payment state;Block ship before paid;One coupon-aware total"
+//   node "$GROOM/scaffold-epic.mjs" --slug <funded-seed>     # a fixed-scope seed: everything else from the seed
 //
 // Flags: --type <feature|spike|bug|chore> (default feature, matches SKILL.md's Stage-2 classification
 //        table exactly — rendered Capitalized into the epic README's header "Class:" field)
 //        · --repo-root <path> (default: cwd) · --dry-run (print, write nothing)
 //        · --quote <lo>-<hi> [--quote-basis "…"] (≈ API $; default: the seed’s `quote:` line, else null — finops S2.3)
 // It does NOT commit — it prints the exact path-scoped git command for you to run.
+//
+// ── From a seed (fund-at-approval) ─────────────────────────────────────────────────────────────────────────────
+// When `Roadmap/00-ideas/seeds/<slug>.md` exists, it is the source: `--title`, `--area`, `--type` and `--risk` default
+// to the seed's, `--macro` to the one `Roadmap/<area>-*` directory, and `--sprints` to ONE sprint named after the seed,
+// whose stories are the seed's `## Acceptance criteria` bullets. So a fixed-scope seed scaffolds with `--slug` alone
+// (dogfood F33: no generator took a seed, so a builder needed a hand-written prompt). The seed must be FUNDED first
+// (`underwritten_by:`, written by `fund.mjs` at the approval gate) — an unfunded seed is refused, because nothing
+// leaves grooming scaffolded but unfunded. Its `build_order` is copied into the README, and the seed gets `epic:` and
+// `status: scaffolded`. With no seed file at all, nothing here applies and every flag is needed, as before.
 //
 // ── Why --repo-root exists (a live bug, fixed 2026-08-03) ────────────────────────────────────────────
 // This used to resolve the target repo as `resolve(__dirname, '..', '..')` — "skills/groom → repo root".
@@ -28,9 +38,10 @@
 // error worth failing on, not a directory to create — silently inventing `Roadmap/` in the wrong place is
 // how the original bug stayed invisible.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import { readField, setField, yamlString } from './roadmap-fm.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL = join(__dirname, 'templates');
@@ -50,13 +61,6 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const required = ['slug', 'area', 'macro', 'title', 'sprints'];
-const missing = required.filter((k) => !args[k] || args[k] === true);
-if (missing.length) {
-  console.error(`scaffold-epic: missing required flag(s): ${missing.map((m) => '--' + m).join(', ')}`);
-  console.error('Run with --slug --area --macro --title --sprints "S1;S2;S3" [--risk low|high] [--type feature] [--repo-root <path>] [--dry-run]');
-  process.exit(1);
-}
 
 // The ACTIVE repository, not the plugin package — see the header block.
 const REPO_ROOT = resolve(String(args['repo-root'] === true ? '' : args['repo-root'] || process.cwd()));
@@ -68,16 +72,65 @@ if (!existsSync(join(REPO_ROOT, 'Roadmap'))) {
   process.exit(1);
 }
 
-const slug = String(args.slug);
-const area = String(args.area);
-const macro = String(args.macro);
-const title = String(args.title);
-const risk = String(args.risk || 'high').toLowerCase();
+// The seed, when there is one, supplies every default (see the header's "From a seed").
+const flag = (k) => (typeof args[k] === 'string' ? args[k] : null);
+const seedPath = flag('slug') ? join(REPO_ROOT, 'Roadmap', '00-ideas', 'seeds', `${flag('slug')}.md`) : null;
+const seedText = seedPath && existsSync(seedPath) ? readFileSync(seedPath, 'utf8') : null;
+const fromSeed = (k) => (seedText ? readField(seedText, k) : null);
+const areaArg = flag('area') ?? fromSeed('area');
+
+/** The one `Roadmap/<area>-*` directory, or null when there are none or several (then --macro is needed). */
+function macroFor(area) {
+  if (!area) return null;
+  const dirs = readdirSync(join(REPO_ROOT, 'Roadmap')).filter((d) => d.startsWith(`${area}-`));
+  return dirs.length === 1 ? dirs[0] : null;
+}
+
+/** The seed's `## Acceptance criteria` bullets, one string each (wrapped lines joined), or []. */
+function acceptanceCriteria(text) {
+  const section = /^## Acceptance criteria[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(text ?? '')?.[1] ?? '';
+  const out = [];
+  for (const line of section.split('\n')) {
+    if (/^[-*] /.test(line)) out.push(line.slice(2).trim());
+    else if (/^\s+\S/.test(line) && out.length) out[out.length - 1] += ` ${line.trim()}`;
+  }
+  return out;
+}
+
+const criteria = seedText && !flag('sprints') ? acceptanceCriteria(seedText) : [];
+const resolved = {
+  slug: flag('slug'),
+  area: areaArg,
+  macro: flag('macro') ?? macroFor(areaArg),
+  title: flag('title') ?? fromSeed('title'),
+  sprints: flag('sprints') ?? fromSeed('title'),
+};
+const required = ['slug', 'area', 'macro', 'title', 'sprints'];
+const missing = required.filter((k) => !resolved[k]);
+if (missing.length) {
+  console.error(`scaffold-epic: missing required flag(s): ${missing.map((m) => '--' + m).join(', ')}`);
+  console.error('Run with --slug --area --macro --title --sprints "S1;S2;S3" [--risk low|high] [--type feature] [--repo-root <path>] [--dry-run]');
+  if (seedText) console.error(`  (the seed supplied what it has${missing.includes('macro') ? `; no single Roadmap/${areaArg}-* directory, so pass --macro` : ''})`);
+  process.exit(1);
+}
+if (seedText && !fromSeed('underwritten_by')) {
+  console.error(`scaffold-epic: the seed ${resolved.slug} is not funded (no \`underwritten_by:\`) — nothing leaves grooming scaffolded but unfunded.`);
+  console.error('  Fund it first, at the approval gate (groom SKILL.md → Stage 7):');
+  console.error(`    node "$GROOM/fund.mjs" --slug ${resolved.slug} --displaced "<what stays parked>" --next   # or --after <slug>`);
+  console.error('  "Approve, don\'t fund" is a real answer too: the seed then stays `ready` and nothing is scaffolded.');
+  process.exit(1);
+}
+
+const slug = resolved.slug;
+const area = String(resolved.area);
+const macro = resolved.macro;
+const title = resolved.title;
+const risk = String(flag('risk') ?? fromSeed('risk') ?? 'high').toLowerCase();
 if (!['low', 'high'].includes(risk)) {
   console.error(`scaffold-epic: --risk must be low|high (got "${risk}") — the frontmatter contract's two tiers; unsure means high.`);
   process.exit(1);
 }
-const typeRaw = String(args.type || 'feature').toLowerCase();
+const typeRaw = String(flag('type') ?? fromSeed('type') ?? 'feature').toLowerCase();
 const VALID_TYPES = ['feature', 'spike', 'bug', 'chore'];
 if (!VALID_TYPES.includes(typeRaw)) {
   console.error(`scaffold-epic: --type must be one of ${VALID_TYPES.join('|')} (got "${typeRaw}") — matches SKILL.md's Stage-2 classification table.`);
@@ -86,7 +139,7 @@ if (!VALID_TYPES.includes(typeRaw)) {
 const type = typeRaw[0].toUpperCase() + typeRaw.slice(1); // rendered Capitalized in the header's Class: field
 const dryRun = !!args['dry-run'];
 const date = new Date().toISOString().slice(0, 10);
-const sprints = String(args.sprints).split(';').map((s) => s.trim()).filter(Boolean);
+const sprints = String(resolved.sprints).split(';').map((s) => s.trim()).filter(Boolean);
 
 if (!sprints.length) { console.error('scaffold-epic: --sprints produced no sprint titles'); process.exit(1); }
 
@@ -104,8 +157,7 @@ const yaml = (s) => JSON.stringify(s);
 // intent-match: the seed's advisory score travels into the epic README, so `epic-dod` and `intent-outcomes` can tell a
 // scored epic from an unscored one without opening the seed. Only a whole number 0–100 is copied; anything else
 // (absent, `null`, a typo) scaffolds `null` — an unscored epic, never a made-up score.
-const seedPath = join(REPO_ROOT, 'Roadmap', '00-ideas', 'seeds', `${slug}.md`);
-const seedFm = existsSync(seedPath) ? /^---\n([\s\S]*?)\n---/.exec(readFileSync(seedPath, 'utf8'))?.[1] ?? '' : '';
+const seedFm = seedText ? /^---\n([\s\S]*?)\n---/.exec(seedText)?.[1] ?? '' : '';
 const seedScore = /^intent_match:\s*(\d{1,3})\s*(?:#.*)?$/m.exec(seedFm)?.[1];
 const intentMatch = seedScore != null && Number(seedScore) <= 100 ? seedScore : 'null';
 // finops S2.3 — the quote (≈ API $) travels the same way: `--quote <lo>-<hi> [--quote-basis "…"]` wins, else the seed's
@@ -133,13 +185,14 @@ function quoteFrom(flag, basisFlag, seedText) {
   if (m && Number(m[1]) <= Number(m[2])) return { low: m[1], high: m[2], basis: yaml(m[3].trim()) };
   return { low: 'null', high: 'null', basis: 'null' };
 }
-const quote = quoteFrom(args.quote, args['quote-basis'], existsSync(seedPath) ? readFileSync(seedPath, 'utf8') : '');
+const quote = quoteFrom(args.quote, args['quote-basis'], seedText ?? '');
 const baseVars = {
   QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.
-  SPRINTS_TOTAL: String(sprints.length), STORIES_TOTAL: String(sprints.length),
+  // Sprint 1 of a seed-born epic carries one story per acceptance criterion (withCriteria, below).
+  SPRINTS_TOTAL: String(sprints.length), STORIES_TOTAL: String(sprints.length - 1 + Math.max(1, criteria.length)),
 };
 
 const sprintList = sprints
@@ -150,10 +203,48 @@ const epicTpl = readFileSync(join(TPL, 'epic-README.md'), 'utf8');
 const sprintTpl = readFileSync(join(TPL, 'sprint-N.md'), 'utf8');
 const retroTpl = readFileSync(join(TPL, 'RETROSPECTIVE.md'), 'utf8');
 
+/**
+ * Sprint 1 of a seed-born epic: one story per acceptance criterion, in the frontmatter list and in the prose. The
+ * criterion is the want; the role and outcome are left for the builder to sharpen, as the template's own are.
+ */
+function withCriteria(text, list) {
+  const short = (s) => (s.length <= 80 ? s : `${s.slice(0, 77).replace(/\s+\S*$/, '')}…`).replace(/`/g, '');
+  const yamlStories = list
+    .map((c, i) =>
+      [
+        `  - id: S1.${i + 1}`,
+        `    title: ${yamlString(short(c))}`,
+        '    as_a: "the product owner"',
+        `    i_want: ${yamlString(c)}`,
+        `    so_that: "the pitch's acceptance criterion is met"`,
+        `    risk: ${risk}`,
+        '    status: planned',
+      ].join('\n')
+    )
+    .join('\n');
+  const prose = list
+    .map(
+      (c, i) =>
+        `### Story 1.${i + 1} — ${short(c)}\n**As** the product owner, **I want** this to hold, **so that** the pitch's ` +
+        `acceptance criterion is met.\n**Acceptance:** ${c}\n**Risk:** ${risk}\n`
+    )
+    .join('\n');
+  return text
+    .replace(/^stories_total: 1$/m, `stories_total: ${list.length}`)
+    .replace(/^stories:\n[\s\S]*?(?=^---$)/m, `stories:\n${yamlStories}\n`)
+    .replace(/^### Story 1\.1 — [\s\S]*?(?=^## Sprint QA)/m, `${prose}\n`);
+}
+
+// The position fund.mjs gave the bet: the README is the SSOT from here, the seed's copy a fallback.
+const seedOrder = /^\d+$/.test(String(fromSeed('build_order') ?? '')) ? fromSeed('build_order') : null;
+let epicText = sub(epicTpl, { ...baseVars, SPRINT_LIST: sprintList });
+if (seedOrder) epicText = setField(epicText, 'build_order', seedOrder);
 const files = [];
-files.push([join(epicDir, 'README.md'), sub(epicTpl, { ...baseVars, SPRINT_LIST: sprintList })]);
+files.push([join(epicDir, 'README.md'), epicText]);
 sprints.forEach((st, i) => {
-  files.push([join(epicDir, `sprint-${i + 1}.md`), sub(sprintTpl, { ...baseVars, N: String(i + 1), SPRINT_TITLE: st, SPRINT_TITLE_YAML: yaml(st) })]);
+  let text = sub(sprintTpl, { ...baseVars, N: String(i + 1), SPRINT_TITLE: st, SPRINT_TITLE_YAML: yaml(st) });
+  if (i === 0 && criteria.length) text = withCriteria(text, criteria);
+  files.push([join(epicDir, `sprint-${i + 1}.md`), text]);
 });
 files.push([join(epicDir, 'RETROSPECTIVE.md'), sub(retroTpl, baseVars)]);
 
@@ -167,6 +258,8 @@ if (dryRun) {
 
 mkdirSync(epicDir, { recursive: true });
 files.forEach(([p, body]) => writeFileSync(p, body));
+// The seed leaves the funnel: it points at its epic, and the epic README's `status:` is the SSOT from here.
+if (seedText) writeFileSync(seedPath, setField(setField(seedText, 'status', 'scaffolded'), 'epic', yaml(`${macro}/${slug}`)));
 
 console.log(`Scaffolded epic Roadmap/${macro}/${slug} (${files.length} files):`);
 files.forEach(([p]) => console.log('  + ' + rel(p)));
@@ -175,8 +268,17 @@ console.log(`  1. Fill the generated files with real stories / reuse list / QA s
 console.log(`  2. The epic README frontmatter \`status:\` is the SSOT (born \`scaffolded\`; set \`shipped\` at close).`);
 console.log(`     \`phase:\` (epic + every sprint) is the build-view ladder — write it at each cadence event. Each sprint's`);
 console.log(`     \`stories:\` list is the per-story data; keep it and both \`stories_total\` fields in step with the prose.`);
-console.log(`     Set the SEED frontmatter \`epic: "${macro}/${slug}"\` so it leaves the funnel (the seed is funnel-only after this).`);
-console.log(`  3. Commit PATH-SCOPED (never git add -A):`);
-const paths = files.map(([p]) => `'${rel(p)}'`).join(' ');
-console.log(`     git add ${paths} 'Roadmap/00-ideas/seeds/${slug}.md'`);
-console.log(`     git commit -- ${paths} 'Roadmap/00-ideas/seeds/${slug}.md' -m "plan(${slug}): scaffold epic + sprints"`);
+if (seedText) console.log(`     The seed now says \`epic: "${macro}/${slug}"\` and \`status: scaffolded\` — it is funnel-only from here.`);
+else console.log(`     Set the SEED frontmatter \`epic: "${macro}/${slug}"\` so it leaves the funnel (the seed is funnel-only after this).`);
+if (criteria.length) console.log(`     Sprint 1's ${criteria.length} stories are the seed's acceptance criteria — sharpen each role and outcome.`);
+// One commit holds the bet and the scaffold (fund-at-approval): the cycle row fund.mjs wrote, and the regenerated board.
+const cycle = fromSeed('underwritten_by')?.replace(/^Roadmap\/bets\//, '').replace(/\.md$/, '');
+const extra = [`Roadmap/00-ideas/seeds/${slug}.md`];
+if (cycle && existsSync(join(REPO_ROOT, 'Roadmap', 'bets', `${cycle}.md`))) extra.push(`Roadmap/bets/${cycle}.md`);
+const board = existsSync(join(REPO_ROOT, 'Roadmap', '00-ideas', 'BUILD-ORDER.md'));
+if (board) extra.push('Roadmap/00-ideas/BUILD-ORDER.md');
+console.log(`  3. ${board ? 'Regenerate the board (node scripts/build-order.mjs), then commit' : 'Commit'} PATH-SCOPED, in ONE commit (never git add -A):`);
+const paths = [...files.map(([p]) => rel(p)), ...extra].map((p) => `'${p}'`).join(' ');
+console.log(`     git add ${paths}`);
+console.log(`     git commit -- ${paths} -m "plan(${slug}): fund + scaffold epic"`);
+if (cycle) console.log('     …plus any queue docs fund.mjs renumbered (it printed them), in the same commit.');

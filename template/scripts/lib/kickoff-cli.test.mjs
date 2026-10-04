@@ -51,3 +51,12 @@ test('findEpicDir finds the one macro-area holding the slug, and names what it s
   assert.match(findEpicDir(repo, 'beta').error, /ambiguous slug "beta".*Roadmap\/02-x\/beta, Roadmap\/03-y\/beta/);
   assert.match(findEpicDir(join(repo, 'nope'), 'alpha').error, /no Roadmap\/ dir under/);
 });
+
+test('a seed with no epic yet is named as one, with the scaffold command (dogfood F33)', () => {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'kickoff-cli-')));
+  mkdirSync(join(repo, 'Roadmap', '00-ideas', 'seeds'), { recursive: true });
+  writeFileSync(join(repo, 'Roadmap', '00-ideas', 'seeds', 'fixed-chore.md'), '---\nslug: fixed-chore\n---\n');
+  const { error } = findEpicDir(repo, 'fixed-chore');
+  assert.match(error, /"fixed-chore" is a seed with no epic yet/);
+  assert.match(error, /scaffold-epic\.mjs" --slug fixed-chore$/);
+});

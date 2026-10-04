@@ -67,6 +67,14 @@ export function findEpicDir(repoRoot, slug, { exists = existsSync, list = readdi
   }
   const hits = macros.filter((m) => exists(join(roadmapDir, m, slug, 'README.md')));
   if (hits.length === 0) {
+    // A seed with no epic yet (dogfood F33): say what it is and the one command that makes it buildable.
+    if (exists(join(roadmapDir, '00-ideas', 'seeds', `${slug}.md`))) {
+      return {
+        error:
+          `"${slug}" is a seed with no epic yet — a kickoff builds an epic. Fund it at the approval gate, then scaffold it ` +
+          `(a fixed-scope seed needs nothing but its slug): node "$GROOM/scaffold-epic.mjs" --slug ${slug}`,
+      };
+    }
     return { error: `no epic found for slug "${slug}" under any Roadmap/*/ dir in "${repoRoot}" (searched: ${macros.join(', ') || '(none)'})` };
   }
   if (hits.length > 1) {
