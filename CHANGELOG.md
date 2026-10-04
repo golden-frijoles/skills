@@ -17,6 +17,8 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   Gemini tier shares) or `UNAVAILABLE 503 / no capacity` (gone a minute later). Both used to read as "quota". A
   capacity answer is now retried on the same model (`AGY_CAPACITY_RETRIES`, default 2, `AGY_CAPACITY_WAIT_MS`,
   default 30 s), and the final error names each model's own cause, with the quota's reset time.
+  When agy exits 0 with nothing on stdout, each call's own `--log-file` is read and the last real error
+  is reported, instead of a guessed "likely a quota cap".
 - **A log branch no longer fails a Vercel preview.** `log-branch.mjs` writes a `vercel.json` with
   `git.deploymentEnabled: false` beside the log, so a repo whose Vercel project builds every branch stops trying
   to build `claude/session-journal` (an orphan with no `package.json`).

@@ -724,7 +724,8 @@ test('runAntigravity: stubbed agy → non-empty capture, with `-p <argv> --model
   const { cmd, args, opts } = calls[0];
   assert.equal(cmd, 'agy');
   // the 1.0.10 contract: prompt is the -p value, an explicit --model is passed (the fix for the empty output)
-  assert.deepEqual(args, ['-p', 'PROMPT+DIFF', '--model', AGY_MODEL]);
+  assert.deepEqual(args.slice(0, 4), ['-p', 'PROMPT+DIFF', '--model', AGY_MODEL]);
+  assert.equal(args[4], '--log-file', 'each call keeps its own log, so an empty answer can say why');
   assert.equal(opts.input, '', 'stdin must be given an immediate EOF (input:"") or print mode blocks');
 });
 
@@ -737,9 +738,9 @@ test('runAntigravity: primary empty (quota) → AUTO-FALLS-BACK to AGY_FALLBACK_
   const out = runAntigravity('PROMPT+DIFF', {}, { spawn, warn: (m) => (warned = m) });
   assert.equal(out, 'FALLBACK FINDINGS');
   assert.equal(calls.length, 2);
-  assert.deepEqual(calls[0].args, ['-p', 'PROMPT+DIFF', '--model', AGY_MODEL]);
-  assert.deepEqual(calls[1].args, ['-p', 'PROMPT+DIFF', '--model', AGY_FALLBACK_MODEL]);
-  assert.match(warned, /returned no output.*used "/); // the substitution is announced, not silent
+  assert.deepEqual(calls[0].args.slice(0, 4), ['-p', 'PROMPT+DIFF', '--model', AGY_MODEL]);
+  assert.deepEqual(calls[1].args.slice(0, 4), ['-p', 'PROMPT+DIFF', '--model', AGY_FALLBACK_MODEL]);
+  assert.match(warned, /did not answer \(.*empty output.*\) → used "/); // the substitution is announced, not silent
 });
 
 test('runAntigravity: BOTH primary and fallback empty → fail naming the quota cap', () => {

@@ -575,6 +575,25 @@ function agyQuotaReset(output) {
 export const AGY_CAPACITY_RETRIES = Number(process.env.AGY_CAPACITY_RETRIES ?? 2);
 export const AGY_CAPACITY_WAIT_MS = Number(process.env.AGY_CAPACITY_WAIT_MS ?? 30_000);
 
+// The reason behind an EMPTY answer. agy can still exit 0 with nothing on stdout, and then the only record of why
+// is its own log (seen on PR #267's security lens, 2026-10-04, which answered on the re-run). The last real error
+// line, skipping the side calls that fail without costing the answer (telemetry, conversation-title generation).
+export function agyLogError(log) {
+  const errors = String(log || '')
+    .split('\n')
+    .filter((l) => /^E\d{4} /.test(l) && !/telemetry|title generation|recordTrajectory/i.test(l));
+  const last = errors.pop();
+  return last ? last.replace(/^E\S+ \S+\s+\d+ \S+\] /, '').slice(0, 240) : null;
+}
+
+function readOrNull(path) {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -912,8 +931,8 @@ export function agyArgs(fullArgv, model = AGY_MODEL) {
 // One `agy -p "<prompt>" --model "<MODEL>"` invocation. The prompt+framed context ride in `fullArgv` (stdin is
 // NOT the prompt and must be at EOF — input:'' gives an immediate EOF or print mode blocks forever). Returns
 // the raw spawn result; the caller classifies status/stdout.
-function execAgy(fullArgv, model, spawn) {
-  return spawn('agy', agyArgs(fullArgv, model), {
+function execAgy(fullArgv, model, spawn, logFile) {
+  return spawn('agy', [...agyArgs(fullArgv, model), ...(logFile ? ['--log-file', logFile] : [])], {
     input: '',
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
@@ -1153,61 +1172,75 @@ export function runAntigravity(fullArgv, opts = {}, deps = {}) {
       : [AGY_MODEL, AGY_FALLBACK_MODEL];
   const tried = [];
   const causes = []; // one plain line per model that did not answer, for the final message
-  for (const model of modelPair) {
-    let r = execAgy(fullArgv, model, spawn);
-    for (let retry = 1; retry <= AGY_CAPACITY_RETRIES; retry += 1) {
-      if (r.status === 0 || agyFailureKind(`${r.stderr || ''}\n${r.stdout || ''}`) !== 'capacity') break;
-      warn(`⚠ agy "${model}" has no capacity right now (not quota) → retry ${retry}/${AGY_CAPACITY_RETRIES} in ${Math.round(AGY_CAPACITY_WAIT_MS / 1000)}s.`);
-      sleep(AGY_CAPACITY_WAIT_MS);
-      r = execAgy(fullArgv, model, spawn);
-    }
-    if (r.status !== 0) {
-      const last = (r.stderr || '').trim().split('\n').filter(Boolean).pop() || 'unknown error';
-      // A non-zero exit is USUALLY a real agy error (bad flags, crash) — surface those directly
-      // rather than burning the fallback on them.
-      //
-      // But not always, and this cost a real run to learn (2026-07-25, commit-report's first live
-      // use after merge): `gpt-oss-120b-medium` answered "Our servers are experiencing high traffic
-      // right now, please try again in a minute" with a NON-ZERO exit. That is precisely the
-      // situation the second model exists for — a different provider with a separate capacity pool
-      // — and the old branch refused to try it, because the fallback was wired only to the
-      // EMPTY-output signal. Same transient condition, different exit code, no fallback.
-      // Classify on the FULL output, not on `last`. `last` is only the final non-empty stderr line,
-      // chosen because it makes the best human-readable message — but agy can emit the transient
-      // notice followed by a stack trace or a trailing status line, which would push the phrase we
-      // match on out of view and abort instead of falling back (cross-review, PR #29). Both streams
-      // are checked because agy is already known to split diagnostics across them inconsistently —
-      // the same reason isContextWindowOverflow is called on stdout and stderr above.
-      const failureOutput = `${r.stderr || ''}\n${r.stdout || ''}`;
-      const kind = agyFailureKind(failureOutput);
-      const cause =
-        kind === 'quota'
-          ? `quota reached${agyQuotaReset(failureOutput) ? `, resets in ${agyQuotaReset(failureOutput)}` : ''}`
-          : kind === 'capacity'
-            ? `no capacity after ${AGY_CAPACITY_RETRIES + 1} tries (transient, NOT quota; re-run in a few minutes)`
-            : last;
-      causes.push(`"${model}": ${cause}`);
-      if (isTransientAgyError(failureOutput) && model !== modelPair[modelPair.length - 1]) {
-        warn(`⚠ agy "${model}" is unavailable (${cause}) → trying the fallback model.`);
-        tried.push(model);
-        continue;
+  const logDir = mkdtempSync(join(tmpdir(), 'agy-log-'));
+  try {
+    for (const model of modelPair) {
+      const logFile = join(logDir, `${model}.log`);
+      let r = execAgy(fullArgv, model, spawn, logFile);
+      for (let retry = 1; retry <= AGY_CAPACITY_RETRIES; retry += 1) {
+        if (r.status === 0 || agyFailureKind(`${r.stderr || ''}\n${r.stdout || ''}`) !== 'capacity') break;
+        warn(
+          `⚠ agy "${model}" has no capacity right now (not quota) → retry ${retry}/${AGY_CAPACITY_RETRIES} in ${Math.round(AGY_CAPACITY_WAIT_MS / 1000)}s.`
+        );
+        sleep(AGY_CAPACITY_WAIT_MS);
+        r = execAgy(fullArgv, model, spawn, logFile);
       }
-      return fail(opts.soft, `agy -p failed — ${causes.join('; ')}`);
+      if (r.status !== 0) {
+        const last = (r.stderr || '').trim().split('\n').filter(Boolean).pop() || 'unknown error';
+        // A non-zero exit is USUALLY a real agy error (bad flags, crash) — surface those directly
+        // rather than burning the fallback on them.
+        //
+        // But not always, and this cost a real run to learn (2026-07-25, commit-report's first live
+        // use after merge): `gpt-oss-120b-medium` answered "Our servers are experiencing high traffic
+        // right now, please try again in a minute" with a NON-ZERO exit. That is precisely the
+        // situation the second model exists for — a different provider with a separate capacity pool
+        // — and the old branch refused to try it, because the fallback was wired only to the
+        // EMPTY-output signal. Same transient condition, different exit code, no fallback.
+        // Classify on the FULL output, not on `last`. `last` is only the final non-empty stderr line,
+        // chosen because it makes the best human-readable message — but agy can emit the transient
+        // notice followed by a stack trace or a trailing status line, which would push the phrase we
+        // match on out of view and abort instead of falling back (cross-review, PR #29). Both streams
+        // are checked because agy is already known to split diagnostics across them inconsistently —
+        // the same reason isContextWindowOverflow is called on stdout and stderr above.
+        const failureOutput = `${r.stderr || ''}\n${r.stdout || ''}`;
+        const kind = agyFailureKind(failureOutput);
+        const cause =
+          kind === 'quota'
+            ? `quota reached${agyQuotaReset(failureOutput) ? `, resets in ${agyQuotaReset(failureOutput)}` : ''}`
+            : kind === 'capacity'
+              ? `no capacity after ${AGY_CAPACITY_RETRIES + 1} tries (transient, NOT quota; re-run in a few minutes)`
+              : last;
+        causes.push(`"${model}": ${cause}`);
+        if (isTransientAgyError(failureOutput) && model !== modelPair[modelPair.length - 1]) {
+          warn(`⚠ agy "${model}" is unavailable (${cause}) → trying the fallback model.`);
+          tried.push(model);
+          continue;
+        }
+        return fail(opts.soft, `agy -p failed — ${causes.join('; ')}`);
+      }
+      const out = (r.stdout || '').trim();
+      if (out) {
+        if (model !== modelPair[0])
+          warn(`⚠ agy "${modelPair[0]}" did not answer (${causes[0]}) → used "${model}".`);
+        // Tell the caller WHICH model answered. Added because the prose rail's footer said "agy",
+        // which cannot distinguish the primary from the fallback — so a silent switch between two
+        // models with very different registers was unattributable in the channel, and that is exactly
+        // the confusion that took a human to notice. Optional and side-effect-only, so every existing
+        // caller keeps its byte-identical string return.
+        opts.onModel?.(model);
+        return out;
+      }
+      const why = agyLogError(readOrNull(logFile));
+      causes.push(
+        `"${model}": empty output${why ? ` — agy's log says: ${why}` : ' and no error in its log'}`
+      );
+      tried.push(model);
     }
-    const out = (r.stdout || '').trim();
-    if (out) {
-      if (model !== modelPair[0])
-        warn(`⚠ agy "${modelPair[0]}" returned no output (quota/unavailable?) → used "${model}".`);
-      // Tell the caller WHICH model answered. Added because the prose rail's footer said "agy",
-      // which cannot distinguish the primary from the fallback — so a silent switch between two
-      // models with very different registers was unattributable in the channel, and that is exactly
-      // the confusion that took a human to notice. Optional and side-effect-only, so every existing
-      // caller keeps its byte-identical string return.
-      opts.onModel?.(model);
-      return out;
-    }
-    tried.push(model);
+  } finally {
+    rmSync(logDir, { recursive: true, force: true });
   }
+  if (causes.some((c) => c.includes("agy's log says")))
+    return fail(opts.soft, `agy returned no review — ${causes.join('; ')}`);
   return fail(
     opts.soft,
     `agy returned no output for ${tried.map((m) => `"${m}"`).join(' and ')} — likely a quota cap ` +
