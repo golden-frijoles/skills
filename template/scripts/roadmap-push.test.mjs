@@ -167,7 +167,9 @@ test(
     assert.match(on, /types: \[opened, reopened, ready_for_review, converted_to_draft, closed\]/);
     assert.match(on, /push:\n {4}branches: \[main\]/, 'a push re-renders the board only from main');
     assert.match(text, /\n {2}pull-requests: read\n/);
-    const job = text.slice(text.indexOf('\n  push-roadmap:'), text.indexOf('\n  push-pod-report:'));
+    // push-roadmap is the file's only job since the Pod Report moved to pod-report-push.yml (ci-diet S3.3).
+    assert.ok(!text.includes('\n  push-pod-report:'), 'the Pod Report push lives in its own workflow');
+    const job = text.slice(text.indexOf('\n  push-roadmap:'));
     assert.match(
       job,
       /group: roadmap-push\n\s+cancel-in-progress: false/,
