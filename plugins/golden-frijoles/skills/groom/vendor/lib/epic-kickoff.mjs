@@ -145,7 +145,7 @@ const FLAG_RE = /\b[a-z][a-z0-9_]*\.[a-z0-9_]+_enabled\b|\bgf flags (?:create|se
 const NEGATED_RE =
   /\b(?:no|without|zero|not an?|nor an?)\s+(?:new\s+)?(?:db\s+|database\s+|schema\s+)?migrations?\b/gi;
 
-export function buildEpicRules({ risk, texts }) {
+export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }) {
   const all = texts.join('\n').replace(NEGATED_RE, '');
   const rules = [];
   if (String(risk).toUpperCase() === 'HIGH')
@@ -160,12 +160,19 @@ export function buildEpicRules({ risk, texts }) {
     rules.push(
       '- **Flag:** create it in Golden Frijoles in every env and ACTIVATE it; `gf flags get <key>` must show production.'
     );
+  // fund-at-approval D7 — an L bet is funded one wave at a time; the re-bet is one line, asked where the builder stops.
+  if (String(appetite).toUpperCase() === 'L')
+    rules.push(
+      `- **L bet:** it is funded one wave at a time. When you stop at a wave boundary, ask the product owner one line — ` +
+        `"fund the next wave of \`${slug}\`? what does it displace?" — and on yes run groom's ` +
+        `\`fund.mjs --slug ${slug} --displaced "<…>"\` (position kept) before the next wave starts.`
+    );
   return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';
 }
 
-export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText, texts = [] }) {
+export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText, texts = [], appetite = null }) {
   return sub(templateText, {
-    EPIC_RULES: buildEpicRules({ risk, texts }),
+    EPIC_RULES: buildEpicRules({ risk, texts, appetite, slug }),
     MACRO: macro,
     SLUG: slug,
     EPIC_TITLE: epicTitle,
@@ -174,6 +181,21 @@ export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templa
     SPRINT_FILE_LIST: buildSprintFileList(sprints),
     SPRINT_BREAKDOWN: buildSprintBreakdown(sprints),
   });
+}
+
+// `appetite:` from a doc's frontmatter (the README's own first, else its seed's — finops D20), or null.
+export function parseAppetite(text) {
+  const fm = /^---\n([\s\S]*?)\n---/.exec(text ?? '')?.[1] ?? '';
+  return /^appetite:\s*"?([SML])"?\s*(?:#.*)?$/m.exec(fm)?.[1] ?? null;
+}
+
+// The seed beside an epic dir (`Roadmap/<macro>/<slug>/` → `Roadmap/00-ideas/seeds/<slug>.md`), or '' when absent.
+function readSeed(read, dir, slug) {
+  try {
+    return read(join(dir, '..', '..', '00-ideas', 'seeds', `${slug}.md`));
+  } catch {
+    return '';
+  }
 }
 
 // The epic README header line carries `**Risk:** <low|high>`; the frontmatter doesn't. Falls back to
@@ -261,6 +283,7 @@ export function epicKickoffFromDir({
       sprints,
       templateText: EPIC_KICKOFF_TEMPLATE,
       texts: [readmeText, ...sprints.map((s) => s.text)],
+      appetite: parseAppetite(readmeText) ?? parseAppetite(readSeed(read, dir, slug)),
     }),
   };
 }

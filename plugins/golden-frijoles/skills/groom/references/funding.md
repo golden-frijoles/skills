@@ -1,0 +1,45 @@
+# Funding at the gate — what `fund.mjs` and `scaffold-epic.mjs` write (Stage 7)
+
+The approval gate is the betting table (WAYS-OF-WORKING → *Betting & appetite*). One answer approves the pitch and
+funds it, so nothing leaves grooming scaffolded but unfunded, and nobody has a follow-up step.
+
+## The Bet block
+
+Close the pitch with it and ONE question. Propose the position and what the bet displaces from the month's
+`Roadmap/bets/wave-YYYY-MM.md` and *Ready to build* in `BUILD-ORDER.md`; the product owner edits any of it.
+
+```
+Bet: <slug> · appetite <A> · quote $<lo>–<hi> · cycle wave-YYYY-MM · position: next | after <slug>
+     · displaced: <what stays parked because of it>
+→ approve (fund + scaffold) · approve, don't fund · change something
+```
+
+## `fund.mjs` — the bet
+
+```
+node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next      # front of the queue
+node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --after <slug>
+node "$GROOM/fund.mjs" --slug <slug> --displaced "<the next wave displaces…>"       # re-bet, position kept
+```
+
+- Appends one row (Bet · Appetite · Displaced) to the month's cycle file, creating it on first use. A second run for
+  the same slug in the same cycle adds nothing.
+- Sets the seed's `underwritten_by:` (the bare cycle name) and `appetite:`, and moves a `ready` seed to `queued`.
+- `--next` / `--after` renumber **the queue only**: live, funded work (epics scaffolded or in progress, seeds
+  queued). Numbering starts at the queue's lowest number and skips every number a shipped or archived item holds, so
+  history never moves. A `ready` seed's leftover number is not a queue position.
+- No placement flag on a funded slug is a **re-bet**: an L bet at its wave boundary, position kept. The epic kickoff
+  of an L bet tells the builder to ask that one line when it stops at the boundary.
+- `--dry-run` prints the plan and writes nothing. `--cycle <name>` and `--date` override the month.
+
+## `scaffold-epic.mjs` — the scaffold, after the bet
+
+- Refuses a seed with no `underwritten_by:` and prints the `fund.mjs` command. With no seed file at all it scaffolds
+  as it always did, from its flags.
+- `--slug <seed>` alone reads title, area, type and risk from the seed, the macro from the one `Roadmap/<area>-*`
+  directory, and makes ONE sprint whose stories are the seed's `## Acceptance criteria` bullets — the fixed-scope
+  path (dogfood F33). Sharpen each story's role and outcome after.
+- Copies the seed's `build_order`, quote and intent score into the README, and sets the seed's `epic:` and
+  `status: scaffolded`.
+- Prints one path-scoped commit: the epic files, the seed, the cycle file and `BUILD-ORDER.md` (regenerate it first
+  with `node scripts/build-order.mjs`). The board fails on a live bet with no `underwritten_by:` naming a cycle file.

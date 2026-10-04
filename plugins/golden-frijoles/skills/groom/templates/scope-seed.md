@@ -4,7 +4,6 @@ slug: {{SLUG}}
 status: ready
 area: "{{AREA}}"
 type: {{TYPE}}
-priority: null
 appetite: {{APPETITE}}
 underwritten_by: null
 risk: {{RISK}}

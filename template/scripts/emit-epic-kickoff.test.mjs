@@ -62,6 +62,13 @@ test('compactStory keeps the id and title, drops shipped notes, clips long title
   assert.equal(compactStory('not a story heading'), 'not a story heading');
 });
 
+test('an L bet carries the one-line re-bet at each wave boundary; S and M do not (fund-at-approval D7)', () => {
+  const l = buildEpicRules({ risk: 'LOW', texts: [''], appetite: 'L', slug: 'big-bet' });
+  assert.match(l, /L bet:.*fund the next wave of `big-bet`\?.*fund\.mjs --slug big-bet --displaced/);
+  assert.equal(buildEpicRules({ risk: 'LOW', texts: [''], appetite: 'M', slug: 'big-bet' }), '');
+  assert.equal(buildEpicRules({ risk: 'LOW', texts: [''] }), '');
+});
+
 test('buildEpicRules picks only the rules this epic needs', () => {
   assert.equal(buildEpicRules({ risk: 'LOW', texts: ['Copy change on the landing page.'] }), '');
   const high = buildEpicRules({ risk: 'HIGH', texts: ['Nothing new is modelled. No new table, no migration.'] });
