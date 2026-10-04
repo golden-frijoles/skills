@@ -7,6 +7,17 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-10-04
+
+### Fixed
+- **Every doc names a kickoff command that runs.** WAYS-OF-WORKING (*Epic-mode builds*, item 5) and
+  SESSION-KICKOFFS now say `/build <slug>` with the plugin's mod, else
+  `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` from the project root (and `emit-kickoff … --sprint <N>`
+  for the per-sprint exception). They used to name `node skills/groom/…`, a path that exists only inside the plugin.
+  A new project gets the fixed WAYS-OF-WORKING from `gf-kit init` (kickoff-generator-path S2).
+- `check-release.mjs` treats the Roadmap skeleton `gf-kit init` writes as shipped surface, so an edit to it can no
+  longer merge without the release that publishes it.
+
 ## [0.27.0] - 2026-10-04
 
 ### Added
