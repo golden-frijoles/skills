@@ -16,6 +16,7 @@ import {
   realpathSync,
   writeFileSync,
   readdirSync,
+  rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -23,12 +24,14 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-function epic(root, macro, slug, status, order) {
+// Every live epic is funded (fund-at-approval D8): `underwritten_by` names a cycle file the fixture writes.
+function epic(root, macro, slug, status, order, underwrittenBy = 'wave-test') {
   const dir = join(root, 'Roadmap', macro, slug);
   mkdirSync(dir, { recursive: true });
+  const funded = underwrittenBy ? `underwritten_by: ${underwrittenBy}\n` : '';
   writeFileSync(
     join(dir, 'README.md'),
-    `---\nstatus: ${status}\nslug: ${slug}\ntitle: "${slug}"\narea: ${macro}\nrisk: low\ntype: feature\nbuild_order: ${order}\n---\n\n# Epic: ${slug}\n\n## Why\nBecause.\n`
+    `---\nstatus: ${status}\nslug: ${slug}\ntitle: "${slug}"\narea: ${macro}\nrisk: low\ntype: feature\nbuild_order: ${order}\n${funded}---\n\n# Epic: ${slug}\n\n## Why\nBecause.\n`
   );
   writeFileSync(
     join(dir, 'sprint-1.md'),
@@ -48,6 +51,8 @@ function fixture() {
   ))
     writeFileSync(join(root, 'scripts', 'lib', name), readFileSync(join(HERE, 'lib', name)));
   writeFileSync(join(root, 'scripts', 'roadmap-push.mjs'), readFileSync(join(HERE, 'roadmap-push.mjs')));
+  mkdirSync(join(root, 'Roadmap', 'bets'), { recursive: true });
+  writeFileSync(join(root, 'Roadmap', 'bets', 'wave-test.md'), '# Cycle test\n');
   epic(root, '02-commercial', 'late-epic', 'scaffolded', 40);
   epic(root, '02-commercial', 'early-epic', 'scaffolded', 18);
   epic(root, '09-platform-infra', 'done-epic', 'shipped', 3);
@@ -134,4 +139,25 @@ test('--check passes on a fresh file and fails on a stale one', () => {
   assert.equal(run(root, '--check').status, 0);
   writeFileSync(OUT(root), readFileSync(OUT(root), 'utf8').replace('## Grooming', '## Groomed'));
   assert.equal(run(root, '--check').status, 1);
+});
+
+test('a live bet with no funding record fails the board; a shipped one does not need one (fund-at-approval D8)', () => {
+  const root = fixture();
+  try {
+    epic(root, '09-platform-infra', 'old-shipped', 'shipped', 2, null);
+    assert.equal(run(root).status, 0, 'a shipped epic with no underwriter is history, not a live bet');
+    epic(root, '02-commercial', 'unpaid', 'in-progress', 41, null);
+    let r = run(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /Live bets with no funding record/);
+    assert.match(r.stderr, /Roadmap\/02-commercial\/unpaid\/README\.md$/m);
+    epic(root, '02-commercial', 'unpaid', 'in-progress', 41, 'wave-nowhere');
+    r = run(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /unpaid\/README\.md — no Roadmap\/bets\/wave-nowhere\.md/);
+    epic(root, '02-commercial', 'unpaid', 'in-progress', 41, '"Roadmap/bets/wave-test.md"');
+    assert.equal(run(root).status, 0, 'the legacy path form names the same cycle file');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

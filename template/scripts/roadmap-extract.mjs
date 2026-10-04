@@ -101,13 +101,6 @@ const SEED_STATUS_LABEL = {
   shipped: 'Shipped',
   archived: 'Archived',
 };
-const PRIORITY_LABEL = {
-  'wave-0': 'Wave 0 Enablers',
-  'wave-1': 'Wave 1',
-  'wave-2': 'Wave 2',
-  'wave-3': 'Wave 3',
-  'wave-4': 'Wave 4',
-};
 const TYPE_LABEL = { feature: 'Feature', spike: 'Spike', chore: 'Chore', bug: 'Bug', epic: 'Epic' };
 
 /**
@@ -523,7 +516,6 @@ export function buildRows({
     const totStories = boardSprints.reduce((a, s) => a + s.total, 0);
     const doneStories = boardSprints.reduce((a, s) => a + s.done, 0);
     const area = AREA_NAMES[e.area] || e.area;
-    const priority = seed.priority ? PRIORITY_LABEL[seed.priority] || seed.priority : null;
     const riskWord = epicFm.risk || seed.risk;
     const risk = riskWord ? (riskWord === 'high' ? 'High' : 'Low') : null;
     const readmePath = `Roadmap/${epicKey}/README.md`;
@@ -561,12 +553,12 @@ export function buildRows({
       stage,
       stage_source: stageSource,
       area,
-      priority,
       type: TYPE_LABEL[epicFm.type || seed.type] || 'Epic',
       risk,
       // finops D20 — the README's own appetite first (an epic groomed after FinOps carries it), else the seed's.
       appetite: epicFm.appetite || seed.appetite || null,
-      underwritten_by: seed.underwritten_by || null,
+      // fund-at-approval D8 — the README's own first (an epic with no seed carries it there), else the seed's.
+      underwritten_by: epicFm.underwritten_by || seed.underwritten_by || null,
       sprint_progress: totStories ? `${doneStories}/${totStories} stories` : `${sprints.length} sprints`,
       build_order: buildOrder,
       build_order_num: buildOrderNum(buildOrder),
@@ -598,7 +590,6 @@ export function buildRows({
         status: sp.status,
         status_date: when(`Roadmap/${epicKey}/sprint-${sp.n}.md`, '^(\\*\\*)?Status:'),
         area,
-        priority,
         type: 'Sprint',
         risk,
         sprint_progress: sp.total ? `${sp.done}/${sp.total} stories` : '—',
@@ -625,7 +616,6 @@ export function buildRows({
       stage,
       stage_source: stageSource,
       area: AREA_NAMES[s.area] || s.area || null,
-      priority: s.priority ? PRIORITY_LABEL[s.priority] || s.priority : null,
       type: TYPE_LABEL[s.type] || 'Feature',
       risk: s.risk ? (s.risk === 'high' ? 'High' : 'Low') : null,
       appetite: s.appetite || null,

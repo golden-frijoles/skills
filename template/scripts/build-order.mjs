@@ -58,12 +58,7 @@ function line(r) {
   if (r.sprint_progress) meta.push(r.sprint_progress);
   if (r.risk) meta.push(`risk: ${r.risk}`);
   if (r.appetite) meta.push(`appetite ${r.appetite}`);
-  // A queued seed without an underwriter is funded-but-unowned — advisory, loud on the board.
-  const warn =
-    r.grain === 'Seed' && r.status === 'Queued' && !r.underwritten_by
-      ? ' — ⚠️ no underwriter (set `underwritten_by:` at the betting table)'
-      : '';
-  return `- [${r.name}](${link}) — ${meta.join(' · ')} · _${r.stage_source}_${warn}`;
+  return `- [${r.name}](${link}) — ${meta.join(' · ')} · _${r.stage_source}_`;
 }
 
 function render(rows) {
@@ -127,6 +122,22 @@ if (unfunded.length) {
     'Queued seeds missing `appetite:` frontmatter (S | M | L — set at shaping, bet at the wave boundary):'
   );
   for (const s of unfunded) console.error(`  - ${s.doc_link}`);
+  process.exit(1);
+}
+
+// Scaffolded ⇒ funded (fund-at-approval D8). A live bet — an epic scaffolded or in progress, or a queued seed — must
+// name the cycle that paid for it, and that cycle must be a file in Roadmap/bets/. `groom` funds a bet at its approval
+// gate (`fund.mjs`), in the same commit as the scaffold, so this only fails on work that skipped the gate.
+const BETS = join(REPO, 'Roadmap', 'bets');
+const cycleOf = (v) => String(v).replace(/^Roadmap\/bets\//, '').replace(/\.md$/, '');
+const liveBets = rows.filter(
+  (r) => (r.grain === 'Epic' && ['Scaffolded', 'In progress'].includes(r.status)) || (r.grain === 'Seed' && r.status === 'Queued')
+);
+const unpaid = liveBets.filter((r) => !r.underwritten_by || !existsSync(join(BETS, `${cycleOf(r.underwritten_by)}.md`)));
+if (unpaid.length) {
+  console.error('Live bets with no funding record (`underwritten_by:` must name a Roadmap/bets/<cycle>.md):');
+  for (const r of unpaid) console.error(`  - ${r.doc_link}${r.underwritten_by ? ` — no Roadmap/bets/${cycleOf(r.underwritten_by)}.md` : ''}`);
+  console.error('Fund it at the approval gate: node "$GROOM/fund.mjs" --slug <slug> --displaced "<…>" --next | --after <slug>');
   process.exit(1);
 }
 

@@ -31,6 +31,7 @@ type: feature
 sprints_total: 1
 stories_total: 1
 build_order: 1
+underwritten_by: wave-demo
 ---
 
 # Epic: Demo epic
@@ -67,6 +68,8 @@ function fixture(strategy) {
   mkdirSync(epic, { recursive: true });
   mkdirSync(join(root, 'Roadmap', '00-ideas', 'seeds'), { recursive: true });
   writeFileSync(join(epic, 'README.md'), EPIC);
+  mkdirSync(join(root, 'Roadmap', 'bets'), { recursive: true }); // a live epic is funded (fund-at-approval D8)
+  writeFileSync(join(root, 'Roadmap', 'bets', 'wave-demo.md'), '# Cycle demo\n');
   writeFileSync(join(epic, 'sprint-1.md'), SPRINT);
   if (strategy) {
     const dir = join(root, 'Roadmap', '00-strategy');
