@@ -70,7 +70,8 @@ and the latest Roadmap/bets/ wave file (what's already funded, and what it displ
 Use the groom skill — planning only, no code. Orient → SET THE APPETITE BEFORE ANY SOLUTIONING → classify
 class + lane → "can we already do this?" → disambiguate → platform-primitives-first reframe → bill of
 materials → slice into sprints. Land the pitch in Roadmap/00-ideas/seeds/ with appetite: set and
-underwritten_by: null. Never assume — validate at each gate.
+underwritten_by: null; my approval at the gate funds it (fund.mjs) and scaffolds it, in one commit. Never
+assume — validate at each gate.
 ```
 **The appetite is a creative constraint, not a forecast.** It is fixed *before* the solution is
 designed; if the solution won't fit, narrow the problem or cut scope — never grow the appetite
@@ -81,11 +82,11 @@ stop and hammer scope instead.
 
 | Lane | Tell | What follows |
 |---|---|---|
-| **Shaped bet** | genuinely-new / strategic | pitch is complete (problem · appetite · bill of materials · rabbit holes · no-gos) → stops at `status: ready`, waits for §9. **No scaffolding yet** — an unfunded epic is a plan nobody paid for. |
-| **Fixed scope** | bug, chore, well-specified story | default `appetite: S`, **skip §9 entirely** → on my approval scaffold the epic + sprint docs (commit path-scoped) and emit the **epic-mode** kickoff (§2) |
+| **Shaped bet** | genuinely-new / strategic | pitch is complete (problem · appetite · bill of materials · rabbit holes · no-gos) → the gate: **approve** funds it (cycle row · `underwritten_by` · build position) and scaffolds it in one commit; **approve, don't fund** leaves it `ready` for §9. An unfunded epic is a plan nobody paid for, so none is scaffolded. |
+| **Fixed scope** | bug, chore, well-specified story | default `appetite: S`, the same gate → on my approval fund it and scaffold it from the seed alone (`scaffold-epic.mjs --slug <seed>`: one sprint, its acceptance criteria as stories), commit path-scoped, and emit the kickoff (§2) |
 | **Reactive / ops** | incident, launch support, can't wait | no shaping — do it, then log it against the current wave's budget so the economics stay visible |
 
-*Add for a shaped bet:* `"Stop at the pitch. Do not scaffold — this goes to the betting table."`
+*Add when it should wait:* `"Approve, don't fund — leave it ready for the next betting table."`
 
 ## 2 · Build a WHOLE epic — epic mode *(the default)*
 
@@ -245,18 +246,20 @@ Two conventions that keep it honest:
 
 ## 9 · Bet a wave boundary — strong model *(the Bet stage)*
 
-Run at a **wave boundary, not on a calendar**: the previous wave's bets landed (or hit their
-breaker), and nothing should start until we've said what we're funding and what it costs us.
+**Most bets never need this session**: approving a pitch in `groom` funds it at the gate (`fund.mjs`, in the same
+commit as the scaffold). Run this one for what the gate did not settle — seeds approved with "approve, don't fund",
+an L bet's next wave, or a queue that needs reordering — at a **wave boundary, not on a calendar**.
 
 ```
 Bet the wave.
-Read <AGENTS-path> (Start here), Roadmap/WAYS-OF-WORKING.md (Betting & appetite), and every wave file in
-Roadmap/bets/. Then read every seed in Roadmap/00-ideas/seeds/ with status: ready.
+Read <AGENTS-path> (Start here), Roadmap/WAYS-OF-WORKING.md (Betting & appetite), and the cycle files in
+Roadmap/bets/. Then read every seed in Roadmap/00-ideas/seeds/ with status: ready, and every L epic at a wave
+boundary.
 Run the betting table with me: for each candidate, state its appetite and — the part that matters — what
-funding it DISPLACES. Recommend a slate that fits one wave; I decide. Then write
-Roadmap/bets/wave-<date-or-slug>.md (bet · appetite · displaced, three lines each), set each funded seed's
-underwritten_by: to that path and status: queued, and regenerate the board (node scripts/build-order.mjs —
-never hand-edit BUILD-ORDER.md). Planning only, no code.
+funding it DISPLACES. Recommend a slate that fits one wave; I decide. Fund each with groom's fund.mjs
+(--slug <slug> --displaced "<…>" --next | --after <slug>; no placement flag re-bets an L bet in place): it
+writes the cycle row, underwritten_by and the build position. Then regenerate the board
+(node scripts/build-order.mjs — never hand-edit BUILD-ORDER.md). Planning only, no code.
 ```
 
 Three rules that keep this from becoming a ceremony:
@@ -266,8 +269,8 @@ Three rules that keep this from becoming a ceremony:
 - **"What did it displace?" is the whole point.** A bet with no named opportunity cost hasn't been
   bet on; it's been waved through. A ticket board can show you what's queued and never what it cost.
 - **`underwritten_by: null` is the honest state of an idea nobody has paid for.** Fine in the funnel,
-  impossible on the board — `build-order.mjs` hard-fails a `queued` seed with no `appetite:` and
-  flags a missing underwriter as drift.
+  impossible on the board — `build-order.mjs` hard-fails a `queued` seed with no `appetite:`, and any
+  live bet with no `underwritten_by:` naming a cycle file.
 
 Advisory second opinion available before you commit the slate: `node scripts/cross-panel.mjs
 Roadmap/bets/<wave>.md --lens both --agent <reviewer>` — print-only, never gates.

@@ -99,11 +99,15 @@ and session context. Fixed appetite, variable scope.
 | **M** | one wave: an architect session + builder fan-out + review rounds | appetite exhausted → stop, back to shaping |
 | **L** | a multi-wave epic | per-wave: each wave is re-bet at the boundary |
 
-Four rules: **an exhausted bet returns to shaping**, never extends in flight; **nothing reaches
-`status: queued` without an `appetite:` and an `underwritten_by:` wave**; **bets are placed at wave
-boundaries** into `Roadmap/bets/<wave>.md`, three lines each, recording what they displaced; and **uphill
-work stays on the strongest model**. Not every ask earns the betting table — `groom` sorts shaped bets
-from fixed scope (appetite S, straight to a builder) and reactive/ops work. Why it works this way:
+Four rules: **an exhausted bet returns to shaping**, never extends in flight; **the approval gate is the
+betting table** — approving a pitch in `groom` funds it in the same answer (`fund.mjs`: a row in the month's
+cycle file `Roadmap/bets/wave-YYYY-MM.md` recording what it displaced, `underwritten_by:`, and a build
+position), in the same commit as the scaffold, while "approve, don't fund" leaves it `ready` and scaffolds
+nothing; **nothing scaffolded is unfunded** — `build-order.mjs` fails a live bet with no `underwritten_by:`;
+and **uphill work stays on the strongest model**. An L bet is re-bet at each wave boundary with one line
+when its builder stops there ("fund the next wave of `<slug>`? what does it displace?"; yes runs `fund.mjs`
+again, position kept). Fixed scope (appetite S) and reactive/ops work go through the same gate, straight to
+a builder. Why it works this way:
 [`references/shapeup/`](https://github.com/golden-frijoles/skills/blob/main/template/references/shapeup/README.md).
 
 ## Review & merge

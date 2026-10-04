@@ -25,9 +25,9 @@ Loaded on demand from `SKILL.md` Stage 9. Moved here verbatim (ways-of-work-lean
 The cadence:
 
 1. **Agree a consolidated build order first** (a separate evaluation pass — consolidate overlaps, sequence
-   by dependency/leverage), and **persist it in the seed frontmatter** (`build_order` = the integer
-   sequence; `priority` = the wave it's slated for) — that's the SSOT the board sorts by.
-   `BUILD-ORDER.md` is **generated** from it (`node scripts/build-order.mjs`); never hand-edit the board.
+   by dependency/leverage). Funded work is placed by `fund.mjs` (`--next` / `--after <slug>`, the queue only);
+   a seed not yet funded may carry an integer `build_order` as intent. That frontmatter is the SSOT the board
+   sorts by; `BUILD-ORDER.md` is **generated** from it (`node scripts/build-order.mjs`); never hand-edit it.
 2. **One deep ask per approval gate, plus a portfolio pass over the rest.** Deep-groom the front-of-queue
    item to full Definition of Ready and its gate; take the next one in the same session while the budget
    line says keep going. For items not near the front, set sequence, appetite, lane and enough scope to be

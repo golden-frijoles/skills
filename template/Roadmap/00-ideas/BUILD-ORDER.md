@@ -1,7 +1,7 @@
 <!-- GENERATED FILE — do not edit by hand.
      Regenerate:  node scripts/build-order.mjs
      Status SSOT: each epic README's frontmatter `status:` field (set at epic close). Funnel
-     ordering: seed frontmatter (priority). Both projected via scripts/roadmap-extract.mjs. -->
+     ordering: build_order. Both projected via scripts/roadmap-extract.mjs. -->
 
 # Build order — generated status board
 

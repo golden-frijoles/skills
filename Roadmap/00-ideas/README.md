@@ -22,12 +22,11 @@ slug: example-feature-idea          # kebab; matches the filename
 status: raw                          # raw | ready | queued | scaffolded | in-progress | shipped | archived
 area: "01"                           # macro-section number, matching Roadmap/README.md's table
 type: feature                        # feature | spike | chore | epic
-priority: null                       # a wave/priority label, or null
 appetite: null                       # S | M | L — the budget, set at shaping; REQUIRED before `queued`
-underwritten_by: null                # wave that pays for this (a Roadmap/bets/<wave>.md), or null
+underwritten_by: null                # the cycle that PAID for it (Roadmap/bets/<cycle>.md, bare name) — fund.mjs
 risk: low                            # low | high
 epic: null                           # path to the scaffolded epic, or null until scaffolded
-build_order: null                    # BUILD-ORDER id, or null
+build_order: null                    # integer position in the one global sequence — fund.mjs places it
 updated: <date>
 ---
 ```
@@ -64,10 +63,11 @@ One field is authoritative at each stage — they never both drive the board:
 
 `appetite` (S | M | L) is the **budget the idea is worth**, fixed at shaping *before* the solution
 is designed — sessions + an implied token band, never a time estimate (see WAYS-OF-WORKING →
-*Betting & appetite*). `underwritten_by` names the **wave that pays for it** (a
-`Roadmap/bets/<wave>.md` file), set at the betting table. `null` means nobody has paid for it yet —
-fine in the funnel, impossible on the board: `build-order.mjs` **hard-fails** a `queued` seed with
-no `appetite`, and flags a missing `underwritten_by` as drift. Like `status`, `appetite` is an
+*Betting & appetite*). `underwritten_by` names the **cycle that paid for it** — the bare name of a
+`Roadmap/bets/<cycle>.md` file (`wave-2026-10`), written by `groom`'s `fund.mjs` at the approval gate.
+`null` means nobody has paid for it yet — fine in the funnel, impossible on the board: `build-order.mjs`
+**hard-fails** a `queued` seed with no `appetite`, and a live bet (`queued`, or an epic scaffolded or in
+progress) whose `underwritten_by` is missing or names no cycle file. Like `status`, `appetite` is an
 enforced enum — a present-but-unrecognized value fails the board, it never falls back silently.
 
 ## How seeds flow (no file moves)
@@ -76,10 +76,13 @@ enforced enum — a present-but-unrecognized value fails the board, it never fal
    from a brain-dump).
 2. **Scope** — `groom` fills out the Definition-of-Ready (appetite included) and flips
    `status: ready`.
-3. **Queue** — bet on it at a wave boundary (`appetite:` + `underwritten_by:` set, the wave's
-   `Roadmap/bets/` file records what it displaced); `status: queued`.
-4. **Scaffold** — on approval, `groom` runs its own `scaffold-epic.mjs` (ships inside the `groom`
-   skill, `ways-of-work` plugin) to create the epic/sprint docs, then sets the seed's `epic:` +
-   `status: scaffolded`. **No file ever moves between folders** — the frontmatter carries the state.
+3. **Fund + scaffold, in one answer** — the approval gate is the betting table. On "approve", `groom`
+   runs its own `fund.mjs` (a row in the month's `Roadmap/bets/wave-YYYY-MM.md`, created on first use,
+   recording what the bet displaced; `underwritten_by:`; a `build_order` placed with `--next` or
+   `--after <slug>`, renumbering only the queue) and then `scaffold-epic.mjs` (the epic/sprint docs; the
+   seed gets `epic:` + `status: scaffolded`), committed together. Both ship inside the `groom` skill,
+   `golden-frijoles` plugin. A fixed-scope seed scaffolds from its slug alone, its acceptance criteria
+   becoming sprint 1's stories. "Approve, don't fund" leaves the seed `ready` and scaffolds nothing.
+   **No file ever moves between folders** — the frontmatter carries the state.
 
 Filenames are kebab-case and match `slug`. Audits live in `audits/`, never in `seeds/`.
