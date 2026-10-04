@@ -112,3 +112,10 @@ test('a review that found something real is never flagged', () => {
     false
   );
 });
+
+test("a one-line `Clean.` verdict is a review, not a truncation (the prompt asks for exactly that)", () => {
+  const footer =
+    'Cross-agent pass — findings are resolved or answered before merge; this is not a merge authorization.';
+  assert.equal(isTruncatedReview(`Clean.\n${footer}`), false);
+  assert.equal(isTruncatedReview('No blocking findings.'), false);
+});
