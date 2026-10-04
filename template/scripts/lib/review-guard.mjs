@@ -38,38 +38,12 @@
 import { spawnSync } from 'node:child_process';
 import { jevContext } from './jev.mjs';
 import { loadQuestions, wireQuestion } from './jev-questions.mjs';
+import { TOOL_TRANSCRIPT, assertReviewOutput } from './review-shape.mjs';
+
+export { assertReviewOutput };
 
 /** Codex CLI version last observed producing a real, structured review. Bump after a verified run. */
 export const CODEX_VERIFIED = '0.154.0';
-
-const SEVERITY_HEADING =
-  /^\s{0,3}(?:[-*+]\s+|\d+\.\s+|>\s*|\|\s*)?(?:#{1,6}\s*)?(?:\*\*|__)?\s*(?:🔴|🟠|🟡|⚪)?\s*(?:blocking|should[- ]fix|nits?|important|critical|findings?|correctness(?:\s*(?:&|and)\s*architecture)?|security(?: review)? findings?)\b/im;
-/^\s{0,3}(?:#{1,6}\s*)?(?:\*\*|__)?\s*(?:🔴|🟠|🟡|⚪)?\s*(?:blocking|should[- ]fix|nits?|important|critical)\b/im;
-const CLEAN_VERDICT =
-  /(?:^\s{0,3}(?:[-*+]\s+)?(?:#{1,6}\s*)?(?:\*\*|__)?\s*(?:clean|none)\b|\bassessment:\s*(?:\*\*)?\s*clean\b|\bno\s+(?:\*\*)?(?:blocking|security|should[- ]fix|nit)\b[^.\n]{0,80}\b(?:findings|issues|problems)\b|\bno (?:findings|issues|problems)\b|\bnothing (?:to report|found|blocking)\b|\blooks clean\b|\bdiff (?:is|looks) clean\b|\bno concerns\b)/im;
-/(?:^\s{0,3}(?:#{1,6}\s*)?(?:\*\*|__)?\s*clean\b|\bassessment:\s*(?:\*\*)?\s*clean\b|\bno (?:blocking |security )?(?:findings|issues|problems)\b|\bnothing (?:to report|found|blocking)\b|\blooks clean\b|\bdiff (?:is|looks) clean\b|\bno concerns\b)/im;
-// A reviewer that emitted a raw tool call instead of a review — observed twice from vibe on real PRs
-// (`read_file{"path": …}`, `write_file…{"file_path": …}`). Its JSON can CONTAIN review-shaped words, so
-// this is checked first and wins.
-const TOOL_TRANSCRIPT = /^\s*[a-z_]+\S*\s*\{\s*"/i;
-
-/**
- * THE GUARD. Pure. Returns { ok, reason }.
- * ok when the reply has a severity heading or an explicit clean verdict; fails on empty, whitespace,
- * or prose with neither (a CLI banner, an error page, a truncated tool transcript).
- */
-export function assertReviewOutput(text) {
-  const t = String(text ?? '').trim();
-  if (!t) return { ok: false, reason: 'the reviewer returned no output' };
-  if (TOOL_TRANSCRIPT.test(t))
-    return { ok: false, reason: `the reviewer emitted a raw tool call, not a review ("${t.slice(0, 80)}")` };
-  if (SEVERITY_HEADING.test(t)) return { ok: true, reason: 'severity-structured findings' };
-  if (CLEAN_VERDICT.test(t)) return { ok: true, reason: 'explicit clean verdict' };
-  return {
-    ok: false,
-    reason: `the reviewer's reply has no severity heading and no clean verdict — not a review (first line: "${t.split('\n')[0].slice(0, 120)}")`,
-  };
-}
 
 /** Minimal glob → RegExp: `**` any depth, `*` within a segment, `?` one char. Anchored, case-sensitive. */
 export function globToRegExp(glob) {
@@ -289,7 +263,7 @@ export const RE_REVIEW_NOTE =
   '\n\n## RE-REVIEW\nA previous pass already reviewed this PR and the author has pushed changes since. Report **Blocking and Should-fix findings only** — no nits, and do not repeat a finding the author has already fixed or answered on the PR.\n';
 
 // ── 4. Jev decides the SEMANTIC question (jev-semantic-guards D4/D5) ────────────────────────────────
-// `assertReviewOutput` above is a regex asking a language question — "did the reviewer actually review?" —
+// `assertReviewOutput` (review-shape.mjs) is a regex asking a language question — "did the reviewer actually review?" —
 // and on 2026-09-19 it answered it wrong in both directions: it REJECTED a real finding written as plain
 // prose, and ACCEPTED `## Findings` followed by "(reviewer timed out before completing analysis)". Jev
 // (TypeSafe's calibrated typed-judgement model) got both right. So the judge below asks Jev, by

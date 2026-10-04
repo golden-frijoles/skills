@@ -22,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { assertReviewOutput } from './review-shape.mjs';
 
 // label per agent. Drives both the CLI dispatch and the human-readable header.
 export const AGENTS = {
@@ -549,6 +550,33 @@ export function isTransientAgyError(stderr) {
   return /high traffic|temporarily unavailable|try again (in a|later)|rate ?limit|too many requests|RESOURCE_EXHAUSTED|\b(429|500|502|503|504)\b|overloaded|capacity|timed? ?out|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(
     stderr || ''
   );
+}
+
+// WHICH transient failure, because the two that matter mean opposite things to the person reading the error
+// (probed live, agy 1.2.16, 2026-10-04 — it now exits 3 and says why on stderr):
+//   quota     "RESOURCE_EXHAUSTED (code 429): Individual quota reached … Resets in 155h5m1s." Every Gemini tier
+//             shares one pool, and it is a weekly window: waiting a minute does nothing.
+//   capacity  "UNAVAILABLE (code 503): No capacity available for model gpt-oss-120b-medium" / "high traffic,
+//             please try again in a minute". The SAME call answered fine 14 s later.
+// Both used to end in one message that said "quota", so agents reported agy capped while it worked on their
+// next task. Returns 'quota' | 'capacity' | null; a null on a transient error is some other blip.
+export function agyFailureKind(output) {
+  const text = output || '';
+  if (/RESOURCE_EXHAUSTED|quota (?:reached|exceeded|exhausted)/i.test(text)) return 'quota';
+  if (/no capacity|high traffic|UNAVAILABLE \(code 503\)|overloaded/i.test(text)) return 'capacity';
+  return null;
+}
+
+function agyQuotaReset(output) {
+  return /Resets in ([0-9hms]+)/i.exec(output || '')?.[1] ?? null;
+}
+
+// How often, and how long apart, a 'capacity' answer is retried on the same model before moving on.
+export const AGY_CAPACITY_RETRIES = Number(process.env.AGY_CAPACITY_RETRIES ?? 2);
+export const AGY_CAPACITY_WAIT_MS = Number(process.env.AGY_CAPACITY_WAIT_MS ?? 30_000);
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 export function isContextWindowOverflow(output) {
@@ -1106,7 +1134,7 @@ export function renderFileContext({ attached, omitted }) {
 // separate quota pool) so a Gemini quota exhaustion degrades to GPT-OSS instead of silently blanking the review.
 // We enforce the argv size cap up front (clear message, not an opaque E2BIG). `deps.spawn` is injectable for tests.
 export function runAntigravity(fullArgv, opts = {}, deps = {}) {
-  const { spawn = spawnSync, warn = (m) => process.stderr.write(`${m}\n`) } = deps;
+  const { spawn = spawnSync, warn = (m) => process.stderr.write(`${m}\n`), sleep = sleepSync } = deps;
   if (Buffer.byteLength(fullArgv, 'utf8') > AGY_ARG_LIMIT) {
     return fail(
       opts.soft,
@@ -1124,8 +1152,15 @@ export function runAntigravity(fullArgv, opts = {}, deps = {}) {
       ? [AGY_MODEL]
       : [AGY_MODEL, AGY_FALLBACK_MODEL];
   const tried = [];
+  const causes = []; // one plain line per model that did not answer, for the final message
   for (const model of modelPair) {
-    const r = execAgy(fullArgv, model, spawn);
+    let r = execAgy(fullArgv, model, spawn);
+    for (let retry = 1; retry <= AGY_CAPACITY_RETRIES; retry += 1) {
+      if (r.status === 0 || agyFailureKind(`${r.stderr || ''}\n${r.stdout || ''}`) !== 'capacity') break;
+      warn(`⚠ agy "${model}" has no capacity right now (not quota) → retry ${retry}/${AGY_CAPACITY_RETRIES} in ${Math.round(AGY_CAPACITY_WAIT_MS / 1000)}s.`);
+      sleep(AGY_CAPACITY_WAIT_MS);
+      r = execAgy(fullArgv, model, spawn);
+    }
     if (r.status !== 0) {
       const last = (r.stderr || '').trim().split('\n').filter(Boolean).pop() || 'unknown error';
       // A non-zero exit is USUALLY a real agy error (bad flags, crash) — surface those directly
@@ -1144,12 +1179,20 @@ export function runAntigravity(fullArgv, opts = {}, deps = {}) {
       // are checked because agy is already known to split diagnostics across them inconsistently —
       // the same reason isContextWindowOverflow is called on stdout and stderr above.
       const failureOutput = `${r.stderr || ''}\n${r.stdout || ''}`;
+      const kind = agyFailureKind(failureOutput);
+      const cause =
+        kind === 'quota'
+          ? `quota reached${agyQuotaReset(failureOutput) ? `, resets in ${agyQuotaReset(failureOutput)}` : ''}`
+          : kind === 'capacity'
+            ? `no capacity after ${AGY_CAPACITY_RETRIES + 1} tries (transient, NOT quota; re-run in a few minutes)`
+            : last;
+      causes.push(`"${model}": ${cause}`);
       if (isTransientAgyError(failureOutput) && model !== modelPair[modelPair.length - 1]) {
-        warn(`⚠ agy "${model}" is temporarily unavailable (${last}) → trying the fallback model.`);
+        warn(`⚠ agy "${model}" is unavailable (${cause}) → trying the fallback model.`);
         tried.push(model);
         continue;
       }
-      return fail(opts.soft, `agy -p failed (model "${model}"): ${last}`);
+      return fail(opts.soft, `agy -p failed — ${causes.join('; ')}`);
     }
     const out = (r.stdout || '').trim();
     if (out) {
@@ -1338,14 +1381,18 @@ export function runVibe(fullArgv, opts = {}, deps = {}) {
  * Two signals, both cheap and neither dependent on the model's wording:
  *   1. the output STARTS with a tool call (`read_file{…}`, `grep {…}`) — the literal shape vibe emits
  *      when it is cut off between turns, or when it asks for a tool that is disabled;
- *   2. it never mentions Blocking / Should-fix / Nit, which the review prompt requires.
+ *   2. it is not a review by review-guard's own test: no severity heading and no clean verdict.
+ *
+ * (2) used to be its own list — Blocking / Should-fix / Nit only — so `Clean.`, the one-line verdict the
+ * prompt asks for on a clean diff, failed here as "truncated" before review-guard ever saw it. Every clean
+ * vibe review died that way (reproduced on PR #265, 2026-10-04). One definition of "a review" now.
  *
  * Exported for the unit layer: this is the guard whose absence let a non-review reach a PR.
  */
 export function isTruncatedReview(out) {
   const text = String(out || '').trim();
   if (/^\w+\s*\{/.test(text)) return true;
-  return !/\b(blocking|should-fix|nit)\b/i.test(text);
+  return !assertReviewOutput(text).ok;
 }
 
 // One `claude -p "<prompt>"` invocation with the context piped on stdin (same shape as codex, which is why

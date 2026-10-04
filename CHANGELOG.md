@@ -7,6 +7,20 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.27.2] - 2026-10-04
+
+### Fixed
+- **A clean vibe review is a review.** `isTruncatedReview` kept its own list (Blocking / Should-fix / Nit), so
+  `Clean.`, the one-line verdict the review prompt asks for, failed as "truncated" before the review guard saw it.
+  Every clean vibe review died that way. It now asks `assertReviewOutput`, the one definition of a review.
+- **agy says which failure it hit.** agy 1.2.16 exits 3 with the reason: `RESOURCE_EXHAUSTED` (a weekly quota every
+  Gemini tier shares) or `UNAVAILABLE 503 / no capacity` (gone a minute later). Both used to read as "quota". A
+  capacity answer is now retried on the same model (`AGY_CAPACITY_RETRIES`, default 2, `AGY_CAPACITY_WAIT_MS`,
+  default 30 s), and the final error names each model's own cause, with the quota's reset time.
+- **A log branch no longer fails a Vercel preview.** `log-branch.mjs` writes a `vercel.json` with
+  `git.deploymentEnabled: false` beside the log, so a repo whose Vercel project builds every branch stops trying
+  to build `claude/session-journal` (an orphan with no `package.json`).
+
 ## [0.27.1] - 2026-10-04
 
 ### Fixed
