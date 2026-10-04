@@ -127,6 +127,9 @@ test('the real template renders with no leftover placeholders', async () => {
   // intent-match D16: the lock step names the optional reader for THIS epic, and says it never waits.
   assert.match(out, /node scripts\/intent-reader\.mjs --epic demo\b/);
   assert.match(out, /reader skipped/);
+  // live-build-view D10/D13: the lock is a COMMAND, named for this epic; the prompt never restates a doc it points at.
+  assert.match(out, /node scripts\/epic-phase\.mjs lock --epic demo\b/);
+  assert.doesNotMatch(out, /integration, review\s+and rollback boundaries/, '*Epic-mode builds* already says it');
   assert.ok(out.split(/\s+/).length < 450, 'the prompt stays lean — the doctrine lives in WAYS-OF-WORKING');
 });
 

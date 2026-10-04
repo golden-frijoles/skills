@@ -3,20 +3,24 @@
 // build-view.test.mjs pins the decisions (the key, the overlap guard, the drift row) with node:test. This file pins the
 // WIRING those specs cannot see: that session.start starts the 30 s tick, that a tick with an unchanged key does no
 // work and a doc edit does, that a Bash call re-checks without holding up its result, that a push queues one online run,
-// and that every check stays offline. The test's `on` stands in for the host beneath the plugin: it answers `$.process.run` and `$.fs.*`.
+// that every check stays offline, and that /build fills the prompt with the bundled kickoff (S2.4). The test's `on` stands in for the host beneath the plugin: it answers `$.process.run` and `$.fs.*`.
 import type { On } from 'claude-code';
 import { test, expect, mock } from 'claude-code/testing';
 
 const ROOT = '/repo';
 const PORCELAIN = `worktree ${ROOT}\nHEAD aaa\nbranch refs/heads/feat/live-build-view\n`;
 
-function world(on: On) {
+type RunOverride = (argv: readonly string[]) => { exitCode: number; stdout: string } | null;
+
+function world(on: On, override: RunOverride = () => null) {
   const ran: string[] = [];
   const state = { mtime: 1, porcelain: PORCELAIN };
   on('process.run', async (_$, e) => {
     const argv = e.argv.join(' ');
     ran.push(argv);
-    const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } });
+    const ok = (stdout: string, exitCode = 0) => ({ value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } });
+    const own = override(e.argv);
+    if (own) return ok(own.stdout, own.exitCode);
     if (e.argv[1] === 'rev-parse') return ok(`aaa\nfeat/live-build-view\n${ROOT}\n`);
     if (e.argv.includes('worktree')) return ok(state.porcelain);
     if (e.argv.includes('--json')) return ok(JSON.stringify({ facts_mode: 'live', lines: ['Currently building', '  Status   Building'] }));
@@ -85,4 +89,53 @@ test('the online refresh waits a minute, runs without --offline, and repeats eve
   expect(online()).toBe(1);
   await clock.advance(300_000);
   expect(online()).toBe(2);
+});
+
+// ── S2.4: /build <slug> fills the prompt with the bundled generator's kickoff; nothing is sent ──────────────────────
+function buildWorld(on: On, override: RunOverride) {
+  const w = world(on, override);
+  const filled: string[] = [];
+  const registered: string[] = [];
+  on('command.register', async (_$, e) => {
+    registered.push(e.name);
+    return { value: { command: e.name } } as never;
+  });
+  on('prompt.fill', async (_$, e) => {
+    filled.push(e.text);
+    return { isFilled: true } as never;
+  });
+  return { ...w, filled, registered };
+}
+
+test('/build <slug>: registered at start; runs the bundled generator and fills the prompt', async ($, on) => {
+  mock.clock(on);
+  mock.store(on);
+  const w = buildWorld(on, (argv) => (argv.includes('--epic') ? { exitCode: 0, stdout: 'Start by pushing the epic branch…\n' } : null));
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  expect(w.registered).toContain('build');
+  const out = await $.command.run({ command: 'build', args: 'live-build-view' } as never);
+  expect(w.filled).toEqual(['Start by pushing the epic branch…']);
+  expect(String(out.text)).toContain('press enter');
+  const gen = w.ran.find((a) => a.includes('--epic')) ?? '';
+  expect(gen).toContain('/skills/groom/emit-epic-kickoff.mjs --epic live-build-view --repo-root /repo');
+});
+
+test('/build with no slug or an unknown one lists the epics and fills nothing', async ($, on) => {
+  mock.clock(on);
+  mock.store(on);
+  const w = buildWorld(on, (argv) =>
+    argv.includes('--list')
+      ? { exitCode: 0, stdout: 'live-build-view  Live build view  (in-progress, #55)\n' }
+      : argv.includes('--epic')
+        ? { exitCode: 1, stdout: '' }
+        : null
+  );
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  const none = await $.command.run({ command: 'build', args: '' } as never);
+  expect(String(none.text)).toContain('live-build-view  Live build view');
+  const unknown = await $.command.run({ command: 'build', args: 'nope' } as never);
+  expect(String(unknown.text)).toContain('no epic "nope"');
+  const flag = await $.command.run({ command: 'build', args: '--list' } as never);
+  expect(String(flag.text)).toContain('is not an epic slug');
+  expect(w.filled).toEqual([]);
 });

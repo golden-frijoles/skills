@@ -25,6 +25,11 @@
 //
 // Usage:
 //   node skills/groom/emit-epic-kickoff.mjs --epic <slug> [--repo-root <path>]
+//   node skills/groom/emit-epic-kickoff.mjs --list [--repo-root <path>]   # the epics a kickoff can start (live-build-view
+//                                                                       # S2.4): `scaffolded` or `in-progress`, build order first
+//
+// The kickoff's one home is `/build <slug>` (the plugin's mod runs THIS script and fills the prompt with its output);
+// hosts without the mod run it directly. It is never saved to a file — the epic docs are the state, regenerate it.
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -86,8 +91,49 @@ function findEpicDir(repoRoot, slug) {
   return { macro: hits[0], dir: join(roadmapDir, hits[0], slug) };
 }
 
+const STARTABLE = ['scaffolded', 'in-progress'];
+
+/**
+ * The epics a kickoff can start, from each README's frontmatter: `{ slug, title, status, build_order }`, status
+ * scaffolded or in-progress, sorted by build_order (unordered last), then slug. Pure over `read`/`list` for the spec.
+ */
+export function listEpics(repoRoot, { read = (p) => readFileSync(p, 'utf8'), exists = existsSync, list = readdirSync } = {}) {
+  const roadmapDir = join(repoRoot, 'Roadmap');
+  if (!exists(roadmapDir)) return [];
+  const out = [];
+  for (const macro of list(roadmapDir)) {
+    if (!/^\d{2}-/.test(macro)) continue;
+    let slugs = [];
+    try {
+      slugs = list(join(roadmapDir, macro));
+    } catch {
+      continue;
+    }
+    for (const slug of slugs) {
+      const readme = join(roadmapDir, macro, slug, 'README.md');
+      if (!exists(readme)) continue;
+      const fm = parseFrontmatter(read(readme));
+      if (!STARTABLE.includes(fm.status)) continue;
+      const order = Number.parseInt(fm.build_order, 10);
+      out.push({ slug, title: String(fm.title ?? slug).replace(/^"(.*)"$/, '$1'), status: fm.status, build_order: Number.isFinite(order) ? order : null });
+    }
+  }
+  return out.sort((a, b) => (a.build_order ?? Infinity) - (b.build_order ?? Infinity) || a.slug.localeCompare(b.slug));
+}
+
+/** The list as printed: one epic per line, the slug first so it can be typed after `/build `. */
+export function formatEpicList(epics) {
+  if (!epics.length) return 'No scaffolded or in-progress epics under Roadmap/ — groom one first.';
+  return epics.map((e) => `${e.slug}  ${e.title}  (${e.status}${e.build_order !== null ? `, #${e.build_order}` : ''})`).join('\n');
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.list) {
+    const root = resolve(String(args['repo-root'] === true || !args['repo-root'] ? process.cwd() : args['repo-root']));
+    process.stdout.write(`${formatEpicList(listEpics(root))}\n`);
+    return;
+  }
   if (!args.epic || args.epic === true) {
     console.error('emit-epic-kickoff: missing required flag: --epic');
     console.error('Run with --epic <slug> [--repo-root <path>]');

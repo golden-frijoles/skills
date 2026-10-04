@@ -14,13 +14,16 @@ import {
   branchCandidates,
   parseWorktrees,
   storyIdsIn,
+  storyIdsInWithContinuations,
   namesSlug,
 } from './build-state.mjs';
 import { PHASES } from './lib/roadmap-contract.mjs';
 
-const EPIC_README = (phase = 'Building') => `---
+const LOCKED = '2026-10-01T00:00:00Z';
+// `lockedAt: null` leaves the stamp out — an epic whose architecture lock has not been run (live-build-view D11).
+const EPIC_README = (phase = 'Building', lockedAt = LOCKED) => `---
 status: in-progress
-slug: arranged-only
+slug: arranged-only${lockedAt ? `\nlocked_at: "${lockedAt}"` : ''}
 title: Arranged-only delivery
 area: 04-shipping
 risk: high
@@ -136,12 +139,13 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
       area: '04-shipping',
       risk: 'high',
       phase: 'Building',
+      locked_at: LOCKED,
       path: 'Roadmap/04-shipping/arranged-only/README.md',
     });
     assert.equal(s.story.id, 'S2.1');
     assert.equal(s.story.as_a, "a buyer's agent");
     assert.equal(s.story_source, 'commit');
-    assert.deepEqual(s.progress, { story: 2, stories: 3, sprint: 2, sprints: 2 });
+    assert.deepEqual(s.progress, { stories_with_commits: 1, story: 2, stories: 3, sprint: 2, sprints: 2 });
     assert.equal(s.status, 'Building');
     assert.equal(s.evidence.gh, 'skipped (--offline)');
 
@@ -151,6 +155,24 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
       3,
       'X advances by one'
     );
+    // S2.2 — a repeat counts once; an id the epic does not list (S1.2) never counts; sprint 1's id on a -s2 branch does.
+    f.commit('S1.1/1.2 — from before the commit-msg check');
+    f.commit('S2.2 — a second commit on the same story');
+    const p = resolveBuildState({ root: f.root, offline: true, gh: noGh });
+    assert.equal(p.progress.stories_with_commits, 3, 'S1.1 + S2.1 + S2.2; S1.2 is not a story of this epic');
+    assert.match(renderLines(p).find((l) => l.startsWith('  Progress')), /^ {2}Progress 3 of 3 stories have commits · in flight S2\.2 · Sprint 2 of 2$/);
+  } finally {
+    f.done();
+  }
+});
+
+test('S2.2: a pre-S2.1 bundle naming two stories in one subject counts both', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('S2.1/2.2 — both stories in one commit');
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    assert.equal(s.progress.stories_with_commits, 2);
   } finally {
     f.done();
   }
@@ -191,7 +213,7 @@ test('commits with no story convention and no journal → story unknown, never a
     assert.equal(s.sprint, null, 'no -s<N> and no story → no sprint either, not "the first unshipped one"');
     assert.equal(s.progress.story, null);
     assert.equal(renderLines(s)[2], '  Story    unknown');
-    assert.match(renderLines(s)[4], /Story \? of 3 · Sprint \? of 2/);
+    assert.match(renderLines(s)[4], /^ {2}Progress 0 of 3 stories have commits · Sprint \? of 2$/, 'no story → no "in flight"');
   } finally {
     f.done();
   }
@@ -294,7 +316,7 @@ test('renderLines is a pure function of the state: the exact five lines, no box'
       i_want: 'checkout options to reflect arranged-only listings',
       so_that: "I'm never offered a carrier rail the seller can't fulfil",
     },
-    progress: { story: 4, stories: 7, sprint: 2, sprints: 2 },
+    progress: { stories_with_commits: 3, story: 4, stories: 7, sprint: 2, sprints: 2 },
     status: 'Building',
   };
   assert.deepEqual(renderLines(state), [
@@ -302,7 +324,7 @@ test('renderLines is a pure function of the state: the exact five lines, no box'
     '  Epic     Arranged-only delivery    04-shipping · risk HIGH',
     '  Story    S2.1 — Agent surface parity',
     "           As a buyer's agent, I want checkout options to reflect arranged-only listings, so that I'm never offered a carrier rail the seller can't fulfil.",
-    '  Progress Story 4 of 7 · Sprint 2 of 2',
+    '  Progress 3 of 7 stories have commits · in flight S2.1 · Sprint 2 of 2',
     '  Status   Building',
   ]);
 });
@@ -801,6 +823,92 @@ test('S3.1: offline, the stage is read from the snapshot and says how old it is;
       renderLines(none).find((l) => l.startsWith('  Status')),
       /\(docs only, no snapshot yet\)/
     );
+  } finally {
+    f.done();
+  }
+});
+
+test('S2.3: a live epic branch with no locked_at reads Locking architecture; the stamp makes it Building', () => {
+  const f = fixture({ sprint2: 'Shaping', epicPhase: 'Shaping' });
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
+    writeFileSync(readme, EPIC_README('Shaping', null));
+    mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+    const snapshot = (prs) =>
+      writeFileSync(
+        join(f.root, '.golden-frijoles', 'board.json'),
+        JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs })
+      );
+    snapshot([]);
+    const status = () =>
+      renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) => l.startsWith('  Status'));
+    assert.match(status(), /^ {2}Status {3}Locking architecture · from git: feat\/arranged-only-s2 \(snapshot, /);
+    // A draft PR is still the lock in progress; a READY one is QA whatever the docs say (the stage resolver decides).
+    snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: true, url: 'u' }]);
+    assert.match(status(), /Locking architecture · from github: PR #9 draft/);
+    snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: false, url: 'u' }]);
+    assert.match(status(), /QA · from github: PR #9 ready/);
+    snapshot([]);
+    writeFileSync(readme, EPIC_README('Building'));
+    assert.match(status(), /^ {2}Status {3}Building · from git: feat\/arranged-only-s2/);
+  } finally {
+    f.done();
+  }
+});
+
+test('S2.3 (#241 review r2): the gate reads the README phase, not a sprint file born Shaping', () => {
+  const f = fixture({ sprint2: 'Shaping', epicPhase: 'Building' });
+  try {
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    writeFileSync(join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'), EPIC_README('Building', null));
+    mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.golden-frijoles', 'board.json'),
+      JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
+    );
+    const line = renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) =>
+      l.startsWith('  Status')
+    );
+    assert.doesNotMatch(line, /Locking architecture/);
+  } finally {
+    f.done();
+  }
+});
+
+test('S2.3 (#241 review): an epic built before the lock command — no stamp, phase already Building or later — reads Building', () => {
+  for (const phase of ['Building', 'Verifying']) {
+    const f = fixture({ sprint2: phase, epicPhase: phase });
+    try {
+      f.git('checkout', '-qb', 'feat/arranged-only-s2');
+      writeFileSync(join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'), EPIC_README(phase, null));
+      mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
+      writeFileSync(
+        join(f.root, '.golden-frijoles', 'board.json'),
+        JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
+      );
+      const line = renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) =>
+        l.startsWith('  Status')
+      );
+      assert.match(line, /^ {2}Status {3}Building · from git: /, phase);
+      assert.doesNotMatch(line, /Locking architecture/, phase);
+    } finally {
+      f.done();
+    }
+  }
+});
+
+test('S2.1/S2.2 (#241 review): version numbers and prose are not stories', () => {
+  assert.deepEqual(storyIdsInWithContinuations('feat(x): S1.3, 2.1.288 bump'), ['S1.3']);
+  assert.deepEqual(storyIdsInWithContinuations('feat(x): S2.4 + 0.26.0 release'), ['S2.4']);
+  assert.deepEqual(storyIdsInWithContinuations('S2.1a and 2.2'), []);
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('S2.1, 2.1.288 pin');
+    f.commit('S2.1 + 0.26.0 release');
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    assert.equal(s.progress.stories_with_commits, 1, 'no S2.1-out-of-2.1.288, no S0.26');
   } finally {
     f.done();
   }

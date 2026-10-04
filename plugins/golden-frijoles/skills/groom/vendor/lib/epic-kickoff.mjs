@@ -201,8 +201,7 @@ export const EPIC_KICKOFF_TEMPLATE = `Start by pushing the epic branch, before a
 \`git switch -c feat/{{SLUG}} origin/main && git push -u origin feat/{{SLUG}}\` (resuming? \`git switch feat/{{SLUG}}\`).
 
 Build this epic in ONE orchestrated run: "{{EPIC_TITLE}}" ({{SPRINT_COUNT}} sprints, risk {{RISK}}).
-Docs: Roadmap/{{MACRO}}/{{SLUG}}/README.md and {{SPRINT_FILE_LIST}}. The sprint files are integration, review
-and rollback boundaries inside this run, not separate sessions.
+Docs: Roadmap/{{MACRO}}/{{SLUG}}/README.md and {{SPRINT_FILE_LIST}}.
 
 The process is Roadmap/WAYS-OF-WORKING.md → *Epic-mode builds*, *Review & merge* and *Escalate, don't guess*,
 under AGENTS.md. Read those, the epic docs, and the Roadmap/LEARNINGS.md entries that touch this area. Start
@@ -211,8 +210,10 @@ with \`node scripts/session-resume.mjs\`.
 Non-negotiable for this run:
 1. **Lock first.** Write \`D1…Dn\` and each sprint's build contract into the epic README, verified against
    live code and live data, before any builder starts. Scope the live system disproves gets corrected out loud.
-   Then run \`node scripts/intent-reader.mjs --epic {{SLUG}}\` once: off by default (one line, nothing waits); on,
-   one other family reads the pitch and any failure is a single \`reader skipped\` line. Never wait on it.
+   Then stamp it: \`node scripts/epic-phase.mjs lock --epic {{SLUG}}\` (refuses a README with no D1; moves the band
+   from Locking architecture to Building), and run \`node scripts/intent-reader.mjs --epic {{SLUG}}\` once: off by
+   default (one line, nothing waits); on, one other family reads the pitch and any failure is a single
+   \`reader skipped\` line. Never wait on it.
 2. **Stack** \`feat/{{SLUG}}\` → \`-s2\` → …, one PR per sprint, merged in order. Worktree or in place: decide
    per *Epic-mode builds*.
 3. **Review** every PR through \`node scripts/review-route.mjs --builder <who-wrote-it> <PR#>\` (one general

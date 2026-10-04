@@ -77,6 +77,89 @@ export function storyIdsIn(text) {
   return [...String(text).matchAll(STORY_IN_TEXT_RE)].map((m) => `S${Number(m[1])}.${Number(m[2])}`);
 }
 
+// A LIST or RANGE of ids in one subject — `S1.1/1.2`, `S2.2-2.4`, `S1.1, 1.3 and 1.4` — names every id in it, but
+// storyIdsIn reads only the ones with their own `S` (so `S1.1/1.2` is one id to it). The view's story-in-flight rule
+// (D2) is unchanged and keeps storyIdsIn; the commit-msg check and the progress count read this (live-build-view D8).
+// Each id ends where a number ends (`(?!\.?\d)` — a sentence's full stop is fine, `.288` is not): `S1.3, 2.1.288` must
+// not read `2.1` out of a version number (#241).
+const STORY_LIST_RE =
+  /\b(?:S|Story\s+)(\d+)\.(\d+)\b(?!\.?\d)((?:\s*(?:[/,+&\u2013-]|\band\b)\s*(?:S|Story\s+)?\d+\.\d+\b(?!\.?\d))*)/g;
+
+/** Every story id a piece of text names, continuations included ("S1.1/1.2" → ['S1.1', 'S1.2']), in order. */
+export function storyIdsInWithContinuations(text) {
+  return storyIdsWithKind(text).map((x) => x.id);
+}
+
+/** Like storyIdsInWithContinuations, but says which ids were bare continuations (`1.2` after `S1.1/`) — weaker evidence. */
+function storyIdsWithKind(text) {
+  const out = [];
+  for (const m of String(text).matchAll(STORY_LIST_RE)) {
+    out.push({ id: `S${Number(m[1])}.${Number(m[2])}`, bare: false });
+    for (const c of (m[3] || '').matchAll(/(S|Story\s+)?(\d+)\.(\d+)/g))
+      out.push({ id: `S${Number(c[2])}.${Number(c[3])}`, bare: !c[1] });
+  }
+  return out;
+}
+
+// ── The commit-msg story check (live-build-view S2.1, D7/D8) ─────────────────────────────────────────────
+// On a branch that resolves to an epic, a commit that changes behaviour names exactly ONE story that epic (or that
+// sprint, on `-s<N>`) lists — so "which story is in flight" is a fact git guarantees, not a phrasing habit.
+export const STORY_GATED_TYPES = Object.freeze(['feat', 'fix', 'perf', 'refactor']);
+const CONVENTIONAL_RE = /^([A-Za-z]+)(?:\([^)]*\))?!?:/;
+const EXEMPT_SUBJECT_RE = /^(?:Merge |Revert "|fixup! |squash! |amend! |Squashed commit of the following)/;
+export const STORY_CHECK_BYPASS = 'GF_SKIP_STORY_CHECK';
+
+/**
+ * The verdict for one commit subject on one branch: `{ ok: true, why }` or `{ ok: false, why, valid, scope, epic }`.
+ * Pure over the files under `root` (it reads the epic's docs through resolveTarget — no second branch parser). It never
+ * throws: a checkout this cannot read lets the commit through, and says so — a broken check must not block work.
+ */
+export function storyCheck({ root, branch, subject, env = {} }) {
+  if (env[STORY_CHECK_BYPASS] === '1') return { ok: true, why: `${STORY_CHECK_BYPASS}=1` };
+  const s = String(subject || '').trim();
+  if (EXEMPT_SUBJECT_RE.test(s)) return { ok: true, why: 'merge, revert or fixup' };
+  const type = CONVENTIONAL_RE.exec(s)?.[1]?.toLowerCase() ?? null;
+  // An untyped subject is gated: an untyped commit must not be a silent way around the check (D8).
+  if (type !== null && !STORY_GATED_TYPES.includes(type)) return { ok: true, why: `type ${type} is not gated` };
+  if (!branch) return { ok: true, why: 'detached HEAD' };
+  let target;
+  try {
+    target = resolveTarget(root, branch);
+  } catch (err) {
+    return { ok: true, why: `could not read the roadmap (${err && err.message ? err.message : err})` };
+  }
+  if (!target || target.kind !== 'epic') return { ok: true, why: `${branch} is not an epic branch` };
+  const { epic, sprint } = target;
+  if (!epic.contract) return { ok: true, why: `${epic.path} predates the frontmatter contract` };
+  const stories = epic.sprints.flatMap((sp) => sp.stories.map((st) => ({ ...st, sprint: sp.n })));
+  const valid = stories.filter((st) => sprint === null || st.sprint === sprint);
+  const scope = sprint === null ? `epic ${epic.slug}` : `epic ${epic.slug}, sprint ${sprint}`;
+  const refuse = (why) => ({ ok: false, why, valid: valid.map((st) => ({ id: st.id, title: st.title ?? '' })), scope, epic: epic.slug });
+  if (!valid.length) return { ok: true, why: `${scope} lists no stories` };
+  // A bare continuation (`1.2` after `S1.1/`) counts only when this epic lists it: `S2.1, 3.4 GB` is one story. An id
+  // spelled with its own `S` always counts, listed or not — naming a stranger is the mistake this check exists for.
+  const listed = new Set(stories.map((st) => st.id));
+  const ids = [...new Set(storyIdsWithKind(s).filter((x) => !x.bare || listed.has(x.id)).map((x) => x.id))];
+  if (ids.length === 0) return refuse('it names no story');
+  if (ids.length > 1) return refuse(`it names ${ids.length} stories (${ids.join(', ')}) — one commit, one story`);
+  if (!valid.some((st) => st.id === ids[0]))
+    return refuse(`${ids[0]} is not a story of ${scope}`);
+  return { ok: true, why: `names ${ids[0]}` };
+}
+
+/** The refusal, as the commit-msg hook prints it: what was wrong, the ids that would pass, and the way around. */
+export function storyCheckMessage(verdict, branch) {
+  const list = verdict.valid.map((st) => `    ${st.id}${st.title ? `  ${st.title}` : ''}`).join('\n');
+  const example = verdict.valid[0]?.id ?? 'S1.1';
+  return [
+    `commit-msg: refused — a feat/fix/perf/refactor commit on ${branch} (${verdict.scope}) names exactly one story; ${verdict.why}.`,
+    `  The stories it can name:`,
+    list,
+    `  e.g.  feat(scope): ${example} <what changed>`,
+    `  docs/chore/test/ci/build/style commits are not checked. Bypass once: ${STORY_CHECK_BYPASS}=1 git commit …`,
+  ].join('\n');
+}
+
 // The branch parser lives in lib/work-branch.mjs now (board-sinks-and-scrumban D13), so the stage resolver reads a
 // branch exactly as this view does. Re-exported: callers and the spec import them from here.
 export { branchCandidates, parseBranch };
@@ -136,6 +219,7 @@ function readEpic(root, slug) {
     area: readme.data.area ?? found.macro,
     risk: readme.data.risk ?? null,
     phase: readme.data.phase ?? null,
+    locked_at: readme.data.locked_at ?? null, // live-build-view D10 — stamped by scripts/epic-phase.mjs lock
     lifecycle: readme.data.status ?? null,
     quote: quoteOf(readme.data),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
@@ -608,6 +692,10 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     ? (tryGit(git, ['log', '--format=%s', range]) || '').split('\n').filter(Boolean)
     : [];
   const storyCommits = subjects.filter((s) => storyIdsIn(s).some(accepts)).length;
+  // live-build-view S2.2 (D9): how many of this EPIC's stories have a commit — distinct ids the epic lists, from every id
+  // a subject names (continuations too, so a pre-S2.1 `S1.1/1.2` bundle counts both). Not sprint-filtered: a stacked
+  // `-s2` branch carries sprint 1's commits, and those are done stories.
+  const withCommits = new Set(subjects.flatMap(storyIdsInWithContinuations).filter((id) => byId.has(id)));
   const foreign = [...new Set(subjects.flatMap(storyIdsIn).filter((id) => !accepts(id)))];
   let story = null;
   let storySource = 'unknown';
@@ -706,6 +794,7 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
       area: epic.area,
       risk: epic.risk,
       phase: epic.phase,
+      locked_at: epic.locked_at,
       path: epic.path,
     },
     sprint: sprint ? { n: sprint.n, title: sprint.title, phase: sprint.phase } : null,
@@ -723,6 +812,7 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     story_note: unreadableSprint ? `${unreadableSprint}${storyNote ? ` — ${storyNote}` : ''}` : storyNote,
     warning: unreadableSprint,
     progress: {
+      stories_with_commits: withCommits.size,
       story: story ? story.ordinal : null,
       stories: allStories.length,
       sprint: sprint ? epic.sprints.indexOf(sprint) + 1 : null,
@@ -779,6 +869,18 @@ function elsewhereLines(state, pad) {
 export function statusValue(state) {
   if (!state.stage) return state.status || `unknown${state.warning ? ` — ${state.warning}` : ''}`;
   const source = String(state.stage_source || '').replace(/ · snapshot@\S+$/, '');
+  // live-build-view D11 — the band's refinement of Building, not a new stage (the Hub and the board keep Building): an
+  // epic whose branch is live but whose README carries no `locked_at` is still Locking architecture. The lock is a
+  // command (scripts/epic-phase.mjs lock), so from here on every rung is set by a trigger.
+  // Only while the EPIC's written phase is still before the lock (the README's, not the sprint's — sprint files are born
+  // Shaping): an epic built before the command existed (README Building or later, no stamp) keeps reading Building (#241).
+  const locking =
+    state.kind === 'epic' &&
+    state.stage === 'Building' &&
+    !state.epic?.locked_at &&
+    [null, 'Shaping', 'Locking architecture'].includes(state.epic?.phase ?? null) &&
+    /^(?:git: |github: PR #\d+ draft)/.test(source);
+  const stage = locking ? 'Locking architecture' : state.stage;
   const age =
     state.facts_mode === 'live'
       ? 'live'
@@ -786,8 +888,8 @@ export function statusValue(state) {
         ? `snapshot, ${state.stage_age ?? 'age unknown'}`
         : 'docs only, no snapshot yet';
   const phase =
-    state.phase_written && state.phase_written !== state.stage ? ` · phase ${state.phase_written}` : '';
-  return `${state.stage} · from ${source} (${age})${phase}`;
+    state.phase_written && state.phase_written !== stage ? ` · phase ${state.phase_written}` : '';
+  return `${stage} · from ${source} (${age})${phase}`;
 }
 
 /** The board around this work in one line, and the link to it when `board.hubUrl` is set (S3.1). */
@@ -844,9 +946,12 @@ export function renderLines(state) {
     lines.push(`${pad('Story')}unknown`);
     lines.push(`${cont}${state.story_note}`);
   }
-  const storyPart = `Story ${progress.story ?? '?'} of ${progress.stories}`;
+  // S2.2 — stories DONE (with commits), not the in-flight story's position: "Story 1 of 7" at the end of a sprint
+  // was a position, and read as progress.
+  const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} stories have commits`;
+  const inFlight = story ? ` · in flight ${story.id}` : '';
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
-  lines.push(`${pad('Progress')}${storyPart} · ${sprintPart}`);
+  lines.push(`${pad('Progress')}${done}${inFlight} · ${sprintPart}`);
   if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend, state.quote ?? null)}`);
   lines.push(`${pad('Status')}${statusValue(state)}`);
   return [...lines, ...also, ...boardLines(state, pad)];

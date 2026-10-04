@@ -1,0 +1,16 @@
+#!/bin/sh
+# commit-msg — on an epic branch, a feat/fix/perf/refactor commit names exactly ONE story (live-build-view S2.1).
+#
+# Why: the build view's "story in flight" and its progress row read commit subjects. A subject that names no story,
+# or three, makes the band wrong for the rest of the branch; a check here makes the story a fact git guarantees.
+# The rule lives in scripts/build-state.mjs (storyCheck), beside the resolver it must agree with.
+#
+# Budget: pre-commit's (< 2 s) — one node process, reading only the epic's own docs.
+# Bypass once:  GF_SKIP_STORY_CHECK=1 git commit …   (or git commit --no-verify, which skips every hook)
+# Not checked:  docs/chore/test/ci/build/style commits, merges, reverts, fixups, and any branch that is not an epic's.
+
+if ! command -v node >/dev/null 2>&1; then
+  exit 0 # no node — CI and the band still read every subject
+fi
+[ -f scripts/story-check.mjs ] || exit 0
+exec node scripts/story-check.mjs "$1"

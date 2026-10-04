@@ -89,19 +89,21 @@ stop and hammer scope instead.
 
 ## 2 · Build a WHOLE epic — epic mode *(the default)*
 
-**Don't hand-write this prompt.** Generate it — a hand-composed epic kickoff is where the
-architecture-lock pass gets summarised away and the review policy reverts to whatever the composing
-agent remembered:
+**Don't hand-write this prompt, and don't save it anywhere.** Start the build with one command in Claude Code:
 
 ```
-node skills/groom/emit-epic-kickoff.mjs --epic <epic-slug>
+/build <epic-slug>
 ```
 
-It reads the epic README + every `sprint-N.md` and prints the finished orchestrator prompt. Paste it
-as-is. What it carries (SSOT: WAYS-OF-WORKING → *Epic-mode builds*, don't fork a second copy here):
+It runs the plugin's bundled generator, which reads the epic README and every `sprint-N.md`, and puts the finished
+orchestrator prompt in your prompt box. Press enter. On a host without the plugin's mod, run the generator
+directly and paste its output: `node skills/groom/emit-epic-kickoff.mjs --epic <epic-slug>`. Either way the epic
+docs are the state, so the prompt is regenerated every time, never kept in a file. A hand-composed kickoff is where
+the architecture-lock pass gets summarised away. What it carries (SSOT: WAYS-OF-WORKING → *Epic-mode builds*, don't fork a second copy here):
 
 - **Lock the architecture first.** `D1…Dn` in the epic README, verified against live code and live data,
-  plus a per-sprint build contract. Builders cite; they never re-derive.
+  plus a per-sprint build contract, then `node scripts/epic-phase.mjs lock --epic <slug>`. Builders cite; they
+  never re-derive.
 - **Stack the branches.** `feat/<slug>` → `-s2` → `-s3`, one PR per sprint, merged in order.
 - **Two cross-family review passes per PR, routed** (§4). No orchestrator subagent reviewers on LOW.
 - **Merges pre-authorized on green** for this named epic — the gate and the review layers still apply.

@@ -7,6 +7,30 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-03
+
+### Added
+
+- **A feat/fix commit on an epic branch names exactly one story** (live-build-view S2.1). A new `commit-msg` hook
+  (template + this repo) runs `scripts/story-check.mjs`. On a branch that resolves to an epic, a
+  `feat`/`fix`/`perf`/`refactor` subject must name ONE id that epic (or that sprint, on `-s<N>`) lists. A list or
+  range like `S1.1/1.2` counts as two. A refusal prints the valid ids. Other types, merges, reverts, fixups and
+  non-epic branches pass. Bypass once with `GF_SKIP_STORY_CHECK=1`. When the resolver cannot load, the check fails
+  open and says so.
+- **`scripts/epic-phase.mjs lock --epic <slug>`** stamps the architecture lock: the README's `phase: Building` and
+  `locked_at`, plus sprint 1's phase. It refuses a README with no `D1`. Until the stamp, the band reads
+  **Locking architecture** on a live epic branch. The Hub's stage is unchanged.
+- **`/build <slug>`**: the mod's command puts the generated epic kickoff in the prompt box, and you press enter.
+  `emit-epic-kickoff.mjs --list` names the epics a kickoff can start. groom Stage 8 ends with `Build it: /build <slug>`.
+
+### Changed
+
+- **Progress counts stories done**: `3 of 7 stories have commits · in flight S1.4 · Sprint 1 of 2`
+  (`progress.stories_with_commits`; every earlier JSON field kept). It replaces "Story 1 of 7", which was a
+  position.
+- **The kickoff's lock step names the command**, and drops a sentence that restated *Epic-mode builds*.
+- `locked_at` joins the epic frontmatter contract (an ISO date-time when present).
+
 ## [0.25.0] - 2026-10-03
 
 ### Added

@@ -117,13 +117,13 @@ jobs:
           # PINNED, like the cross-review families' CLIs: the only real check on index.tsx. An unpinned install
           # can validate against a contract nobody probed — it already bit this step once (a `hooks` key one
           # version required and another did not). Bumped 2.1.278 → 2.1.288 by live-build-view (C3): the mod
-          # uses `$.state` and `$.clock`, which 2.1.278 lacks, and mods are on by default from
+          # uses `$.state`, `$.clock`, `$.command` and `$.prompt`, which 2.1.278 lacks, and mods are on by default from
           # 2.1.287, so no CLAUDE_CODE_ENABLE_FUNCTION_HOOKS. Bump it deliberately, after `claude plugin
           # validate` and `claude plugin test` pass locally on the new version.
           if npm i -g @anthropic-ai/claude-code@2.1.288 --no-audit --no-fund; then
             claude plugin validate plugins/golden-frijoles
             # The mod's own *.test.ts under the engine (live-build-view D6): the hooks it registers, the timers it
-            # starts. No API key: the test's `on` stands in for the engine beneath it.
+            # starts, the /build command it serves. No API key: the test's `on` stands in for the engine beneath it.
             claude plugin test plugins/golden-frijoles
           else
             echo "::warning::could not install @anthropic-ai/claude-code — plugin validate and test were SKIPPED, not passed."

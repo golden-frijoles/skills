@@ -33,11 +33,15 @@ import {
   PLUGIN_DIR,
   TICK_MS,
   USAGE_TIMEOUT_MS,
+  KICKOFF_TIMEOUT_MS,
   attempt,
   bandRowsFrom,
+  buildListText,
   createViewer,
   epicActualsArgv,
+  isEpicSlug,
   isOnlineTrigger,
+  kickoffArgv,
   progressOf,
   publishedManifestPath,
   shouldRefreshUsage,
@@ -108,6 +112,16 @@ export const register: Register = (on) => {
     } catch (err) {
       $.ui.log(`build view: plugin version: ${String(err)}`);
     }
+    // S2.4 (D12) — the kickoff's one home.
+    try {
+      await $.command.register({
+        name: 'build',
+        description: 'Put the generated epic kickoff in the prompt (golden-frijoles)',
+        argumentHint: '<epic-slug>',
+      });
+    } catch (err) {
+      $.ui.log(`build view: /build not registered: ${String(err)}`);
+    }
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
     $.clock.after(ONLINE_FIRST_MS, () => {
@@ -135,6 +149,30 @@ export const register: Register = (on) => {
       if (e.tool === 'Bash' && isOnlineTrigger(e.command)) $.clock.after(0, () => void live.refreshOnline('push'));
     }
     return result;
+  });
+
+  // /build <slug>: the BUNDLED generator's kickoff, put in the prompt box — never sent, never saved (S2.4, D12). It does
+  // not touch git: the kickoff's own first line switches the branch.
+  on('command.run', { command: 'build' }, async ($, e) => {
+    const live = viewer ?? (viewer = createViewer(ioFor($)));
+    const root = await live.locate();
+    if (!root) return { text: '/build: not inside a git checkout — run it from the repo whose Roadmap/ holds the epic.' };
+    const slug = String(e.args || '').trim();
+    const list = async (reason: string) => {
+      const listed = await $.process.run(kickoffArgv(root, null), { timeoutMs: KICKOFF_TIMEOUT_MS });
+      return { text: buildListText(reason, listed.exitCode === 0 ? listed.stdout : '') };
+    };
+    if (!isEpicSlug(slug)) return list(slug ? `/build: "${slug}" is not an epic slug.` : '/build: which epic?');
+    const run = await $.process.run(kickoffArgv(root, slug), { timeoutMs: KICKOFF_TIMEOUT_MS });
+    // Exit 1 is the generator's own refusal (its die(): no such epic, no Roadmap/ — an uncaught throw exits 1 too), so the
+    // list follows; a timeout or a signal is something else and says so.
+    if (run.exitCode === 1) return list(`/build: no epic "${slug}" under Roadmap/.`);
+    if (run.exitCode !== 0 || !run.stdout.trim())
+      return { text: `/build: the kickoff generator failed (exit ${run.exitCode}). Run it by hand: node ${kickoffArgv(root, slug).slice(1).join(' ')}` };
+    // Under a dialog, headless, or on a failed fill: the kickoff is the command's output instead, to copy by hand.
+    const filled = await attempt(() => $.prompt.fill({ text: run.stdout.trimEnd() }));
+    if (!filled?.isFilled) return { text: run.stdout };
+    return { text: `Kickoff for ${slug} is in the prompt — press enter to start.` };
   });
 
   on('session.measure', async ($, e, next) => {

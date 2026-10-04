@@ -30,6 +30,15 @@ Three rules follow from it:
    CI is PR-only and you also commit direct to `main`, add a `push:` trigger — otherwise moving work
    out of the hooks leaves that path uncovered.
 
+## commit-msg — one story per commit on an epic branch
+
+`commit-msg` runs `scripts/story-check.mjs` inside pre-commit's budget (one `node`, ~55 ms). On a branch that
+resolves to an epic (`feat/<slug>[-s<N>]`), a `feat`/`fix`/`perf`/`refactor` commit must name exactly ONE story that
+epic (or that sprint) lists, e.g. `feat(band): S2.1 …`. That makes the build view's story in flight a fact git
+guarantees. A refusal lists the valid ids. `docs`/`chore`/`test`/`ci`/`build`/`style`, merges, reverts, fixups and
+non-epic branches pass untouched. Bypass once with `GF_SKIP_STORY_CHECK=1 git commit …`. When the resolver cannot
+load, the check passes and says so: a broken check never blocks work.
+
 ## The economics error this exists to prevent
 
 Checks get pulled local to save CI minutes. That reasoning has a hole worth stating plainly:

@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import * as view from './build-view.mjs';
 
 const { repoFactsFrom, shouldRefresh, statusTextFrom, MAX_AGE_MS } = view;
@@ -127,7 +128,7 @@ test('bandRowsFrom: one row per resolver line, every fact kept', () => {
     '  Epic     Semantic lint — Jev judges    09-platform-infra · risk LOW',
     '  Story    S1.2 — the rule',
     '           As a PM, I want X, so that Y.',
-    '  Progress Story 2 of 5 · Sprint 1 of 2',
+    '  Progress 1 of 5 stories have commits · in flight S1.2 · Sprint 1 of 2',
     '  Status   Building',
     '  Also     1 more in other worktrees: feat/y',
   ];
@@ -153,8 +154,10 @@ test('bandRowsFrom: the idle view, and nothing for no text', () => {
 });
 
 test('progressOf / toneOf: colour and bar hints only', () => {
-  assert.deepEqual(progressOf('Story 2 of 5 · Sprint 1 of 2'), { done: 1, total: 5 });
-  assert.equal(progressOf('Story ? of 5'), null);
+  assert.deepEqual(progressOf('3 of 7 stories have commits · in flight S1.4 · Sprint 1 of 2'), { done: 3, total: 7 });
+  assert.deepEqual(progressOf('0 of 3 stories have commits · Sprint ? of 2'), { done: 0, total: 3 });
+  assert.equal(progressOf('Story 2 of 5 · Sprint 1 of 2'), null, 'the old ordinal is not progress');
+  assert.equal(progressOf('0 of 0 stories have commits'), null);
   assert.equal(toneOf('unknown — no README'), 'bad');
   assert.equal(toneOf('Shipped'), 'good');
   assert.equal(toneOf('Something else'), 'plain');
@@ -512,6 +515,40 @@ test('#240 review: invalidate() re-resolves on an unchanged key — the online r
   assert.ok(onlineAt !== -1);
   assert.ok(json.slice(onlineAt + 1).some((c) => c.includes('--offline')), 'a resolve after the online run, not before only');
   assert.equal(json.filter((c) => c.includes('--offline')).length, 4, 'turn, invalidated tick, in-flight, forced deferred');
+});
+
+// ── live-build-view S2.4: /build ──────────────────────────────────────────────────────────────────────────────
+test('/build runs the BUNDLED kickoff generator, never a file the open repo owns', () => {
+  const argv = view.kickoffArgv('/stranger', 'live-build-view');
+  assert.deepEqual(argv, ['node', join(HERE, '..', 'skills', 'groom', 'emit-epic-kickoff.mjs'), '--epic', 'live-build-view', '--repo-root', '/stranger']);
+  assert.ok(existsSync(argv[1]), 'the generator ships inside the plugin');
+  assert.deepEqual(view.kickoffArgv('/r', null).slice(2), ['--list', '--repo-root', '/r']);
+});
+
+test('isEpicSlug: a slug, never a flag or a path', () => {
+  for (const ok of ['live-build-view', 'a1', 'x']) assert.equal(view.isEpicSlug(ok), true, ok);
+  for (const no of ['', '--list', '../etc', 'Foo', 'a b', '-x', undefined]) assert.equal(view.isEpicSlug(no), false, String(no));
+});
+
+test('the bundled generator --list names startable epics, slug first, build order first', () => {
+  // A fixture, never this repo's Roadmap: CI runs this file in the skills mirror, which has none of our epics (#241).
+  const root = mkdtempSync(join(tmpdir(), 'build-list-'));
+  const epic = (slug, status, order) => {
+    mkdirSync(join(root, 'Roadmap', '09-platform-infra', slug), { recursive: true });
+    writeFileSync(
+      join(root, 'Roadmap', '09-platform-infra', slug, 'README.md'),
+      `---\nstatus: ${status}\nslug: ${slug}\ntitle: "Title ${slug}"\nbuild_order: ${order}\n---\n# Epic: ${slug}\n`
+    );
+  };
+  epic('later-one', 'scaffolded', 9);
+  epic('first-one', 'in-progress', 2);
+  epic('done-one', 'shipped', 1);
+  const out = execFileSync('node', [view.VENDOR_EMIT_KICKOFF, '--list', '--repo-root', root], { encoding: 'utf8' });
+  assert.deepEqual(out.trim().split('\n'), [
+    'first-one  Title first-one  (in-progress, #2)',
+    'later-one  Title later-one  (scaffolded, #9)',
+  ]);
+  assert.match(view.buildListText('/build: which epic?', out), /^\/build: which epic\?\nUsage: \/build <epic-slug>/);
 });
 
 test('#240 review r2: a cache write that fails still draws the view (the store file is capped)', async () => {

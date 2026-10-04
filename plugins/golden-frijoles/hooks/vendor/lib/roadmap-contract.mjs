@@ -55,6 +55,19 @@ export const FINOPS_FIELDS = [
   'actual_basis',
 ];
 
+// live-build-view D10 — `locked_at:` is stamped by `scripts/epic-phase.mjs lock` when the architecture lock is written;
+// the build view reads its absence as "Locking architecture". Optional (no epic before it has one), an ISO date-time
+// string when present: the command writes `"2026-10-03T20:34:34Z"` (quoted, so the frontmatter parser keeps the colons).
+export const LOCKED_AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** An epic's `locked_at` → offenses (`contract-locked-at-invalid`). Absent/null is fine. */
+export function validateLockedAt(fm) {
+  const v = fm.locked_at;
+  if (v === undefined || v === null) return [];
+  if (typeof v === 'string' && LOCKED_AT_RE.test(v) && !Number.isNaN(Date.parse(v))) return [];
+  return [{ rule: 'contract-locked-at-invalid', detail: `locked_at: "${v}" is not an ISO date-time (e.g. "2026-10-03T20:34:34Z")` }];
+}
+
 /** The FinOps fields of an epic's frontmatter data → offenses (`contract-finops-invalid`). Absent/null is fine. */
 export function validateFinopsFields(fm) {
   const offenses = [];
@@ -256,6 +269,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
       offenses.push({ rule: 'contract-total-invalid', detail: `${key}: "${fm[key]}" is not a whole number` });
   }
   offenses.push(...validateFinopsFields(fm));
+  offenses.push(...validateLockedAt(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({
       rule: 'contract-total-mismatch',
