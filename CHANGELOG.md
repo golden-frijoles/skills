@@ -7,6 +7,24 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-04
+
+### Added
+- **The kit carries both kickoff generators.** `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` (and
+  `--list`) and `npx -y @golden-frijoles/kit emit-kickoff --epic <slug> --sprint <N>` print the kickoff from any
+  project root on any host, with no plugin checkout. Until now they ran only from the plugin's own folder, so a doc's
+  `node skills/groom/…` line failed with `MODULE_NOT_FOUND` everywhere else (kickoff-generator-path S1).
+
+### Changed
+- One source: the generators, their shared argv/root/lookup module (`lib/kickoff-cli.mjs`) and the per-sprint
+  template (`templates/kickoff.md`) live in `template/scripts/`. The groom skill's copies are now vendored bytes in
+  `groom/vendor/`, checked by `render-hook-vendor.mjs --check`, and `groom/emit-*.mjs` are gone. `/build` runs
+  `groom/vendor/emit-epic-kickoff.mjs`.
+- The project root, when no `--repo-root` is given: `GF_PROJECT_ROOT` (what `gf-kit --root` sets), then the project
+  around the script, then the nearest `Roadmap/` or `.git` above `cwd`, then `cwd`. Running from a subdirectory works
+  now.
+- The one-sprint hint names the kit command (`npx -y @golden-frijoles/kit emit-kickoff …`).
+
 ## [0.26.2] - 2026-10-04
 
 ### Added
