@@ -141,10 +141,10 @@ test('every WAYS-OF-WORKING section the template points at exists', async () => 
   const { dirname, join } = await import('node:path');
   const here = dirname(fileURLToPath(import.meta.url));
   const tpl = EPIC_KICKOFF_TEMPLATE;
-  const ways = ['../../../../Roadmap/WAYS-OF-WORKING.template.md', '../../../../template/Roadmap/WAYS-OF-WORKING.template.md']
+  const ways = ['../Roadmap/WAYS-OF-WORKING.template.md', '../../Roadmap/WAYS-OF-WORKING.template.md']
     .map((p) => join(here, p))
     .find(existsSync);
-  assert.ok(ways, 'WAYS-OF-WORKING.template.md not found next to the plugin');
+  assert.ok(ways, 'WAYS-OF-WORKING.template.md not found next to template/scripts/');
   const headings = readFileSync(ways, 'utf8')
     .split('\n')
     .filter((l) => l.startsWith('## '))

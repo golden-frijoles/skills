@@ -531,7 +531,7 @@ test('#240 review: invalidate() re-resolves on an unchanged key — the online r
 // ── live-build-view S2.4: /build ──────────────────────────────────────────────────────────────────────────────
 test('/build runs the BUNDLED kickoff generator, never a file the open repo owns', () => {
   const argv = view.kickoffArgv('/stranger', 'live-build-view');
-  assert.deepEqual(argv, ['node', join(HERE, '..', 'skills', 'groom', 'emit-epic-kickoff.mjs'), '--epic', 'live-build-view', '--repo-root', '/stranger']);
+  assert.deepEqual(argv, ['node', join(HERE, '..', 'skills', 'groom', 'vendor', 'emit-epic-kickoff.mjs'), '--epic', 'live-build-view', '--repo-root', '/stranger']);
   assert.ok(existsSync(argv[1]), 'the generator ships inside the plugin');
   assert.deepEqual(view.kickoffArgv('/r', null).slice(2), ['--list', '--repo-root', '/r']);
 });

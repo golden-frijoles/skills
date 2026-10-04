@@ -29,19 +29,21 @@ export const SOURCE_DIR = join(repoRoot, 'template', 'scripts');
 export const VENDOR_DIR = join(repoRoot, 'plugins', 'golden-frijoles', 'hooks', 'vendor');
 export const ENTRY = 'build-state.mjs';
 
-// board-sinks-and-scrumban D17 — a SECOND bundle, same rule. The groom skill's kickoff generators import the epic
-// kickoff builder from `template/scripts/lib/epic-kickoff.mjs` (so the Hub card and the CLI print one kickoff), and an
-// installed plugin cannot reach `template/scripts/` any more than the hook can. Each bundle is one entry plus its
+// board-sinks-and-scrumban D17 — a SECOND bundle, same rule. The groom skill's kickoff generators live in
+// `template/scripts/` (so the Hub card, the kit and the plugin print one kickoff), and an installed plugin cannot reach
+// `template/scripts/` any more than the hook can. Each bundle is one entry plus its
 // real import closure, written next to the code that imports it.
 export const BUNDLES = Object.freeze([
   // + the usage refresh the mod runs on session.measure (finops S1.3, D24) — an entry of its own, same rule.
   { name: 'the build-view bundle', entry: ENTRY, also: ['epic-actuals.mjs'], vendorDir: VENDOR_DIR, fix: 'hooks/vendor/' },
   {
     name: 'the groom kickoff bundle',
-    entry: 'lib/epic-kickoff.mjs',
-    // + the WIP advice the kickoff prints (S3.4). A second ENTRY, not an import of the builder: the extractor imports
-    // the builder, and wip imports the extractor, so one file importing the other would be a cycle.
-    also: ['lib/wip.mjs'],
+    // kickoff-generator-path C1: the generators themselves, not only their builder. Their import closure brings
+    // `emit-kickoff.mjs`, `lib/epic-kickoff.mjs`, `lib/wip.mjs`, `lib/kickoff-cli.mjs` and the extractor chain;
+    // `templates/kickoff.md` is read, not imported, so it is named. The copies sit in `vendor/`, beside their `lib/`,
+    // because the source's `./lib/…` imports must resolve unchanged and writeVendor empties the directory first.
+    entry: 'emit-epic-kickoff.mjs',
+    also: ['templates/kickoff.md'],
     vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor'),
     fix: 'skills/groom/vendor/',
   },

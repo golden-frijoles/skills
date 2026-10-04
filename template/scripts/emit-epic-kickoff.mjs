@@ -13,8 +13,8 @@
 //   emit-kickoff.mjs       → the EXCEPTION. A single-sprint epic, or a sprint whose outcome genuinely
 //                            changes the next sprint's scope (so the next kickoff can't be written yet).
 //
-// Same contract as its sibling: it resolves the epic by SEARCHING Roadmap/*/<slug>/ under --repo-root
-// (default cwd), reads the epic README and EVERY sprint-N.md, substitutes into EPIC_KICKOFF_TEMPLATE (lib/epic-kickoff.mjs)
+// Same contract as its sibling: it resolves the epic by SEARCHING Roadmap/*/<slug>/ under the project root
+// (lib/kickoff-cli.mjs: --repo-root, else GF_PROJECT_ROOT, else the project around cwd), reads the epic README and EVERY sprint-N.md, substitutes into EPIC_KICKOFF_TEMPLATE (lib/epic-kickoff.mjs)
 // and prints to stdout. It writes no file — read + print, editorial control stays with the caller.
 //
 // The prompt POINTS at the process instead of restating it. WAYS-OF-WORKING → *Epic-mode builds* is the
@@ -23,22 +23,27 @@
 // What stays in the prompt: the few non-negotiables that went missing when prompts were hand-composed, and
 // rules picked from THIS epic's docs (high risk, a migration, a flag) — see buildEpicRules.
 //
-// Usage:
-//   node skills/groom/emit-epic-kickoff.mjs --epic <slug> [--repo-root <path>]
-//   node skills/groom/emit-epic-kickoff.mjs --list [--repo-root <path>]   # the epics a kickoff can start (live-build-view
-//                                                                       # S2.4): `scaffolded` or `in-progress`, build order first
+// Usage, from the project root (the project's own `scripts/` copy wins, else the kit):
+//   npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug> [--repo-root <path>]
+//   npx -y @golden-frijoles/kit emit-epic-kickoff --list [--repo-root <path>]   # the epics a kickoff can start
+//                                       # (live-build-view S2.4): `scaffolded` or `in-progress`, build order first
 //
-// The kickoff's one home is `/build <slug>` (the plugin's mod runs THIS script and fills the prompt with its output);
-// hosts without the mod run it directly. It is never saved to a file — the epic docs are the state, regenerate it.
+// The kickoff's one home is `/build <slug>` (the plugin's mod runs groom's vendored copy of THIS file and fills the
+// prompt with its output); hosts without the mod run it through the kit. It is never saved to a file — the epic docs
+// are the state, regenerate it.
+//
+// One source, three homes (kickoff-generator-path C1): this file ships in the kit, a project spawned from the template
+// carries it in `scripts/`, and the groom skill holds a byte-identical copy in `vendor/` (render-hook-vendor.mjs).
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
 
-// The builder, its parsers and the template text live in ONE file, `template/scripts/lib/epic-kickoff.mjs`, vendored
-// here byte-for-byte (board-sinks-and-scrumban D17): the Hub's Ready-to-build card carries the kickoff the extractor
-// builds from that same file, so the card and this CLI cannot print two different prompts. Re-exported for the spec.
-import { parseArgs, parseFrontmatter } from './emit-kickoff.mjs';
+// The builder, its parsers and the template text live in ONE file, `lib/epic-kickoff.mjs` (board-sinks-and-scrumban
+// D17): the Hub's Ready-to-build card carries the kickoff the extractor builds from that same file, so the card and
+// this CLI cannot print two different prompts. Re-exported for the spec.
+import { parseFrontmatter } from './emit-kickoff.mjs';
+import { parseArgs, resolveRepoRoot, findEpicDir } from './lib/kickoff-cli.mjs';
 import {
   sprintNumFromFilename,
   listSprintFiles,
@@ -50,8 +55,8 @@ import {
   parseEpicRisk,
   epicKickoffFromDir,
   EPIC_KICKOFF_TEMPLATE,
-} from './vendor/lib/epic-kickoff.mjs';
-import { wipWarning } from './vendor/lib/wip.mjs';
+} from './lib/epic-kickoff.mjs';
+import { wipWarning } from './lib/wip.mjs';
 export {
   sprintNumFromFilename,
   listSprintFiles,
@@ -69,26 +74,6 @@ export {
 function die(msg) {
   console.error(`emit-epic-kickoff: ${msg}`);
   process.exit(1);
-}
-
-// Search Roadmap/*/<slug>/ under repoRoot — the macro-area prefix isn't knowable from the slug alone.
-function findEpicDir(repoRoot, slug) {
-  const roadmapDir = join(repoRoot, 'Roadmap');
-  if (!existsSync(roadmapDir)) die(`no Roadmap/ dir under --repo-root "${repoRoot}"`);
-  let macros;
-  try {
-    macros = readdirSync(roadmapDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-  } catch (e) {
-    die(`couldn't read ${roadmapDir}: ${e.message}`);
-  }
-  const hits = macros.filter((m) => existsSync(join(roadmapDir, m, slug, 'README.md')));
-  if (hits.length === 0) {
-    die(`no epic found for slug "${slug}" under any Roadmap/*/ dir in "${repoRoot}" (searched: ${macros.join(', ') || '(none)'})`);
-  }
-  if (hits.length > 1) {
-    die(`ambiguous slug "${slug}" — found under multiple macro-areas: ${hits.map((m) => `Roadmap/${m}/${slug}`).join(', ')}`);
-  }
-  return { macro: hits[0], dir: join(roadmapDir, hits[0], slug) };
 }
 
 const STARTABLE = ['scaffolded', 'in-progress'];
@@ -130,8 +115,7 @@ export function formatEpicList(epics) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.list) {
-    const root = resolve(String(args['repo-root'] === true || !args['repo-root'] ? process.cwd() : args['repo-root']));
-    process.stdout.write(`${formatEpicList(listEpics(root))}\n`);
+    process.stdout.write(`${formatEpicList(listEpics(resolveRepoRoot(args)))}\n`);
     return;
   }
   if (!args.epic || args.epic === true) {
@@ -141,8 +125,10 @@ function main() {
   }
 
   const slug = String(args.epic);
-  const repoRoot = resolve(String(args['repo-root'] === true ? '' : args['repo-root'] || process.cwd()));
-  const { macro, dir } = findEpicDir(repoRoot, slug);
+  const repoRoot = resolveRepoRoot(args);
+  const found = findEpicDir(repoRoot, slug);
+  if (found.error) die(found.error);
+  const { macro, dir } = found;
 
   const readmeText = readFileSync(join(dir, 'README.md'), 'utf8');
   const frontmatter = parseFrontmatter(readmeText);
@@ -162,7 +148,7 @@ function main() {
   if (built.sprints.length === 1) {
     process.stderr.write(
       `⚠ "${slug}" has one sprint. Epic mode buys nothing here — the per-sprint kickoff is the right ` +
-        `tool: node skills/groom/emit-kickoff.mjs --epic ${slug} --sprint 1\n` +
+        `tool: npx -y @golden-frijoles/kit emit-kickoff --epic ${slug} --sprint 1\n` +
         `  (Emitting the epic-mode prompt anyway.)\n\n`
     );
   }
@@ -174,5 +160,13 @@ function main() {
   process.stdout.write(built.kickoff);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+// realpath on both sides (D6): run through a symlinked path (npx's bin link, macOS /tmp → /private/tmp) a plain
+// compare is false and the script would exit 0 having printed nothing.
+const isMain = (() => {
+  try {
+    return !!process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
+  } catch {
+    return false;
+  }
+})();
 if (isMain) main();

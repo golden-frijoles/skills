@@ -4,10 +4,11 @@ Loaded on demand from `SKILL.md` Stage 8. Moved here verbatim (ways-of-work-lean
 
 ### 8b — Per-sprint mode (the exception)
 ```
-node "$GROOM/emit-kickoff.mjs" --epic <epic-slug> --sprint <N>
+node "$GROOM/vendor/emit-kickoff.mjs" --epic <epic-slug> --sprint <N>
 ```
+(from any project root on any host: `npx -y @golden-frijoles/kit emit-kickoff --epic <epic-slug> --sprint <N>`.)
 Reads the epic README + that one `sprint-<N>.md` and substitutes the sprint-specific delta into
-`templates/kickoff.md`.
+`vendor/templates/kickoff.md` (vendored from the kit's `templates/kickoff.md`).
 
 **The documented shape below is the SSOT that generator reproduces — it's the fallback if the
 script is unavailable, not the primary path:**

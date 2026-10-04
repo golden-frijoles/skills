@@ -504,7 +504,7 @@ export function createViewer(io, { buildState = VENDOR_BUILD_STATE } = {}) {
 // rule as the resolver) and puts its output in the prompt box; the person presses enter. Nothing is saved anywhere:
 // the epic docs are the state, and the kickoff is regenerated from them every time.
 export const VENDOR_EMIT_KICKOFF = decodeURIComponent(
-  new URL('../skills/groom/emit-epic-kickoff.mjs', import.meta.url).pathname
+  new URL('../skills/groom/vendor/emit-epic-kickoff.mjs', import.meta.url).pathname
 ).replace(/^\/([A-Za-z]:\/)/, '$1');
 export const KICKOFF_TIMEOUT_MS = 10_000;
 

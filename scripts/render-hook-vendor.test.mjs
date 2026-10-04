@@ -1,7 +1,7 @@
 // render-hook-vendor.test.mjs — the build view's bundled resolver stays the template's bytes (distribute-what-we-use D5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BUNDLES, bundleManifest, vendorDrift, vendorManifest, writeVendor, ENTRY } from './render-hook-vendor.mjs';
@@ -61,11 +61,29 @@ test('the committed bundles match template/scripts right now', () => {
   }
 });
 
-test('the groom kickoff bundle is the kickoff builder plus the WIP advice and their closure (D17, S3.4)', () => {
-  const groom = BUNDLES.find((b) => b.entry === 'lib/epic-kickoff.mjs');
-  assert.ok(groom, 'a bundle for lib/epic-kickoff.mjs');
+test('the groom kickoff bundle is the two generators, their template and their closure (D17, S3.4, kickoff-generator-path C1)', () => {
+  const groom = BUNDLES.find((b) => b.name === 'the groom kickoff bundle');
+  assert.ok(groom, 'a groom kickoff bundle');
+  assert.equal(groom.entry, 'emit-epic-kickoff.mjs');
   assert.match(groom.vendorDir, /plugins\/golden-frijoles\/skills\/groom\/vendor$/);
   const files = bundleManifest(groom);
-  for (const f of ['lib/epic-kickoff.mjs', 'lib/wip.mjs', 'roadmap-extract.mjs', 'lib/stage.mjs', 'lib/config.mjs'])
+  for (const f of [
+    'emit-epic-kickoff.mjs',
+    'emit-kickoff.mjs',
+    'templates/kickoff.md',
+    'lib/kickoff-cli.mjs',
+    'lib/epic-kickoff.mjs',
+    'lib/wip.mjs',
+    'roadmap-extract.mjs',
+    'lib/stage.mjs',
+    'lib/config.mjs',
+  ])
     assert.ok(files.includes(f), `${f} in the groom bundle`);
+});
+
+test('groom holds NO hand-kept generator beside its vendored copy (kickoff-generator-path C1)', () => {
+  // A second hand-edited copy at groom/emit-*.mjs is the fork this bundle exists to end.
+  const groomDir = join(BUNDLES.find((b) => b.name === 'the groom kickoff bundle').vendorDir, '..');
+  for (const f of ['emit-epic-kickoff.mjs', 'emit-kickoff.mjs', 'templates/kickoff.md'])
+    assert.equal(existsSync(join(groomDir, f)), false, `groom/${f} must not exist — the copy is groom/vendor/${f}`);
 });

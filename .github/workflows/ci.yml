@@ -81,15 +81,13 @@ jobs:
       - name: Skill adverts are generated, not hand-kept
         run: node scripts/render-skill-adverts.mjs --check
 
-      # The groom generators' own unit tests. Both kickoff generators are covered — the per-sprint
-      # one (the exception path) and the epic-mode one (the default).
+      # The groom generators' own unit tests. The two kickoff generators moved to template/scripts/
+      # (kickoff-generator-path C4) and run in the `template script tests` step below.
         # Files named explicitly, not a directory: `node --test <dir>` resolves the path as a MODULE
         # on Node 22 and dies with MODULE_NOT_FOUND — a red step that looks like a real test failure.
       - name: groom generator tests
         run: |
           node --test \
-            plugins/golden-frijoles/skills/groom/emit-kickoff.test.mjs \
-            plugins/golden-frijoles/skills/groom/emit-epic-kickoff.test.mjs \
             plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs \
             plugins/golden-frijoles/skills/groom/session-budget.test.mjs \
             plugins/golden-frijoles/skills/groom/session-line.test.mjs \
@@ -321,10 +319,11 @@ jobs:
           echo "scaffolder smoke: 4 files rendered into the active repo, no unsubstituted placeholders."
 
           # Both kickoff generators must render against that freshly-scaffolded epic. A generator
-          # that dies on its own scaffolder's output is the failure this catches.
-          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/emit-epic-kickoff.mjs" \
+          # that dies on its own scaffolder's output is the failure this catches. These are groom's
+          # VENDORED copies, run from the repo with no --repo-root: the plugin's own root rung (C2).
+          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/vendor/emit-epic-kickoff.mjs" \
               --epic ci-smoke > epic-kickoff.txt )
-          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/emit-kickoff.mjs" \
+          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/vendor/emit-kickoff.mjs" \
               --epic ci-smoke --sprint 1 > sprint-kickoff.txt )
           for f in "$work/epic-kickoff.txt" "$work/sprint-kickoff.txt"; do
             test -s "$f" || { echo "empty kickoff: $f" >&2; exit 1; }
