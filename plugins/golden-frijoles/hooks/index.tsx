@@ -82,6 +82,18 @@ const lineNow = () => {
   return sessionLine(figures, sessionVerdict(figures)) ?? undefined;
 };
 
+// What reaches the transcript. A mod's `$.ui.log` is a row in the person's main window, so it is spent only on something
+// they should act on, and each distinct line ONCE per load; repeats and routine bookkeeping (check timings, "usage:
+// refreshed (ok)", the plugin-version line) go to the debug log alone (`claude --debug`). Before 2026-10-04 every 30 s
+// tick and every Bash call logged a timing row, and the band's own news drowned in them.
+const noted = new Set<string>();
+function note($: EngineInterface, msg: string) {
+  if (noted.has(msg)) return $.ui.log(msg, { to: 'debug' });
+  noted.add(msg);
+  $.ui.log(msg);
+}
+const debug = ($: EngineInterface, msg: string) => $.ui.log(msg, { to: 'debug' });
+
 // The view's I/O, spelled at its own call sites. The cache is one `$.store` slot PER CHECKOUT ROOT: the store is shared
 // by every session of the plugin, and one slot let two sessions in two worktrees serve each other's view (#240 review).
 function ioFor($: EngineInterface) {
@@ -91,7 +103,8 @@ function ioFor($: EngineInterface) {
     getCached: (root: string) => $.store.get(`${STORE_KEY}@${root}`),
     setCached: (root: string, entry: unknown) => $.store.set(`${STORE_KEY}@${root}`, entry),
     show: (text: string | null) => $.state.set(VIEW, text),
-    log: (msg: string) => $.ui.log(msg),
+    log: (msg: string) => note($, msg),
+    debug: (msg: string) => debug($, msg),
     now: () => Date.now(),
   };
 }
@@ -107,10 +120,10 @@ export const register: Register = (on) => {
         const installed = versionOf(await $.fs.read(`${PLUGIN_DIR}/.claude-plugin/plugin.json`));
         const published = versionOf(await $.fs.read(publishedPath));
         live.setPluginRow(versionRow(installed, published));
-        $.ui.log(`build view: plugin ${installed} installed, ${published} in the marketplace clone`);
+        debug($, `build view: plugin ${installed} installed, ${published} in the marketplace clone`);
       }
     } catch (err) {
-      $.ui.log(`build view: plugin version: ${String(err)}`);
+      note($, `build view: plugin version: ${String(err)}`);
     }
     // S2.4 (D12) — the kickoff's one home.
     try {
@@ -120,7 +133,7 @@ export const register: Register = (on) => {
         argumentHint: '<epic-slug>',
       });
     } catch (err) {
-      $.ui.log(`build view: /build not registered: ${String(err)}`);
+      note($, `build view: /build not registered: ${String(err)}`);
     }
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
@@ -197,7 +210,7 @@ export const register: Register = (on) => {
         loggedVerdict = verdict.verdict;
       }
     } catch (err) {
-      $.ui.log(`session line: ${String(err)}`);
+      note($, `session line: ${String(err)}`);
     }
     // finops S1.3 (D24) — keep the Spend row's summary fresh, off the hot path: the BUNDLED epic-actuals.mjs, at most
     // once a minute, timeout-bound. A slow or failed run logs and leaves the last row; a good one makes the next check
@@ -206,10 +219,11 @@ export const register: Register = (on) => {
       usageRefreshedAt = Date.now();
       try {
         const run = await $.process.run(epicActualsArgv(repoRoot as string), { timeoutMs: USAGE_TIMEOUT_MS });
-        $.ui.log(`usage: refreshed (${run.exitCode === 0 ? 'ok' : `exit ${run.exitCode}`})`);
+        if (run.exitCode === 0) debug($, 'usage: refreshed (ok)');
+        else note($, `usage: refresh failed (exit ${run.exitCode})`);
         if (run.exitCode === 0) viewer?.invalidate();
       } catch (err) {
-        $.ui.log(`usage: ${String(err)}`);
+        note($, `usage: ${String(err)}`);
       }
     }
     return next(e);

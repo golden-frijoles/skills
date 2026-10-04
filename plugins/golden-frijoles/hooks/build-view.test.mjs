@@ -318,6 +318,7 @@ function fakeIo({ porcelain = PORCELAIN, mtime = 1, resolveStdout = JSON.stringi
   const calls = [];
   const shown = [];
   const logs = [];
+  const debugs = [];
   let t = 1_000;
   const world = { porcelain, mtime, resolveStdout, onlineStdout: JSON.stringify({ facts_mode: 'live', lines: [] }) };
   const gate = { hold: null };
@@ -325,6 +326,7 @@ function fakeIo({ porcelain = PORCELAIN, mtime = 1, resolveStdout = JSON.stringi
     calls,
     shown,
     logs,
+    debugs,
     world,
     gate,
     run: async (argv) => {
@@ -345,6 +347,7 @@ function fakeIo({ porcelain = PORCELAIN, mtime = 1, resolveStdout = JSON.stringi
       shown.push(v);
     },
     log: (m) => logs.push(m),
+    debug: (m) => debugs.push(m),
     now: () => t,
     tick: (ms) => {
       t += ms;
@@ -367,7 +370,15 @@ test('createViewer.check: resolves once, then only when the key moves (a doc edi
   assert.equal(resolves(io), 3);
   assert.deepEqual(io.shown, ['Currently building'], 'the band is written only when its text changes');
   assert.ok(io.calls.every((c) => !c.includes('--json') || c.includes('--offline')), 'every check is offline');
-  assert.match(io.logs.at(-1), /bash check resolved in \d+ ms \(1 Roadmap entries\)/);
+  assert.match(io.debugs.at(-1), /bash check resolved in \d+ ms \(1 Roadmap entries\)/);
+});
+
+test('createViewer.check: routine checks never reach the transcript — timings go to debug alone (2026-10-04 flood)', async () => {
+  const io = fakeIo();
+  const v = view.createViewer(io, { buildState: '/vendor/build-state.mjs' });
+  for (const reason of ['turn', 'tick', 'bash', 'tick']) await v.check(reason);
+  assert.deepEqual(io.logs, [], 'a healthy check says nothing in the main window');
+  assert.equal(io.debugs.length, 4, 'every check still leaves its timing in the debug log');
 });
 
 test('createViewer.check: no check overlaps another — a second one while the first runs returns busy', async () => {
@@ -485,7 +496,7 @@ test('#240 review: a trigger that lands on a running check is deferred to one mo
   release();
   assert.equal(await first, 'resolved');
   assert.equal(resolves(io), 2, 'the deferred pass saw the moved HEAD');
-  assert.ok(io.logs.some((l) => /tick\+deferred check resolved/.test(l)));
+  assert.ok(io.debugs.some((l) => /tick\+deferred check resolved/.test(l)));
 });
 
 test('#240 review: invalidate() re-resolves on an unchanged key — the online refresh mid-check is not lost', async () => {

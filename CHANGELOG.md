@@ -7,6 +7,16 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-10-04
+
+### Fixed
+
+- **The build view no longer floods the main window.** Every 30 s tick and every Bash call logged a
+  `build view: … check cached in N ms` row, and each usage refresh logged `usage: refreshed (ok)`. Routine
+  bookkeeping now goes to the debug log alone (`$.ui.log(…, { to: "debug" })`, read with `claude --debug`). A
+  problem worth acting on still reaches the transcript, once per distinct line per load. Pinned by a node:test and
+  by an engine-level `claude plugin test` case, both checked by mutation.
+
 ## [0.26.0] - 2026-10-03
 
 ### Added

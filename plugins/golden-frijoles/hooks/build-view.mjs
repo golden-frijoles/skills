@@ -351,7 +351,11 @@ export function composeView(text, plugin = null) {
  *                                                         every session of the plugin; a slot per root keeps two
  *                                                         sessions in two worktrees from serving each other's view)
  *   show(text | null)                                   — $.state.set of the band
- *   log(msg)                                            — $.ui.log
+ *   log(msg)                                            — something the person should see: $.ui.log to the transcript,
+ *                                                         ONCE per distinct line per load (the caller dedupes)
+ *   debug(msg)                                          — routine bookkeeping (check timings): the debug log alone,
+ *                                                         never the transcript — a tick every 30 s flooded it (2026-10-04).
+ *                                                         Optional; absent means dropped.
  *   now() → ms
  * `check(reason)` returns what it did: 'busy' (another check is running — D1, none overlap — and it will run ONE more
  * pass when it finishes, so the trigger is deferred, never dropped), 'no-repo', 'cached', 'resolved', 'failed'.
@@ -414,7 +418,7 @@ export function createViewer(io, { buildState = VENDOR_BUILD_STATE } = {}) {
       return did;
     } finally {
       viewer.lastCheck = { reason, did, ms: io.now() - started, entries };
-      io.log(`build view: ${reason} check ${did} in ${viewer.lastCheck.ms} ms (${entries} Roadmap entries)`);
+      io.debug?.(`build view: ${reason} check ${did} in ${viewer.lastCheck.ms} ms (${entries} Roadmap entries)`);
     }
   }
 

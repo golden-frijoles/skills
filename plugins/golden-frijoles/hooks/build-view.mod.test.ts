@@ -14,6 +14,7 @@ type RunOverride = (argv: readonly string[]) => { exitCode: number; stdout: stri
 
 function world(on: On, override: RunOverride = () => null) {
   const ran: string[] = [];
+  const logs: { text: string; to: string }[] = [];
   const state = { mtime: 1, porcelain: PORCELAIN };
   on('process.run', async (_$, e) => {
     const argv = e.argv.join(' ');
@@ -33,9 +34,12 @@ function world(on: On, override: RunOverride = () => null) {
   // The engine's own events, answered as a session's would be (nothing beneath a test answers them).
   on('session.start', async (_$, e) => ({ cwd: e.cwd }));
   on('turn.start', async (_$, e) => ({ turnId: e.turnId }));
-  on('ui.log', async () => ({ value: undefined }));
+  on('ui.log', async (_$, e) => {
+    logs.push({ text: e.text, to: e.to });
+    return { value: undefined };
+  });
   const resolves = () => ran.filter((a) => a.includes('--json')).length;
-  return { ran, state, resolves };
+  return { ran, state, resolves, logs };
 }
 
 const offline = (w: { ran: string[] }) => w.ran.filter((a) => a.includes('--json') && a.includes('--offline')).length;
@@ -54,6 +58,23 @@ for (const edit of [false, true]) {
     expect(offline(w)).toBe(edit ? 2 : 1);
   });
 }
+
+test('healthy checks put nothing in the main window — their timings go to the debug log (2026-10-04)', async ($, on) => {
+  const clock = mock.clock(on);
+  mock.store(on);
+  const w = world(on);
+  on('tool.call', async () => ({ result: { stdout: '', stderr: '', interrupted: false }, text: 'ok' }) as never);
+  on('command.register', async (_$, e) => ({ value: { command: e.name } }) as never); // a real session registers /build
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  await $.turn.start({ text: 'go', turnId: 't1' });
+  w.state.mtime = 2;
+  await clock.advance(30_000);
+  await $.tool.call({ tool: 'Bash', command: 'ls' } as never);
+  await clock.settle();
+  await $.turn.start({ text: 'again', turnId: 't2' });
+  expect(w.logs.length).toBeGreaterThan(0); // the checks did log …
+  expect(w.logs.filter((l) => l.to !== 'debug')).toEqual([]); // … and none of it reached the transcript
+});
 
 test('a Bash call re-checks mid-turn without holding up its result; a push queues one online run', async ($, on) => {
   const clock = mock.clock(on);
