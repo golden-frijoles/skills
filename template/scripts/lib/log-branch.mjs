@@ -12,6 +12,12 @@
 
 import { spawnSync } from 'node:child_process';
 
+// Every log commit also carries this vercel.json. A log branch is an orphan with no package.json, and a
+// repo whose Vercel project builds every pushed branch tried to build it as a preview and failed on each
+// write ("No Next.js version detected", claude/session-journal, 2026-10-04). Vercel reads vercel.json from
+// the commit it is about to build, so the branch itself has to say "don't".
+export const LOG_BRANCH_VERCEL_JSON = `${JSON.stringify({ git: { deploymentEnabled: false } }, null, 2)}\n`;
+
 function git(args, opts = {}) {
   return spawnSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, ...opts });
 }
@@ -34,7 +40,7 @@ export function readLogFromBranch({ cwd, branch, path }) {
 }
 
 // Writes `content` to `path` on `branch`, creating the branch if it doesn't exist yet. Pure plumbing:
-// hash-object (write a blob) → mktree (a single-file tree) → commit-tree (parented on the branch's
+// hash-object (write a blob) → mktree (the file plus LOG_BRANCH_VERCEL_JSON) → commit-tree (parented on the branch's
 // current tip, if any) → push the new commit straight to the branch ref. Returns true on success.
 //
 // `path` MUST be a flat filename (no `/`) — `git mktree` builds a single-level tree, and a slash needs a
@@ -58,7 +64,17 @@ export function writeLogToBranch({ cwd, branch, path, content, message }) {
   }
   const blobSha = hashObj.stdout.trim();
 
-  const mktree = git(['mktree'], { cwd, input: `100644 blob ${blobSha}\t${path}\n` });
+  let tree = `100644 blob ${blobSha}\t${path}\n`;
+  if (path !== 'vercel.json') {
+    const vercelObj = git(['hash-object', '-w', '--stdin'], { cwd, input: LOG_BRANCH_VERCEL_JSON });
+    if (vercelObj.status !== 0) {
+      console.error(`log-branch: git hash-object (vercel.json) failed: ${(vercelObj.stderr || '').trim()}`);
+      return false;
+    }
+    tree += `100644 blob ${vercelObj.stdout.trim()}\tvercel.json\n`;
+  }
+
+  const mktree = git(['mktree'], { cwd, input: tree });
   if (mktree.status !== 0) {
     console.error(`log-branch: git mktree failed: ${(mktree.stderr || '').trim()}`);
     return false;
