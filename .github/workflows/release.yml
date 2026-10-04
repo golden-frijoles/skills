@@ -28,7 +28,7 @@ jobs:
       contents: read
       id-token: write # npm trusted publishing (OIDC) + provenance
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
       #                                            → the trusted publisher's "Allowed actions" was stage-only
       #   PUT 202, then "not visible after 60s"    → npm validates a publish asynchronously; the wait below
       #                                              is minutes, not seconds
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - run: npm install -g npm@^11.5.1 --no-audit --no-fund && npm --version
@@ -105,11 +105,11 @@ jobs:
     permissions:
       contents: write # the tag + GitHub Release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # need full tag history to know whether v<version> already exists
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
 

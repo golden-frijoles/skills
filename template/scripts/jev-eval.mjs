@@ -8,6 +8,9 @@
 //   node scripts/jev-eval.mjs --live          re-ask Jev for every fixture, REWRITE the recordings, and print
 //                                             accuracy against the labels — regex vs Jev, per rail/family.
 //   node scripts/jev-eval.mjs --rail prose    limit to one rail (or to `intent`, the intent-match question set).
+//   node scripts/jev-eval.mjs --no-expiry     replay only: skip the shadow-expiry rot guard. For a blocking PR gate,
+//                                             where a DATE would otherwise turn every unrelated PR red; the daily
+//                                             expiry run (no flag) is what forces the decision.
 //   node scripts/jev-eval.mjs --live --limit 10
 //                                             the SETUP PROOF: ask Jev for only the first n fixtures of each
 //                                             rail, print per-rail agreement with the labels, and WRITE
@@ -457,7 +460,9 @@ export async function run(argv, io = {}) {
     stderr('jev-eval: --limit only makes sense with --live (a setup proof against real Jev).\n');
     return 2;
   }
-  const expired = expiredShadowRails(config, io.today ?? new Date().toISOString().slice(0, 10));
+  const expired = argv.includes('--no-expiry')
+    ? []
+    : expiredShadowRails(config, io.today ?? new Date().toISOString().slice(0, 10));
   for (const name of ['review', 'prose'])
     if (!rails[name]) stdout(`${name}: no judge in this checkout yet — skipped\n`);
 

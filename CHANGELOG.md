@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-10-04
+
+### Added
+- `jev-eval.mjs --no-expiry`: replay the eval set without the shadow-expiry rot guard. Meant for a blocking PR gate,
+  where a date would otherwise turn every unrelated PR red; the daily expiry run (no flag) still forces the decision
+  (ci-diet S1.1).
+
 ## [0.26.1] - 2026-10-04
 
 ### Fixed

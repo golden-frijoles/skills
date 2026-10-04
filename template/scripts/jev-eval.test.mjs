@@ -376,3 +376,18 @@ test("lint coverage: an undefined rule's fixtures FAIL (never skip green); a con
   );
   assert.deepEqual(lintOnly({ lint: fx('rule-a', 30) }, one), []);
 });
+
+test('--no-expiry: a shadow rail past its date fails the run, and passes it only with the flag', async () => {
+  const config = parseJevConfig({
+    egress: true,
+    rails: { review: { mode: 'shadow', shadowExpires: '2026-01-01' } },
+  });
+  const fixtures = Array.from({ length: MIN_FIXTURES }, (_, i) => ({ id: `g${i}`, label: true }));
+  const expired = harness({ config });
+  expired.io.fixtures.review = fixtures;
+  assert.equal(await run(['--live'], expired.io), 1);
+  assert.match(expired.err, /past its shadowExpires/);
+  const skipped = harness({ config });
+  skipped.io.fixtures.review = fixtures;
+  assert.equal(await run(['--live', '--no-expiry'], skipped.io), 0);
+});
