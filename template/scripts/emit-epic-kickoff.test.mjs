@@ -201,3 +201,19 @@ test('S3.4 — at the WIP limit the CLI warns in ONE stderr line and still print
   assert.match(r.stdout, /^Start by pushing the epic branch/);
   assert.match(r.stdout, /git switch -c feat\/next origin\/main/);
 });
+
+test('listEpics: startable only, build order first, ties and unordered epics by slug (a fixture of several)', async () => {
+  const { listEpics } = await import('./emit-epic-kickoff.mjs');
+  const readmes = {
+    '/r/Roadmap/01-a/zeta/README.md': '---\nstatus: scaffolded\nbuild_order: 2\n---\n',
+    '/r/Roadmap/01-a/beta/README.md': '---\nstatus: in-progress\nbuild_order: 2\n---\n',
+    '/r/Roadmap/02-b/yank/README.md': '---\nstatus: scaffolded\n---\n',
+    '/r/Roadmap/02-b/xray/README.md': '---\nstatus: scaffolded\n---\n',
+    '/r/Roadmap/02-b/done/README.md': '---\nstatus: shipped\nbuild_order: 1\n---\n',
+    '/r/Roadmap/02-b/alpha/README.md': '---\nstatus: scaffolded\nbuild_order: 1\n---\n',
+  };
+  const dirs = { '/r/Roadmap': ['01-a', '02-b', 'README.md'], '/r/Roadmap/01-a': ['zeta', 'beta'], '/r/Roadmap/02-b': ['yank', 'xray', 'done', 'alpha'] };
+  const exists = (p) => p === '/r/Roadmap' || p in readmes;
+  const out = listEpics('/r', { read: (p) => readmes[p], exists, list: (p) => dirs[p] ?? [] });
+  assert.deepEqual(out.map((e) => e.slug), ['alpha', 'beta', 'zeta', 'xray', 'yank']);
+});

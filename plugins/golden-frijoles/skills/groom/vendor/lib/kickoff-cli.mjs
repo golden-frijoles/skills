@@ -34,6 +34,8 @@ export function parseArgs(argv) {
  *   1. `--repo-root <path>` (the mod always passes it),
  *   2. `GF_PROJECT_ROOT` (`gf-kit --root` sets it), taken as given: a person named it,
  *   3. `projectRoot()` when it holds a Roadmap/ (a project's own `scripts/`, or the installed kit's walk from cwd),
+ *      — a copied set answers its own parent, so the template's own copy here answers `skills/template/` (whose
+ *        skeleton Roadmap/ has no epics); that is project-root.mjs's copied-mode rule, and no doc runs that copy,
  *   4. the nearest directory holding Roadmap/ or .git, walking up from cwd (the plugin's vendored copy),
  *   5. cwd.
  * Pure over its options for the spec.

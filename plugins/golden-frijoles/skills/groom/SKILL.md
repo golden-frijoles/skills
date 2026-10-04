@@ -160,8 +160,7 @@ escalate triggers are the ONE list in WAYS-OF-WORKING → *Escalate, don't guess
 
 ## Locate the generators — do this once, before Stage 7
 
-`scaffold-epic.mjs`, `templates/` and the kickoff generators (`vendor/emit-epic-kickoff.mjs`, `vendor/emit-kickoff.mjs`,
-vendored from the kit) **ship with this skill**,
+`scaffold-epic.mjs`, `templates/` and `vendor/` (the kickoff generators, vendored from the kit) **ship with this skill**,
 but each host puts it somewhere else: the Claude Code plugin, a Cowork `.skill`, or `npx skills` (`.agents/skills/`,
 measured 2026-09-23). Resolve it rather than hardcoding one. A wrong path is how Stage 7 ends up hand-written.
 
@@ -218,10 +217,8 @@ Per-sprint kickoffs are the named exception (a one-sprint epic, or a sprint whos
 changes the next one's scope); say so if you emit one. WAYS-OF-WORKING → *Epic-mode builds* is the SOP;
 this skill emits the prompt.
 
-**Run the generator, never hand-write or save it** — end Stage 8 with `Build it: /build <epic-slug>` (the mod puts the
-kickoff in the prompt box) plus the kit line for hosts without the mod, which runs from any project root:
-`npx -y @golden-frijoles/kit emit-epic-kickoff --epic <epic-slug>`. The docs are the state. To print it here, run
-this skill's own copy:
+**Run the generator, never hand-write or save it** — end Stage 8 with `Build it: /build <epic-slug>` (the mod fills the
+prompt box), else `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <epic-slug>` from the project root. Here:
 
 ```
 node "$GROOM/vendor/emit-epic-kickoff.mjs" --epic <epic-slug>                 # epic mode (default)
