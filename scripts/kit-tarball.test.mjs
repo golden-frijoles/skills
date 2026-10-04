@@ -14,6 +14,9 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { stageKit } from './build-kit.mjs';
 import { OPTIMIZE_PATH } from './check-plugin-leaks.mjs';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // git exports GIT_DIR & co. into hooks, and from a worktree they point at the REAL repo (LEARNINGS, 2026-09-23).
 function sealedEnv() {
@@ -234,4 +237,54 @@ test('the packed kit runs `gf-kit init` in an EMPTY temp repo and writes the Roa
   assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
   assert.match(again.stdout, /skipped Roadmap\/README\.md \(exists\)/);
   assert.doesNotMatch(again.stdout, /^wrote /m);
+});
+
+// kickoff-generator-path S1.3: both kickoff generators run from the PACKED kit in a project that holds nothing but a
+// Roadmap/ (no plugin, no scripts/), installed outside it the way npx's cache is. And they print exactly what the
+// groom skill's vendored copy prints for the same epic: one source, so a kit/plugin difference is a packaging hole.
+
+test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project, byte-identical to groom’s copy', { skip: !hasNpm && 'npm not found — could not look' }, () => {
+  const kitDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stage-')));
+  stageKit(kitDir);
+  const packDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-pack-')));
+  const pack = spawnSync('npm', ['pack', '--pack-destination', packDir, kitDir], { encoding: 'utf8', env: sealedEnv() });
+  assert.equal(pack.status, 0, pack.stderr);
+  const tgz = readdirSync(packDir).find((f) => f.endsWith('.tgz'));
+  const tools = realpathSync(mkdtempSync(join(tmpdir(), 'kit-tools-')));
+  const install = spawnSync('npm', ['install', '--offline', '--no-audit', '--no-fund', '--prefix', tools, join(packDir, tgz)], { encoding: 'utf8', env: sealedEnv() });
+  assert.equal(install.status, 0, install.stderr);
+  const bin = join(tools, 'node_modules', '.bin', 'gf-kit');
+
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'kit-kickoff-')));
+  const epic = join(repo, 'Roadmap', '09-x', 'kick-fixture');
+  mkdirSync(epic, { recursive: true });
+  writeFileSync(
+    join(epic, 'README.md'),
+    '---\nstatus: scaffolded\nslug: kick-fixture\ntitle: "Kick fixture"\nbuild_order: 3\n---\n\n# Epic: Kick fixture\n\n**Risk:** low\n'
+  );
+  writeFileSync(join(epic, 'sprint-1.md'), '# Kick fixture — Sprint 1: First\n\n**Status:** ⬜ not started\n\n### Story 1.1 — Alpha\n');
+  writeFileSync(join(epic, 'sprint-2.md'), '# Kick fixture — Sprint 2: Second\n\n**Status:** ⬜ not started\n\n### Story 2.1 — Beta\n');
+
+  const list = spawnSync(bin, ['--list'], { cwd: repo, encoding: 'utf8', env: sealedEnv() });
+  assert.match(list.stdout, /^emit-epic-kickoff$/m);
+  assert.match(list.stdout, /^emit-kickoff$/m);
+
+  // Run from a subdirectory: the installed kit finds the project by walking up from cwd.
+  mkdirSync(join(repo, 'docs'));
+  const groomCopy = (name) => join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor', `${name}.mjs`);
+  const runs = [
+    ['emit-epic-kickoff', ['--epic', 'kick-fixture'], /Start by pushing the epic branch[\s\S]*Kick fixture[\s\S]*Sprints/],
+    ['emit-epic-kickoff', ['--list'], /^kick-fixture {2}Kick fixture {2}\(scaffolded, #3\)$/m],
+    ['emit-kickoff', ['--epic', 'kick-fixture', '--sprint', '1'], /Start by pushing this sprint's branch[\s\S]*feat\/kick-fixture[\s\S]*Story 1\.1 — Alpha/],
+  ];
+  for (const [name, args, expected] of runs) {
+    const kit = spawnSync(bin, [name, ...args], { cwd: join(repo, 'docs'), encoding: 'utf8', env: sealedEnv() });
+    assert.equal(kit.status, 0, `gf-kit ${name} ${args.join(' ')}\n${kit.stdout}\n${kit.stderr}`);
+    assert.match(kit.stdout, expected, `gf-kit ${name} ${args.join(' ')}`);
+    // groom's vendored copy, run the way groom's Stage 8 runs it: from the project, no --repo-root.
+    const groom = spawnSync(process.execPath, [groomCopy(name), ...args], { cwd: repo, encoding: 'utf8', env: sealedEnv() });
+    assert.equal(groom.status, 0, groom.stderr);
+    assert.equal(kit.stdout, groom.stdout, `the kit and groom’s copy differ for ${name} ${args.join(' ')}`);
+  }
+  assert.equal(existsSync(join(repo, 'scripts')), false, 'nothing may be copied into the project');
 });
