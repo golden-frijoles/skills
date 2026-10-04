@@ -98,7 +98,7 @@ stop and hammer scope instead.
 It runs the plugin's bundled generator, which reads the epic README and every `sprint-N.md`, and puts the finished
 orchestrator prompt in your prompt box. Press enter. On a host without the plugin's mod, run the generator
 from the project root and paste its output: `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <epic-slug>`
-(the project's own `scripts/emit-epic-kickoff.mjs` always wins). Either way the epic
+(if the project has its own `scripts/emit-epic-kickoff.mjs`, run that instead). Either way the epic
 docs are the state, so the prompt is regenerated every time, never kept in a file. A hand-composed kickoff is where
 the architecture-lock pass gets summarised away. What it carries (SSOT: WAYS-OF-WORKING → *Epic-mode builds*, don't fork a second copy here):
 

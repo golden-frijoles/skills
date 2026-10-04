@@ -3,7 +3,7 @@
 // Planning-only helper for the `groom` skill (Stage 7). Makes the structure; you write the content.
 //
 // Usage:
-//   node skills/groom/scaffold-epic.mjs \
+//   node "$GROOM/scaffold-epic.mjs" \
 //     --slug checkout-state-hardening --area 02 \
 //     --macro 02-checkout-and-payments --title "Checkout state hardening" \
 //     --risk high --sprints "Durable payment state;Block ship before paid;One coupon-aware total"

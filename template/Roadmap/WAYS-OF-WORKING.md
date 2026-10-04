@@ -64,9 +64,9 @@ outcome genuinely changes the next one's scope). Six things make it work, and th
 4. **Merges are pre-authorized on green** in a named run: that removes the round-trip, not the gate or the
    review layers, and never extends to a new category of production mutation (TLS/IAM/secrets, money or
    entitlement writes, a new external dependency) — name those in one focused question.
-5. **Generate the kickoff, don't compose it** — `/build <slug>` in Claude Code with the plugin's mod; on any
-   other host, from the project root, `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` (the
-   project's own `scripts/emit-epic-kickoff.mjs` always wins). It reads the epic README and every sprint
+5. **Generate the kickoff, don't compose it** — `/build <slug>` in Claude Code with the plugin's mod; anywhere
+   else, from the project root, `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` (if the
+   project has its own `scripts/emit-epic-kickoff.mjs`, run that instead). It reads the epic README and every sprint
    file and prints the orchestrator prompt.
    Hand-composing it is how the architecture lock gets summarised away and the review policy silently
    reverts to whatever the composing agent remembered.
