@@ -88,6 +88,7 @@ jobs:
       - name: groom generator tests
         run: |
           node --test \
+            plugins/golden-frijoles/skills/groom/fund.test.mjs \
             plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs \
             plugins/golden-frijoles/skills/groom/session-budget.test.mjs \
             plugins/golden-frijoles/skills/groom/session-line.test.mjs \

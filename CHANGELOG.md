@@ -7,6 +7,33 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-10-04
+
+### Added
+- **The approval gate is the betting table** (fund-at-approval). `groom`'s Stage 7 ends with one question carrying a
+  Bet block (appetite · quote · cycle · position · displaced): **approve** funds the bet and scaffolds it in the same
+  commit; **approve, don't fund** leaves the seed `ready` and scaffolds nothing.
+- **`groom/fund.mjs`** places a bet: one row in the month's cycle file (`Roadmap/bets/wave-YYYY-MM.md`, created on
+  first use), `underwritten_by:` (the bare cycle name) and `appetite:` on the seed, and a `build_order` from `--next`
+  or `--after <slug>`. Only the queue (live, funded work) renumbers; a shipped or archived number never moves. Run
+  with no placement on a funded slug, it re-bets an L bet at its wave boundary, position kept.
+- **`scaffold-epic.mjs --slug <seed>`** scaffolds a fixed-scope seed from the seed alone: title, area, macro, type and
+  risk from its frontmatter, one sprint whose stories are its acceptance criteria. It copies the seed's
+  `build_order` into the README, sets the seed's `epic:` and `status: scaffolded`, and prints one commit that holds
+  the cycle row and the board too.
+- **The epic kickoff for an L bet** carries the one-line re-bet the builder asks at each wave boundary.
+
+### Changed
+- **`build-order.mjs` fails a live bet with no funding record**: an epic scaffolded or in progress, or a queued seed,
+  whose `underwritten_by:` is missing or names no `Roadmap/bets/` file. A project upgrading onto this release funds
+  its live work once (`fund.mjs`, or a backfill cycle file) before its board passes again.
+- **`scaffold-epic.mjs` refuses an unfunded seed** (one whose `underwritten_by:` is empty) and prints the `fund.mjs`
+  command. With no seed file at all, it scaffolds as before.
+- **`emit-epic-kickoff` / `emit-kickoff` on a seed with no epic** say so and print the scaffold command, instead of
+  "no epic found" (dogfood F33).
+- **`priority:` is retired.** The extractor stops emitting it, the seed template and the docs drop it; the cycle row
+  is the intent and the record. `underwritten_by` is read from the epic README first, then the seed.
+
 ## [0.27.2] - 2026-10-04
 
 ### Fixed
