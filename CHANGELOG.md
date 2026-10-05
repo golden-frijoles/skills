@@ -15,10 +15,11 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   commit; **approve, don't fund** leaves the seed `ready` and scaffolds nothing.
 - **`groom/fund.mjs`** places a bet: one row in the month's cycle file (`Roadmap/bets/wave-YYYY-MM.md`, created on
   first use), `underwritten_by:` (the bare cycle name) and `appetite:` on the seed, and a `build_order` from `--next`
-  or `--after <slug>`. Only the queue (live, funded work) renumbers; a shipped or archived number never moves. Run
-  with no placement on a funded slug, it re-bets an L bet at its wave boundary, position kept.
+  or `--after <slug>`. Only the queue (live, funded work) renumbers; a shipped or archived number never moves. On a
+  bet already in the queue it re-bets (no placement: a new cycle row, position kept) or reorders (a placement: the
+  funding record is left alone).
 - **`scaffold-epic.mjs --slug <seed>`** scaffolds a fixed-scope seed from the seed alone: title, area, macro, type and
-  risk from its frontmatter, one sprint whose stories are its acceptance criteria. It copies the seed's
+  risk from its frontmatter, one sprint whose stories are its acceptance criteria (bullets or a numbered list). It copies the seed's
   `build_order` into the README, sets the seed's `epic:` and `status: scaffolded`, and prints one commit that holds
   the cycle row and the board too.
 - **The epic kickoff for an L bet** carries the one-line re-bet the builder asks at each wave boundary.

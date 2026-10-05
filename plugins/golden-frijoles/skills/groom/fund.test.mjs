@@ -126,7 +126,7 @@ test('a re-bet keeps the position and moves underwritten_by to the new month', (
 test('refusals: no placement for an unplaced bet, no displaced, a shipped slug, --dry-run writes nothing', () => {
   const root = fixture();
   try {
-    assert.match(run(root, ['--slug', 'new', '--displaced', 'x']).stderr, /no build position yet — pass --next or --after/);
+    assert.match(run(root, ['--slug', 'new', '--displaced', 'x']).stderr, /not in the queue yet — pass --next or --after/);
     assert.match(run(root, ['--slug', 'new', '--next']).stderr, /missing --displaced/);
     assert.match(run(root, ['--slug', 'old', '--displaced', 'x']).stderr, /is shipped/);
     const before = order(root);
@@ -155,6 +155,26 @@ test('review #271: a $-pattern in frontmatter survives an edit; a lowercase seed
     assert.equal(fm(root, 'Roadmap/00-ideas/seeds/new.md', 'appetite'), 'S');
     assert.match(run(root, ['--slug', '../../etc/x', '--displaced', 'x', '--next']).stderr, /a slug is kebab-case/);
     assert.match(run(root, ['--slug', 'new', '--displaced', 'x', '--after', '../a']).stderr, /a slug is kebab-case/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('review #271: a legacy number is not a position, a reorder keeps the funding record, a raw seed is refused', () => {
+  const root = fixture();
+  try {
+    // `legacy` is ready with a leftover #14: no placement means no position, never a "re-bet" at #14.
+    assert.match(run(root, ['--slug', 'legacy', '--displaced', 'x']).stderr, /not in the queue yet/);
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/legacy.md', 'status'), 'ready');
+    // `c` is queued: a placement only reorders — no cycle row, underwritten_by untouched, no --displaced needed.
+    const r = run(root, ['--slug', 'a', '--after', 'c']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /Reordered a \(funding record unchanged\)/);
+    assert.deepEqual(order(root), { b: '60', c: '61', a: '63', old: '62', new: null, legacy: '14' });
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/a.md', 'underwritten_by'), 'wave-old');
+    assert.equal(existsSync(join(root, 'Roadmap/bets/wave-2026-10.md')), false);
+    writeFileSync(join(root, 'Roadmap/00-ideas/seeds/rough.md'), seed('rough', { status: 'raw' }));
+    assert.match(run(root, ['--slug', 'rough', '--displaced', 'x', '--next']).stderr, /is raw — groom it/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

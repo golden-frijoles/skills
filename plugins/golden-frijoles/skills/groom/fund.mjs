@@ -6,7 +6,8 @@
 // Usage:
 //   node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next            # front of the queue
 //   node "$GROOM/fund.mjs" --slug <slug> --displaced "<…>" --after <queued-slug>              # behind that bet
-//   node "$GROOM/fund.mjs" --slug <slug> --displaced "<…>"                                    # re-bet: position kept
+//   node "$GROOM/fund.mjs" --slug <queued-slug> --displaced "<…>"                             # re-bet: position kept
+//   node "$GROOM/fund.mjs" --slug <queued-slug> --after <slug>                                 # reorder: funding untouched
 //
 // Flags: --appetite S|M|L (default: the seed's) · --cycle <name> (default: this month's `wave-YYYY-MM`)
 //        · --date YYYY-MM-DD (default: today) · --repo-root <path> (default: cwd) · --dry-run (print, write nothing)
@@ -20,8 +21,9 @@
 //    queue's lowest number and skips every number a non-queue item holds, so a shipped or archived `build_order`
 //    never changes and never collides — history is fixed, only the queue moves.
 //
-// A slug already funded and placed, run again with no placement flag, is a RE-BET (an L bet at its wave boundary):
-// a new row in this month's cycle, `underwritten_by` moved to it, position kept.
+// A bet already in the queue, run again with no placement flag, is a RE-BET (an L bet at its wave boundary): a new row
+// in this month's cycle, `underwritten_by` moved to it, position kept. With a placement it is a REORDER: the queue moves
+// and the funding record is left alone. A `raw` seed is refused — it has no pitch to fund.
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -169,15 +171,22 @@ function main() {
   const target = items.find((i) => i.slug === slug);
   if (!target) die(`no seed Roadmap/00-ideas/seeds/${slug}.md and no epic Roadmap/*/${slug}/ — groom it first`);
   if (['shipped', 'archived'].includes(target.status)) die(`"${slug}" is ${target.status} — there is nothing left to fund`);
+  if (!inQueue(target) && target.status === 'raw') die(`"${slug}" is raw — groom it to a pitch (status: ready) before it can be funded`);
   // The doc that carries the funding: the seed (its own, or the epic's mirror), else a seedless epic's README.
   const fundDoc = target.kind === 'seed' ? target : target.mirror || target;
 
-  const appetite = (typeof args.appetite === 'string' ? args.appetite : readField(fundDoc.text, 'appetite'))?.toUpperCase() ?? null;
-  if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
-  if (!args.displaced || args.displaced === true) die('missing --displaced "<what stays parked because of this bet>" — the whole point of the row');
-
+  // Three modes, decided by whether the bet is already in the queue (review #271):
+  //   fund    — not in the queue: a placement is required, and a leftover legacy number never counts as a position;
+  //   re-bet  — in the queue, no placement: a new cycle row, position kept (an L bet at its wave boundary);
+  //   reorder — in the queue, with a placement: the queue moves, the funding record is left alone.
   const placement = args.next ? { next: true } : typeof args.after === 'string' ? { after: args.after } : null;
-  if (!placement && target.build_order == null) die(`"${slug}" has no build position yet — pass --next or --after <slug>`);
+  const mode = inQueue(target) ? (placement ? 'reorder' : 're-bet') : 'fund';
+  if (mode === 'fund' && !placement) die(`"${slug}" is not in the queue yet — pass --next or --after <slug> to place it`);
+  const appetite = (typeof args.appetite === 'string' ? args.appetite : readField(fundDoc.text, 'appetite'))?.toUpperCase() ?? null;
+  if (mode !== 'reorder') {
+    if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
+    if (!args.displaced || args.displaced === true) die('missing --displaced "<what stays parked because of this bet>" — the whole point of the row');
+  }
   let changes = new Map();
   if (placement) {
     try {
@@ -189,8 +198,8 @@ function main() {
 
   const writes = new Map(); // path → new text
   const edit = (doc, fn) => writes.set(doc.path, fn(writes.get(doc.path) ?? doc.text));
-  edit(fundDoc, (t) => setField(setField(t, 'underwritten_by', cycle), 'appetite', appetite));
-  if (target.kind === 'seed' && ['raw', 'ready'].includes(target.status)) edit(target, (t) => setField(t, 'status', 'queued'));
+  if (mode !== 'reorder') edit(fundDoc, (t) => setField(setField(t, 'underwritten_by', cycle), 'appetite', appetite));
+  if (target.kind === 'seed' && target.status === 'ready') edit(target, (t) => setField(t, 'status', 'queued'));
   for (const [s, n] of changes) {
     const it = items.find((i) => i.slug === s);
     edit(it, (t) => setField(t, 'build_order', n));
@@ -201,15 +210,16 @@ function main() {
   const cyclePath = join(root, 'Roadmap', 'bets', `${cycle}.md`);
   const cycleText = existsSync(cyclePath) ? readFileSync(cyclePath, 'utf8') : cycleHeader(cycle, date);
   const title = readField(fundDoc.text, 'title') ?? slug;
-  const already = cycleText.split('\n').some((l) => l.startsWith(`| **${slug}**`));
+  const already = mode === 'reorder' || cycleText.split('\n').some((l) => l.startsWith(`| **${slug}**`));
   if (!already) {
     const row = `| **${slug}**: ${cell(title)} | **${appetite}** | ${cell(args.displaced)} |`;
     writes.set(cyclePath, `${cycleText.replace(/\n*$/, '\n')}${row}\n`);
   }
 
   const rel = (p) => p.slice(root.length + 1);
-  console.log(`${args['dry-run'] ? '[dry-run] ' : ''}Funded ${slug} in ${cycle} (appetite ${appetite}).`);
-  console.log(already ? `  cycle: Roadmap/bets/${cycle}.md already has a row for ${slug} — not added twice` : `  cycle: ${existsSync(cyclePath) ? 'row added to' : 'opened'} Roadmap/bets/${cycle}.md`);
+  const head = mode === 'reorder' ? `Reordered ${slug} (funding record unchanged)` : `Funded ${slug} in ${cycle} (appetite ${appetite}${mode === 're-bet' ? ', a re-bet' : ''})`;
+  console.log(`${args['dry-run'] ? '[dry-run] ' : ''}${head}.`);
+  if (mode !== 'reorder') console.log(already ? `  cycle: Roadmap/bets/${cycle}.md already has a row for ${slug} — not added twice` : `  cycle: ${existsSync(cyclePath) ? 'row added to' : 'opened'} Roadmap/bets/${cycle}.md`);
   if (placement) {
     const finalN = changes.get(slug) ?? target.build_order;
     console.log(`  position: #${finalN}${changes.size > 1 ? ` — the queue renumbered: ${[...changes].filter(([s]) => s !== slug).map(([s, n]) => `${s} → #${n}`).join(', ')}` : ''}`);

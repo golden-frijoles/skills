@@ -17,19 +17,23 @@ Bet: <slug> · appetite <A> · quote $<lo>–<hi> · cycle wave-YYYY-MM · posit
 ## `fund.mjs` — the bet
 
 ```
-node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next      # front of the queue
+node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next      # fund: front of the queue
 node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --after <slug>
-node "$GROOM/fund.mjs" --slug <slug> --displaced "<the next wave displaces…>"       # re-bet, position kept
+node "$GROOM/fund.mjs" --slug <queued-slug> --displaced "<the next wave displaces…>"  # re-bet, position kept
+node "$GROOM/fund.mjs" --slug <queued-slug> --after <slug>                           # reorder only
 ```
+
+The mode follows from whether the bet is already in the queue: **fund** (not yet: a placement is required), **re-bet**
+(queued, no placement) or **reorder** (queued, with a placement: no cycle row, `underwritten_by` untouched).
 
 - Appends one row (Bet · Appetite · Displaced) to the month's cycle file, creating it on first use. A second run for
   the same slug in the same cycle adds nothing.
-- Sets the seed's `underwritten_by:` (the bare cycle name) and `appetite:`, and moves a `ready` seed to `queued`.
+- Sets the seed's `underwritten_by:` (the bare cycle name) and `appetite:`, and moves a `ready` seed to `queued`. A
+  `raw` seed is refused: it has no pitch yet.
 - `--next` / `--after` renumber **the queue only**: live, funded work (epics scaffolded or in progress, seeds
   queued). Numbering starts at the queue's lowest number and skips every number a shipped or archived item holds, so
-  history never moves. A `ready` seed's leftover number is not a queue position.
-- No placement flag on a funded slug is a **re-bet**: an L bet at its wave boundary, position kept. The epic kickoff
-  of an L bet tells the builder to ask that one line when it stops at the boundary.
+  history never moves. A `ready` seed's leftover number is not a queue position, so it cannot be "re-bet" in place.
+- The epic kickoff of an L bet tells the builder to ask the one-line re-bet when it stops at a wave boundary.
 - `--dry-run` prints the plan and writes nothing. `--cycle <name>` and `--date` override the month.
 
 ## `scaffold-epic.mjs` — the scaffold, after the bet
@@ -37,7 +41,8 @@ node "$GROOM/fund.mjs" --slug <slug> --displaced "<the next wave displaces…>" 
 - Refuses a seed with no `underwritten_by:` and prints the `fund.mjs` command. With no seed file at all it scaffolds
   as it always did, from its flags.
 - `--slug <seed>` alone reads title, area, type and risk from the seed, the macro from the one `Roadmap/<area>-*`
-  directory, and makes ONE sprint whose stories are the seed's `## Acceptance criteria` bullets — the fixed-scope
+  directory, and makes ONE sprint whose stories are the items under the seed's `## Acceptance…` heading (bullets or
+  a numbered list; a section with neither warns) — the fixed-scope
   path (dogfood F33). Sharpen each story's role and outcome after.
 - Copies the seed's `build_order`, quote and intent score into the README, and sets the seed's `epic:` and
   `status: scaffolded`.

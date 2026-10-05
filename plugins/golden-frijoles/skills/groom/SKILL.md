@@ -236,8 +236,8 @@ URLs, one action and one observable result each, money/auth steps owed by name. 
 For a **spike**: a short investigation prompt ending in a written decision — no branch, no build.
 
 ## Stage 9 — Close the loop
-The build order was persisted at the gate (`fund.mjs`); to reorder the queue later, place a bet again with
-`--next` / `--after <slug>`. **Regenerate the board** (`node scripts/build-order.mjs`, never hand-tick it), and deep-groom the next ⬜ item while the budget line says keep
+The build order was persisted at the gate (`fund.mjs`); to reorder the queue later, run it on a queued bet with
+`--next` / `--after <slug>` (a reorder: the funding record stays). **Regenerate the board** (`node scripts/build-order.mjs`, never hand-tick it), and deep-groom the next ⬜ item while the budget line says keep
 going; on hand off, emit its next-session prompt instead. Cadence + template: `references/backlog-cadence.md`.
 
 ## Guardrails
