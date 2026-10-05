@@ -133,7 +133,9 @@ const cycleOf = (v) => String(v).replace(/^Roadmap\/bets\//, '').replace(/\.md$/
 const liveBets = rows.filter(
   (r) => (r.grain === 'Epic' && ['Scaffolded', 'In progress'].includes(r.status)) || (r.grain === 'Seed' && r.status === 'Queued')
 );
-const unpaid = liveBets.filter((r) => !r.underwritten_by || !existsSync(join(BETS, `${cycleOf(r.underwritten_by)}.md`)));
+// A cycle name is kebab-case: anything else (a `/`, a `..`) names no cycle file and is never turned into a path.
+const paidBy = (r) => r.underwritten_by && /^[a-z0-9][a-z0-9-]*$/.test(cycleOf(r.underwritten_by)) && existsSync(join(BETS, `${cycleOf(r.underwritten_by)}.md`));
+const unpaid = liveBets.filter((r) => !paidBy(r));
 if (unpaid.length) {
   console.error('Live bets with no funding record (`underwritten_by:` must name a Roadmap/bets/<cycle>.md):');
   for (const r of unpaid) console.error(`  - ${r.doc_link}${r.underwritten_by ? ` — no Roadmap/bets/${cycleOf(r.underwritten_by)}.md` : ''}`);

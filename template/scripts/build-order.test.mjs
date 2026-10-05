@@ -155,6 +155,8 @@ test('a live bet with no funding record fails the board; a shipped one does not 
     r = run(root);
     assert.equal(r.status, 1);
     assert.match(r.stderr, /unpaid\/README\.md — no Roadmap\/bets\/wave-nowhere\.md/);
+    epic(root, '02-commercial', 'unpaid', 'in-progress', 41, '"../bets/wave-test"');
+    assert.equal(run(root).status, 1, 'a cycle name that is not kebab-case names no cycle, even when the path exists');
     epic(root, '02-commercial', 'unpaid', 'in-progress', 41, '"Roadmap/bets/wave-test.md"');
     assert.equal(run(root).status, 0, 'the legacy path form names the same cycle file');
   } finally {
