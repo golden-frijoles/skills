@@ -144,3 +144,18 @@ test('setField replaces in place, keeps a comment, quotes nothing it was not giv
   const out = setField(setField(t, 'status', 'queued'), 'underwritten_by', 'wave-2026-10');
   assert.equal(out, '---\nstatus: queued  # the enum\ntitle: "A: b # c"\nunderwritten_by: wave-2026-10\n---\nbody\n');
 });
+
+test('review #271: a $-pattern in frontmatter survives an edit; a lowercase seed appetite is read; a path slug is refused', () => {
+  const t = '---\ntitle: "Costs $& and $\' and $` stay"\nstatus: ready\n---\n';
+  assert.equal(readField(setField(t, 'status', 'queued'), 'title'), "Costs $& and $' and $` stay");
+  const root = fixture();
+  try {
+    writeFileSync(join(root, 'Roadmap/00-ideas/seeds/new.md'), seed('new', { status: 'ready', appetite: 's' }));
+    assert.equal(run(root, ['--slug', 'new', '--displaced', 'x', '--next']).status, 0);
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/new.md', 'appetite'), 'S');
+    assert.match(run(root, ['--slug', '../../etc/x', '--displaced', 'x', '--next']).stderr, /a slug is kebab-case/);
+    assert.match(run(root, ['--slug', 'new', '--displaced', 'x', '--after', '../a']).stderr, /a slug is kebab-case/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

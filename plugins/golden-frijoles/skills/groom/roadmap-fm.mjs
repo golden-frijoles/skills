@@ -1,6 +1,7 @@
 // roadmap-fm.mjs — read and edit one field of a Roadmap doc's frontmatter, in place (zero deps).
 // Shared by the groom helpers that write funding and lifecycle (fund.mjs, scaffold-epic.mjs). Line-level on purpose:
 // a value is replaced where it sits and its trailing `# comment` is kept, so an edit never reflows a hand-written block.
+// Every replacement is a FUNCTION: a string replacement expands `$&`, `$'` and `` $` `` inside a title or a quote.
 
 const FM = /^---\n([\s\S]*?)\n---(?:\n|$)/;
 
@@ -41,11 +42,11 @@ export function setField(text, key, value) {
       const pad = Math.max(1, oldValue.length + /^\s*/.exec(comment[1])[0].length - String(value).length);
       tail = ' '.repeat(pad) + comment[1].trimStart();
     }
-    next = fm.replace(keyLine(key), `${key}: ${value}${tail}`);
+    next = fm.replace(keyLine(key), () => `${key}: ${value}${tail}`);
   } else {
     next = `${fm}\n${key}: ${value}`;
   }
-  return text.replace(FM, `---\n${next}\n---\n`);
+  return text.replace(FM, () => `---\n${next}\n---\n`);
 }
 
 /** `text` with the `key` line removed from the frontmatter (no-op when absent). */
@@ -53,7 +54,7 @@ export function dropField(text, key) {
   const m = FM.exec(text);
   if (!m) return text;
   const next = m[1].split('\n').filter((l) => !new RegExp(`^${key}:`).test(l)).join('\n');
-  return text.replace(FM, `---\n${next}\n---\n`);
+  return text.replace(FM, () => `---\n${next}\n---\n`);
 }
 
 /** A double-quoted YAML scalar (a JSON string is valid YAML), so a colon or `#` can never change the parse. */

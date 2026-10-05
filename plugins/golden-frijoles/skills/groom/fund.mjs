@@ -162,6 +162,9 @@ function main() {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(cycle)) die(`--cycle must be a kebab name like wave-2026-10, got "${cycle}"`);
 
   const slug = String(args.slug);
+  // The slug names files: a `/` or `..` would reach outside Roadmap/ (security lens, #271).
+  for (const s of [slug, typeof args.after === 'string' ? args.after : 'x'])
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(s)) die(`a slug is kebab-case (got "${s}")`);
   const items = readItems(root);
   const target = items.find((i) => i.slug === slug);
   if (!target) die(`no seed Roadmap/00-ideas/seeds/${slug}.md and no epic Roadmap/*/${slug}/ — groom it first`);
@@ -169,7 +172,7 @@ function main() {
   // The doc that carries the funding: the seed (its own, or the epic's mirror), else a seedless epic's README.
   const fundDoc = target.kind === 'seed' ? target : target.mirror || target;
 
-  const appetite = typeof args.appetite === 'string' ? args.appetite.toUpperCase() : readField(fundDoc.text, 'appetite');
+  const appetite = (typeof args.appetite === 'string' ? args.appetite : readField(fundDoc.text, 'appetite'))?.toUpperCase() ?? null;
   if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
   if (!args.displaced || args.displaced === true) die('missing --displaced "<what stays parked because of this bet>" — the whole point of the row');
 
