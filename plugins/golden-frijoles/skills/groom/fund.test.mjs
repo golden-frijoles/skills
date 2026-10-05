@@ -201,3 +201,26 @@ test('review #271 round 2: an epic scaffolded before funding is FUNDED by --next
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('review #271 round 3: funded and placed are read README-first, seed-fallback — as the board reads them', () => {
+  const root = fixture();
+  try {
+    // README has no number, its seed holds #59 and the funding: placed and funded → a reorder, never a second funding.
+    writeFileSync(join(root, 'Roadmap/09-x/a/README.md'), epic('a', 'scaffolded', 'null'));
+    writeFileSync(join(root, 'Roadmap/00-ideas/seeds/a.md'), seed('a', { status: 'scaffolded', epic: '09-x/a', n: 59, uw: 'wave-old' }));
+    let r = run(root, ['--slug', 'a', '--next']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^Reordered a/m);
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/a.md', 'underwritten_by'), 'wave-old');
+    // The README carries the funding and the seed does not: a re-bet writes the README, the doc the board reads.
+    writeFileSync(join(root, 'Roadmap/09-x/c/README.md'), epic('c', 'scaffolded', 63).replace('build_order: 63', 'build_order: 63\nunderwritten_by: wave-old'));
+    writeFileSync(join(root, 'Roadmap/00-ideas/seeds/c.md'), seed('c', { status: 'scaffolded', epic: '09-x/c', n: 63 }));
+    r = run(root, ['--slug', 'c', '--displaced', 'z']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /a re-bet/);
+    assert.equal(fm(root, 'Roadmap/09-x/c/README.md', 'underwritten_by'), 'wave-2026-10');
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/c.md', 'underwritten_by'), null);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

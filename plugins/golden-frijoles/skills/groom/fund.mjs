@@ -81,7 +81,9 @@ export function readItems(root) {
       const key = `${macro}/${slug}`;
       const mirror = [...seeds.values()].find((s) => s.epic === key) || null;
       if (mirror) mirrored.add(mirror.slug);
-      items.push({ slug, kind: 'epic', path, text, epicKey: key, mirror, status: readField(text, 'status'), build_order: intOrNull(readField(text, 'build_order')) });
+      // The README's number first, its seed's as the fallback — exactly as the extractor (and so the board) reads it.
+      const order = intOrNull(readField(text, 'build_order')) ?? (mirror ? intOrNull(readField(mirror.text, 'build_order')) : null);
+      items.push({ slug, kind: 'epic', path, text, epicKey: key, mirror, status: readField(text, 'status'), build_order: order });
     }
   }
   for (const s of seeds.values()) {
@@ -173,7 +175,10 @@ function main() {
   if (['shipped', 'archived'].includes(target.status)) die(`"${slug}" is ${target.status} — there is nothing left to fund`);
   if (!inQueue(target) && target.status === 'raw') die(`"${slug}" is raw — groom it to a pitch (status: ready) before it can be funded`);
   // The doc that carries the funding: the seed (its own, or the epic's mirror), else a seedless epic's README.
-  const fundDoc = target.kind === 'seed' ? target : target.mirror || target;
+  // An epic README's own `underwritten_by` wins, as the extractor reads it (review #271 round 3); a doc the board does
+  // not read is never the one funded, so a bet can never be funded twice through two docs.
+  const fundDoc =
+    target.kind === 'seed' ? target : readField(target.text, 'underwritten_by') != null ? target : target.mirror || target;
 
   // Three modes, decided by whether the bet is FUNDED and PLACED (review #271, rounds 1–2):
   //   fund    — no funding record yet: written now. It needs a placement unless it already holds a queue position (an
@@ -185,7 +190,9 @@ function main() {
   const funded = readField(fundDoc.text, 'underwritten_by') != null;
   const mode = funded && placed ? (placement ? 'reorder' : 're-bet') : 'fund';
   if (mode === 'fund' && !placement && !placed) die(`"${slug}" is not in the queue yet — pass --next or --after <slug> to place it`);
-  const appetite = (typeof args.appetite === 'string' ? args.appetite : readField(fundDoc.text, 'appetite'))?.toUpperCase() ?? null;
+  // Appetite, like the extractor: the flag, else the README's own, else its seed's.
+  const docAppetite = readField(fundDoc.text, 'appetite') ?? (target.kind === 'epic' ? readField(target.text, 'appetite') ?? (target.mirror ? readField(target.mirror.text, 'appetite') : null) : null);
+  const appetite = (typeof args.appetite === 'string' ? args.appetite : docAppetite)?.toUpperCase() ?? null;
   if (mode !== 'reorder') {
     if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
     if (!args.displaced || args.displaced === true) die('missing --displaced "<what stays parked because of this bet>" — the whole point of the row');

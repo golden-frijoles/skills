@@ -23,9 +23,10 @@ node "$GROOM/fund.mjs" --slug <queued-slug> --displaced "<the next wave displace
 node "$GROOM/fund.mjs" --slug <queued-slug> --after <slug>                           # reorder only
 ```
 
-The mode follows from whether the bet is funded and placed: **fund** (no `underwritten_by` yet: written now; a placement
-is required unless it already holds a queue position), **re-bet** (funded and placed, no placement flag) or
-**reorder** (funded and placed, with a placement: no cycle row, `underwritten_by` untouched).
+The mode follows from whether the bet is funded and placed, both read README-first then seed, as the board reads
+them: **fund** (not both — the funding is written now; a placement is required unless it already holds a queue
+position), **re-bet** (funded and placed, no placement flag) or **reorder** (funded and placed, with a placement: no
+cycle row, `underwritten_by` untouched). An old `ready` seed with a leftover number is funded afresh when placed.
 
 - Appends one row (Bet · Appetite · Displaced) to the month's cycle file, creating it on first use. A second run for
   the same slug in the same cycle adds nothing.
