@@ -224,3 +224,19 @@ test('review #271 round 3: funded and placed are read README-first, seed-fallbac
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('review #271 round 4: an epic README appetite wins over its seed, and the re-bet records the one the board shows', () => {
+  const root = fixture();
+  try {
+    writeFileSync(join(root, 'Roadmap/09-x/a/README.md'), epic('a', 'scaffolded', 60).replace('build_order: 60', 'appetite: L\nbuild_order: 60'));
+    // the seed (from the fixture) is funded, appetite S
+    const r = run(root, ['--slug', 'a', '--displaced', 'wave 2']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(readFileSync(join(root, 'Roadmap/bets/wave-2026-10.md'), 'utf8'), /\| \*\*a\*\*: a \| \*\*L\*\* \|/);
+    assert.equal(fm(root, 'Roadmap/09-x/a/README.md', 'appetite'), 'L');
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/a.md', 'appetite'), 'S');
+    assert.equal(fm(root, 'Roadmap/00-ideas/seeds/a.md', 'underwritten_by'), 'wave-2026-10');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

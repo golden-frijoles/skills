@@ -190,8 +190,10 @@ function main() {
   const funded = readField(fundDoc.text, 'underwritten_by') != null;
   const mode = funded && placed ? (placement ? 'reorder' : 're-bet') : 'fund';
   if (mode === 'fund' && !placement && !placed) die(`"${slug}" is not in the queue yet — pass --next or --after <slug> to place it`);
-  // Appetite, like the extractor: the flag, else the README's own, else its seed's.
-  const docAppetite = readField(fundDoc.text, 'appetite') ?? (target.kind === 'epic' ? readField(target.text, 'appetite') ?? (target.mirror ? readField(target.mirror.text, 'appetite') : null) : null);
+  // Appetite exactly as the extractor reads it: the flag, else an epic README's own, else the seed's. It is written back
+  // to the doc that supplied it (the README when it has one), so the cycle row and the board never disagree.
+  const appetiteDoc = target.kind === 'epic' && readField(target.text, 'appetite') != null ? target : fundDoc;
+  const docAppetite = readField(appetiteDoc.text, 'appetite') ?? (target.mirror ? readField(target.mirror.text, 'appetite') : null);
   const appetite = (typeof args.appetite === 'string' ? args.appetite : docAppetite)?.toUpperCase() ?? null;
   if (mode !== 'reorder') {
     if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
@@ -208,7 +210,10 @@ function main() {
 
   const writes = new Map(); // path → new text
   const edit = (doc, fn) => writes.set(doc.path, fn(writes.get(doc.path) ?? doc.text));
-  if (mode !== 'reorder') edit(fundDoc, (t) => setField(setField(t, 'underwritten_by', cycle), 'appetite', appetite));
+  if (mode !== 'reorder') {
+    edit(fundDoc, (t) => setField(t, 'underwritten_by', cycle));
+    edit(appetiteDoc, (t) => setField(t, 'appetite', appetite));
+  }
   if (target.kind === 'seed' && target.status === 'ready') edit(target, (t) => setField(t, 'status', 'queued'));
   for (const [s, n] of changes) {
     const it = items.find((i) => i.slug === s);
