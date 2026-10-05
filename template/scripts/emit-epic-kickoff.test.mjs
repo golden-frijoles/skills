@@ -224,3 +224,21 @@ test('listEpics: startable only, build order first, ties and unordered epics by 
   const out = listEpics('/r', { read: (p) => readmes[p], exists, list: (p) => dirs[p] ?? [] });
   assert.deepEqual(out.map((e) => e.slug), ['alpha', 'beta', 'zeta', 'xray', 'yank']);
 });
+
+test("the L re-bet line finds the epic's seed by its epic: pointer, even when the seed's slug differs", async () => {
+  const { epicKickoffFromDir } = await import('./lib/epic-kickoff.mjs');
+  const files = {
+    '/r/Roadmap/09-x/big/README.md': '---\nstatus: scaffolded\n---\n# Epic: Big\n\n> **Risk:** low\n',
+    '/r/Roadmap/09-x/big/sprint-1.md': '# Big — Sprint 1: One\n\n### Story 1.1 — A\n',
+    '/r/Roadmap/00-ideas/seeds/big-actuals.md': '---\nslug: big-actuals\nappetite: L\nepic: "09-x/big"\n---\n',
+    '/r/Roadmap/00-ideas/seeds/other.md': '---\nslug: other\nappetite: S\nepic: "09-x/other"\n---\n',
+  };
+  const read = (p) => {
+    const k = p.replace(/\/[^/]+\/\.\.\/\.\.\//, '/');
+    if (!(k in files)) throw new Error(`ENOENT ${k}`);
+    return files[k];
+  };
+  const list = (d) => Object.keys(files).filter((k) => k.startsWith(`${d.replace(/\/[^/]+\/\.\.\/\.\.\//, '/')}/`)).map((k) => k.split('/').pop());
+  const { kickoff } = epicKickoffFromDir({ macro: '09-x', slug: 'big', dir: '/r/Roadmap/09-x/big', read, list });
+  assert.match(kickoff, /L bet:.*fund\.mjs --slug big /);
+});

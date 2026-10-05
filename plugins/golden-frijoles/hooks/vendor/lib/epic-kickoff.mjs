@@ -189,10 +189,17 @@ export function parseAppetite(text) {
   return /^appetite:\s*"?([SML])"?\s*(?:#.*)?$/m.exec(fm)?.[1] ?? null;
 }
 
-// The seed beside an epic dir (`Roadmap/<macro>/<slug>/` → `Roadmap/00-ideas/seeds/<slug>.md`), or '' when absent.
-function readSeed(read, dir, slug) {
+// The epic's seed: the one whose `epic:` names `<macro>/<slug>` (as the extractor matches it — a seed's slug may differ
+// from its epic's), else `seeds/<slug>.md`; '' when there is none.
+function readSeed(read, list, dir, macro, slug) {
+  const seeds = join(dir, '..', '..', '00-ideas', 'seeds');
+  const pointer = new RegExp(`^epic:\\s*"?${macro}/${slug}"?\\s*(?:#.*)?$`, 'm');
   try {
-    return read(join(dir, '..', '..', '00-ideas', 'seeds', `${slug}.md`));
+    for (const name of list(seeds).filter((n) => String(n).endsWith('.md'))) {
+      const text = read(join(seeds, String(name)));
+      if (pointer.test(/^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '')) return text;
+    }
+    return read(join(seeds, `${slug}.md`));
   } catch {
     return '';
   }
@@ -283,7 +290,7 @@ export function epicKickoffFromDir({
       sprints,
       templateText: EPIC_KICKOFF_TEMPLATE,
       texts: [readmeText, ...sprints.map((s) => s.text)],
-      appetite: parseAppetite(readmeText) ?? parseAppetite(readSeed(read, dir, slug)),
+      appetite: parseAppetite(readmeText) ?? parseAppetite(readSeed(read, list, dir, macro, slug)),
     }),
   };
 }
