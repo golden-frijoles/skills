@@ -239,3 +239,15 @@ test('review #271: criteria holding $-patterns are copied verbatim; no seed → 
     rmSync(bare, { recursive: true, force: true });
   }
 });
+
+test('review #271: numbered acceptance items and an "## Acceptance checks" heading become stories too', () => {
+  const numbered = SEED.replace(/## Acceptance criteria\n[\s\S]*?\n\n/, () => '## Acceptance checks (the product owner runs these)\n1. First numbered.\n2) Second numbered,\n   wrapped.\n\n');
+  const { root, r, dir } = scaffoldSeed(numbered);
+  try {
+    assert.equal(r.status, 0, r.stderr);
+    const sprint = parseDocFrontmatter(readFileSync(join(dir, 'sprint-1.md'), 'utf8'));
+    assert.deepEqual(sprint.data.stories.map((s) => s.i_want), ['First numbered.', 'Second numbered, wrapped.']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -86,14 +86,20 @@ function macroFor(area) {
   return dirs.length === 1 ? dirs[0] : null;
 }
 
-/** The seed's `## Acceptance criteria` bullets, one string each (wrapped lines joined), or []. */
+/**
+ * The items under the seed's `## Acceptance…` heading (any suffix: "criteria", "checks"…), one string each, wrapped
+ * lines joined. Bullets (`-`, `*`) and numbered items (`1.`, `1)`) both count: seeds use both (review #271).
+ */
 function acceptanceCriteria(text) {
-  const section = /^## Acceptance criteria[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(text ?? '')?.[1] ?? '';
+  const section = /^## Acceptance[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(text ?? '')?.[1];
+  if (section == null) return [];
   const out = [];
   for (const line of section.split('\n')) {
-    if (/^[-*] /.test(line)) out.push(line.slice(2).trim());
+    const item = /^(?:[-*]|\d+[.)])\s+(.*)$/.exec(line);
+    if (item) out.push(item[1].trim());
     else if (/^\s+\S/.test(line) && out.length) out[out.length - 1] += ` ${line.trim()}`;
   }
+  if (!out.length) console.error('scaffold-epic: the seed has an Acceptance section but no list items in it — sprint 1 gets one placeholder story.');
   return out;
 }
 
