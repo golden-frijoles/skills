@@ -179,3 +179,25 @@ test('review #271: a legacy number is not a position, a reorder keeps the fundin
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('review #271 round 2: an epic scaffolded before funding is FUNDED by --next, or in place when it already has a number', () => {
+  const root = fixture();
+  try {
+    // A seedless scaffolded epic with no number and no funding: --next funds it, it does not "reorder" it.
+    mkdirSync(join(root, 'Roadmap/09-x/bare'), { recursive: true });
+    writeFileSync(join(root, 'Roadmap/09-x/bare/README.md'), epic('bare', 'scaffolded', 'null').replace('build_order: null', 'appetite: M\nbuild_order: null'));
+    let r = run(root, ['--slug', 'bare', '--displaced', 'x', '--next']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^Funded bare in wave-2026-10/m);
+    assert.equal(fm(root, 'Roadmap/09-x/bare/README.md', 'underwritten_by'), 'wave-2026-10');
+    assert.equal(fm(root, 'Roadmap/09-x/bare/README.md', 'build_order'), '60');
+    // `b` is live and numbered but unfunded (no seed): no placement funds it where it stands.
+    r = run(root, ['--slug', 'b', '--appetite', 'S', '--displaced', 'y']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^Funded b in wave-2026-10/m);
+    assert.equal(fm(root, 'Roadmap/09-x/b/README.md', 'underwritten_by'), 'wave-2026-10');
+    assert.match(readFileSync(join(root, 'Roadmap/bets/wave-2026-10.md'), 'utf8'), /\| \*\*b\*\*/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

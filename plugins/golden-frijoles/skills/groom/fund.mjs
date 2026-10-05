@@ -175,13 +175,16 @@ function main() {
   // The doc that carries the funding: the seed (its own, or the epic's mirror), else a seedless epic's README.
   const fundDoc = target.kind === 'seed' ? target : target.mirror || target;
 
-  // Three modes, decided by whether the bet is already in the queue (review #271):
-  //   fund    — not in the queue: a placement is required, and a leftover legacy number never counts as a position;
-  //   re-bet  — in the queue, no placement: a new cycle row, position kept (an L bet at its wave boundary);
-  //   reorder — in the queue, with a placement: the queue moves, the funding record is left alone.
+  // Three modes, decided by whether the bet is FUNDED and PLACED (review #271, rounds 1–2):
+  //   fund    — no funding record yet: written now. It needs a placement unless it already holds a queue position (an
+  //             epic scaffolded before funding existed); a `ready` seed's leftover number is never a position;
+  //   re-bet  — funded and placed, no placement flag: a new cycle row, position kept (an L bet at its wave boundary);
+  //   reorder — funded and placed, with a placement: the queue moves, the funding record is left alone.
   const placement = args.next ? { next: true } : typeof args.after === 'string' ? { after: args.after } : null;
-  const mode = inQueue(target) ? (placement ? 'reorder' : 're-bet') : 'fund';
-  if (mode === 'fund' && !placement) die(`"${slug}" is not in the queue yet — pass --next or --after <slug> to place it`);
+  const placed = inQueue(target) && target.build_order != null;
+  const funded = readField(fundDoc.text, 'underwritten_by') != null;
+  const mode = funded && placed ? (placement ? 'reorder' : 're-bet') : 'fund';
+  if (mode === 'fund' && !placement && !placed) die(`"${slug}" is not in the queue yet — pass --next or --after <slug> to place it`);
   const appetite = (typeof args.appetite === 'string' ? args.appetite : readField(fundDoc.text, 'appetite'))?.toUpperCase() ?? null;
   if (mode !== 'reorder') {
     if (!APPETITES.includes(appetite)) die(`--appetite must be S | M | L (the seed has ${appetite ?? 'none'}) — set at shaping, Stage 1.5`);
@@ -223,14 +226,14 @@ function main() {
   if (placement) {
     const finalN = changes.get(slug) ?? target.build_order;
     console.log(`  position: #${finalN}${changes.size > 1 ? ` — the queue renumbered: ${[...changes].filter(([s]) => s !== slug).map(([s, n]) => `${s} → #${n}`).join(', ')}` : ''}`);
-  } else console.log(`  position: #${target.build_order}, kept (a re-bet)`);
+  } else console.log(`  position: #${target.build_order}, kept${mode === 're-bet' ? ' (a re-bet)' : ''}`);
   if (args['dry-run']) {
     [...writes.keys()].forEach((p) => console.log(`  would write ${rel(p)}`));
     return;
   }
   mkdirSync(join(root, 'Roadmap', 'bets'), { recursive: true });
   for (const [p, t] of writes) writeFileSync(p, t);
-  console.log(`  commit these with the scaffold, in one commit: ${[...writes.keys()].map((p) => `'${rel(p)}'`).join(' ')}`);
+  console.log(`  commit these${mode === 'fund' ? ' with the scaffold, in one commit' : ''}: ${[...writes.keys()].map((p) => `'${rel(p)}'`).join(' ')}`);
 }
 
 const isMain = (() => {
