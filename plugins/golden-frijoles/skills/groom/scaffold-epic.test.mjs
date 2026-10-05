@@ -215,3 +215,27 @@ test('an unfunded seed is refused before anything is written, and the refusal na
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('review #271: criteria holding $-patterns are copied verbatim; no seed → no seed path in the commit; path segments are refused', () => {
+  const { root, r, dir } = scaffoldSeed(SEED.replace('- The first check holds, with `code` in it.', () => "- Costs $& and $' stay literal."));
+  try {
+    assert.equal(r.status, 0, r.stderr);
+    const sprint = readFileSync(join(dir, 'sprint-1.md'), 'utf8');
+    assert.match(sprint, /\*\*Acceptance:\*\* Costs \$& and \$' stay literal\./);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+  const bare = mkdtempSync(join(tmpdir(), 'scaffold-bare-'));
+  mkdirSync(join(bare, 'Roadmap'));
+  try {
+    const ok = spawnSync('node', [SCAFFOLD, '--slug', 'no-seed', '--area', '09', '--macro', '09-x', '--title', 'T', '--sprints', 'One'], { cwd: bare, encoding: 'utf8' });
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.doesNotMatch(ok.stdout, /seeds\/no-seed\.md/);
+    const bad = spawnSync('node', [SCAFFOLD, '--slug', '../escape', '--area', '09', '--macro', '09-x', '--title', 'T', '--sprints', 'One'], { cwd: bare, encoding: 'utf8' });
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /--slug must match/);
+    assert.match(spawnSync('node', [SCAFFOLD, '--slug', 'ok', '--area', '09', '--macro', '../09-x', '--title', 'T', '--sprints', 'One'], { cwd: bare, encoding: 'utf8' }).stderr, /--macro must match/);
+  } finally {
+    rmSync(bare, { recursive: true, force: true });
+  }
+});

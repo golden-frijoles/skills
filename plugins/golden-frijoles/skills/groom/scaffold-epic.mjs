@@ -113,6 +113,14 @@ if (missing.length) {
   if (seedText) console.error(`  (the seed supplied what it has${missing.includes('macro') ? `; no single Roadmap/${areaArg}-* directory, so pass --macro` : ''})`);
   process.exit(1);
 }
+// Each of these becomes a path segment: a `/` or `..` in one would write outside Roadmap/ (security lens, #271).
+const SEGMENT = { slug: /^[a-z0-9][a-z0-9-]*$/, area: /^\d{2}$/, macro: /^\d{2}-[a-z0-9-]+$/ };
+for (const [k, re] of Object.entries(SEGMENT)) {
+  if (!re.test(String(resolved[k]))) {
+    console.error(`scaffold-epic: --${k} must match ${re} (got "${resolved[k]}") — it names a directory under Roadmap/`);
+    process.exit(1);
+  }
+}
 if (seedText && !fromSeed('underwritten_by')) {
   console.error(`scaffold-epic: the seed ${resolved.slug} is not funded (no \`underwritten_by:\`) — nothing leaves grooming scaffolded but unfunded.`);
   console.error('  Fund it first, at the approval gate (groom SKILL.md → Stage 7):');
@@ -230,9 +238,9 @@ function withCriteria(text, list) {
     )
     .join('\n');
   return text
-    .replace(/^stories_total: 1$/m, `stories_total: ${list.length}`)
-    .replace(/^stories:\n[\s\S]*?(?=^---$)/m, `stories:\n${yamlStories}\n`)
-    .replace(/^### Story 1\.1 — [\s\S]*?(?=^## Sprint QA)/m, `${prose}\n`);
+    .replace(/^stories_total: 1$/m, () => `stories_total: ${list.length}`) // functions: a criterion may hold `$&`
+    .replace(/^stories:\n[\s\S]*?(?=^---$)/m, () => `stories:\n${yamlStories}\n`)
+    .replace(/^### Story 1\.1 — [\s\S]*?(?=^## Sprint QA)/m, () => `${prose}\n`);
 }
 
 // The position fund.mjs gave the bet: the README is the SSOT from here, the seed's copy a fallback.
@@ -273,7 +281,7 @@ else console.log(`     Set the SEED frontmatter \`epic: "${macro}/${slug}"\` so 
 if (criteria.length) console.log(`     Sprint 1's ${criteria.length} stories are the seed's acceptance criteria — sharpen each role and outcome.`);
 // One commit holds the bet and the scaffold (fund-at-approval): the cycle row fund.mjs wrote, and the regenerated board.
 const cycle = fromSeed('underwritten_by')?.replace(/^Roadmap\/bets\//, '').replace(/\.md$/, '');
-const extra = [`Roadmap/00-ideas/seeds/${slug}.md`];
+const extra = seedText ? [`Roadmap/00-ideas/seeds/${slug}.md`] : [];
 if (cycle && existsSync(join(REPO_ROOT, 'Roadmap', 'bets', `${cycle}.md`))) extra.push(`Roadmap/bets/${cycle}.md`);
 const board = existsSync(join(REPO_ROOT, 'Roadmap', '00-ideas', 'BUILD-ORDER.md'));
 if (board) extra.push('Roadmap/00-ideas/BUILD-ORDER.md');
