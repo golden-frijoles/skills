@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-10-06
+
+### Fixed
+- **`cross-agent-doctor --fix` bumps both copies of the agy pin** (the repo's `scripts/lib/` and the template's), so a
+  bump can no longer break script parity; the pin is now agy 1.3.0.
+- **A git test fixture can no longer rewrite the repository it runs in.** `git-fixtures-sealed` now also catches the
+  cwd-first `git(dir, 'init', …)` shape that slipped past it and flipped `core.bare` from a worktree pre-push hook.
+
 ## [0.29.0] - 2026-10-06
 
 ### Changed
