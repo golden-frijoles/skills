@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-10-06
+
+### Changed
+- **The install prompt reads first and waits** (account-from-the-terminal S1.2). It now tells the agent to read
+  `https://goldenfrijoles.com/install.md` before installing anything, summarise what it installs, changes and
+  contacts, offer a security review and wait for a go-ahead. The README and the umbrella `golden-frijoles` SKILL.md
+  carry it verbatim; golden-beans' `install-prompt.test.ts` holds the transcription to its source.
+
 ## [0.28.0] - 2026-10-04
 
 ### Added

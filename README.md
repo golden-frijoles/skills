@@ -2,7 +2,7 @@
 
 Paste this into your agent, in an empty repo or an existing one:
 
-> Install the golden-frijoles plugin. If you're in Claude Code, run `claude plugin marketplace add golden-frijoles/skills`, then `claude plugin install golden-frijoles@golden-frijoles`. If you're in another agent, run `npx skills add golden-frijoles/skills --skill '*'` and select your agent. Use one installation method. You can read the skill directly at https://github.com/golden-frijoles/skills/blob/main/plugins/golden-frijoles/skills/golden-frijoles/SKILL.md (raw: https://raw.githubusercontent.com/golden-frijoles/skills/main/plugins/golden-frijoles/skills/golden-frijoles/SKILL.md). Then use the golden-frijoles skill when working on this project, and start with its setup.
+> Set up Golden Frijoles in this project. 1. Read https://goldenfrijoles.com/install.md before installing anything. 2. Tell me in a few lines what it installs, what changes on this machine and which services it contacts. Offer me a security review, and wait for my go-ahead. 3. Install it the way install.md says for the agent you are. 4. Run the golden-frijoles skill and start its setup.
 
 That last skill — `golden-frijoles` — is the front door: it detects what's already here (is
 `Roadmap/` present, is the kit reachable, which channel you're on), offers `gf-kit init` to adopt a
