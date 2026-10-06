@@ -36,7 +36,7 @@ import {
   codexExecArgs,
   isCodexCapped,
 } from './lib/cross-agent-cli.mjs';
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 
 // ═══ CODEX ════════════════════════════════════════════════════════════════════════════════════
 // The codex half — diagnose why the Codex CLI can't run, and name the exact fix.
@@ -211,6 +211,10 @@ async function codexMain() {
 // (isMain-guarded, per LEARNINGS).
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LIB_PATH = join(__dirname, 'lib', 'cross-agent-cli.mjs');
+// The byte-identical template mirror, when this runs in the repo that carries one (golden-beans:
+// `skills/template/scripts/`, held identical by check-script-parity). Bumping only LIB_PATH broke that
+// parity on 2026-10-06 (PR #278); in a consumer project the path does not exist and is skipped.
+const MIRROR_LIB_PATH = join(__dirname, '..', 'skills', 'template', 'scripts', 'lib', 'cross-agent-cli.mjs');
 
 // ── Pure decision core (the unit under test) ─────────────────────────────────────────────────────────
 // Given the observed facts, decide ONE action, most severe first:
@@ -554,7 +558,10 @@ async function agyMain() {
       }
       const src = readFileSync(LIB_PATH, 'utf8');
       const today = new Date().toISOString().slice(0, 10);
-      writeFileSync(LIB_PATH, bumpPinnedSource(src, obs.installed, today));
+      const bumped = bumpPinnedSource(src, obs.installed, today);
+      writeFileSync(LIB_PATH, bumped);
+      const mirrored = existsSync(MIRROR_LIB_PATH);
+      if (mirrored) writeFileSync(MIRROR_LIB_PATH, bumped);
       line(`✓ AGY_PINNED bumped ${obs.pinned} → ${obs.installed} (probe green; marker dated ${today}).`);
       const t = spawnSync(process.execPath, ['--test', 'scripts/lib/*.test.mjs', 'scripts/*.test.mjs'], {
         encoding: 'utf8',
@@ -577,7 +584,9 @@ async function agyMain() {
       line(
         '  branch `chore/agy-pin-bump-' +
           obs.installed +
-          '`, path-limited commit of scripts/lib/cross-agent-cli.mjs, PR.'
+          '`, path-limited commit of scripts/lib/cross-agent-cli.mjs' +
+          (mirrored ? ' and skills/template/scripts/lib/cross-agent-cli.mjs' : '') +
+          ', PR.'
       );
       return;
     }
