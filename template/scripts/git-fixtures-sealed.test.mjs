@@ -24,7 +24,10 @@ const specsIn = (dir) =>
 const specs = [...specsIn(here), ...specsIn(join(here, 'lib'))];
 
 /** Does this source build a git repository in a fixture? (`git('init'` / `['init'` passed to git.) */
-export const initsRepo = (src) => /\bgit\w*\(\s*['"]init['"]|['"]git['"]\s*,\s*\[\s*['"]init['"]/.test(src);
+// The optional leading identifier is the cwd-first helper shape, `git(root, 'init', …)` — the one that
+// slipped past this guard and flipped core.bare on 2026-10-06 (scripts/lib/log-branch.test.mjs).
+export const initsRepo = (src) =>
+  /\bgit\w*\(\s*(?:[\w.]+\s*,\s*)?['"]init['"]|['"]git['"]\s*,\s*\[\s*['"]init['"]/.test(src);
 /** Does it seal the environment it hands git? Either the named pattern or a GIT_DIR deletion. */
 export const sealsEnv = (src) =>
   /sealedEnv\s*\(|GIT_ENV_TO_CLEAR|delete\s+env\[\s*['"]GIT_DIR['"]\s*\]/.test(src);
@@ -32,6 +35,7 @@ export const sealsEnv = (src) =>
 test('the detector sees the shapes it must see', () => {
   assert.equal(initsRepo("git('init', '-q')"), true);
   assert.equal(initsRepo("execFileSync('git', ['init', '-q'])"), true);
+  assert.equal(initsRepo("git(root, 'init', '-q', '--bare', origin)"), true);
   assert.equal(initsRepo("const x = 'init';"), false);
   assert.equal(sealsEnv('env: sealedEnv()'), true);
   assert.equal(sealsEnv('env: { ...process.env }'), false);
