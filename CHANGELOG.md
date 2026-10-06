@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-10-06
+
+### Changed
+- **Setup's account question says what an account adds before asking** (account-from-the-terminal S2.3). Q4 now
+  reads in four short lines: what works with no account, what an account adds, that signing in opens the browser
+  once, and that it can wait until a bet needs a flag — then **Sign in now (recommended)** · **Later**. "Now" runs
+  `gf login` (browser sign-in, CLI 0.5.0) then `gf init`; "Later" finishes setup with no account. The
+  `project.account` key and its values are unchanged.
+
 ## [0.29.0] - 2026-10-06
 
 ### Changed

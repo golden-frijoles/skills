@@ -40,7 +40,8 @@ export const REGISTRY = Object.freeze([
     default: 'later',
     choices: ['later', 'now'],
     store: 'env',
-    question: 'Connect a Golden Frijoles account now (gf login + gf init), or later?',
+    question:
+      'An account adds flags you can roll out and turn off, each bet measured on its read date, every product in one place and an outcome report you can send. Sign in now (recommended: gf login, then gf init), or later?',
   },
   {
     key: 'board.sink',
