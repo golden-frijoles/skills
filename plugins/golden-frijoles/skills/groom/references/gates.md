@@ -80,7 +80,7 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
   target → leave out Moves, Target and Read date. Never invent a number or a hypothesis.
 - **Flag** says what Stage 6b decided (`kill-switch.md`): a kill switch ships **on, so you can switch it off**; an
   enablement flag ships **off until you try it**. "none: <why>" only when Stage 6b wrote a carve-out; an epic that never
-  reached Stage 6b leaves the line out.
+  reached Stage 6b leaves the line out. When the seed does not say which polarity, leave out on/off rather than guess.
 - **Measured by** is the event `strategy.mjs` prints beside the target metric's input (`event <name>`), only when it
   prints one. Otherwise leave the line out; never invent an event name.
 - **What this pushes back** is what you propose stays waiting because of this epic (from the month's
@@ -96,25 +96,30 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 ```gate build
 ✓  Plan approved: <epic title>
    Its sprints and user stories are in <epic folder>, committed
-✓  Flag planned: <flag key>, <on | off> when it ships. One user story creates it
+✓  Flag planned: <flag key><, on when it ships | , off when it ships>. One user story creates it
 
 Start building whenever you're ready:
   /build <slug>
 
 Follow it here: <board link>/epic/<slug>
 
+<only when at least one line below shows:>
 Setup is done. Optional, only if you want them:
   gh ........... lets me open and watch pull requests        <not installed | not signed in>
   Codex ........ a second model reviews each pull request     not installed
   Digest ....... a Telegram message when something is due     not set up
   Claude app ... see <project> from a chat: the console's Setup has your link
 
+<when an item is missing:>
   1 Start building now
   2 <the first missing item: Install gh first | Sign in to gh first | Install Codex first | Set up the digest first>
   3 Later
+<when nothing is missing:>
+  1 Start building now
+  2 Later
 ```
 
-- **The flag line** only when the seed has a `flag_key`, on or off as the Plan gate said. Groom never creates a flag;
+- **The flag line** only when the seed has a `flag_key`, on or off as the Plan gate said (left out when it did not say). Groom never creates a flag;
   its user story does (`kill-switch.md`).
 - **`/build <slug>`** is the line in Claude Code with the plugin. Anywhere else it is Stage 8's generator command (or
   `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` from the project root), shown as a command; its output
@@ -127,6 +132,7 @@ Setup is done. Optional, only if you want them:
   `.env.local` (check the key's name, never print its value); its fix is setup's *Notify setup*. The Claude app line
   only when the project is linked to Golden Frijoles, and it is never an option. "Setup is done." and the "Optional"
   heading only when at least one item line shows. Nothing missing → the options are **1 Start building now · 2 Later**.
+- **The `<when …:>` lines** pick which part to print; they are never printed themselves.
 - **1 Start building now**: in Claude Code, tell the person to type `/build <slug>`; elsewhere run the command above
   and hand over its output. Groom never builds. With an item missing, **2** walks it, then shows this
   gate again. **Later**: stop; the epic waits in *Ready*.
