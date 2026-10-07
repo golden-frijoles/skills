@@ -88,6 +88,8 @@ test('all three files: the inputs a seed can move, the highest domino, and the p
   );
   assert.match(out.stdout, /highest domino: Business model — "Teams pay per seat for planning"/);
   assert.match(out.stdout, /^Pitch line: Moves: <input key> · Tests: <dimension>/m);
+  // result-record D4 — the target question offers the inputs by key.
+  assert.match(out.stdout, /^Target \(Stage 1\.5\): target_metric one of activated_projects · seeds_groomed \(or free text: not grounded\)/m);
 });
 
 test('only one file: the others are simply absent, and an unchosen domino says so', () => {
@@ -98,6 +100,7 @@ test('only one file: the others are simply absent, and an unchosen domino says s
     ['risk-validation']
   );
   assert.equal(files[0].domino, null);
+  assert.match(formatStrategy({ files }), /^Target \(Stage 1\.5\): target_metric free text \(not grounded: no North Star inputs\)/m);
   assert.deepEqual(files[0].lowConviction, []);
   assert.match(formatStrategy({ files }), /highest domino: not chosen yet/);
 });

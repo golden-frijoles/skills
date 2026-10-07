@@ -189,6 +189,12 @@ export function formatStrategy({ files }) {
     }
   }
   out.push('Pitch line: Moves: <input key> · Tests: <dimension>   (or: Moves · Tests: neither — <why>)');
+  // result-record D4 — the Stage 1.5 target offers these same inputs by key; anything else is free text, "not grounded".
+  const keys = files.flatMap((f) => (f.kind === 'north-star' && !f.problem ? f.inputs.map((i) => i.key) : []));
+  out.push(
+    `Target (Stage 1.5): target_metric ${keys.length ? `one of ${keys.join(' · ')} (or free text: not grounded)` : 'free text (not grounded: no North Star inputs)'}` +
+      ' · target_from → target_to · read_date (blank = 30 days after shipping)'
+  );
   return out.join('\n');
 }
 

@@ -11,6 +11,7 @@ Close the pitch with it and ONE question. Propose the position and what the bet 
 ```
 Bet: <slug> · appetite <A> · quote $<lo>–<hi> · cycle wave-YYYY-MM · position: next | after <slug>
      · displaced: <what stays parked because of it>
+Target: <hypothesis> · <target_metric> <from> → <to> · read <YYYY-MM-DD | 30 days after ship>   (or: no target)
 → approve (fund + scaffold) · approve, don't fund · change something
 ```
 
