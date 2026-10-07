@@ -78,7 +78,7 @@ Answer them here, or:
   offer grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
-  step-by-step mode on the file already written, one after the other without asking in between, then shows this gate
+  step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
   again.
 - **When a coach finishes** (each coach's last step points here): inside "Coach me through it", go on to the next coach,
   or back to this gate after the last. Run on its own, once its file is written: when all three files exist and any is
@@ -113,7 +113,7 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 - **The values** come from the seed's frontmatter and pitch: `hypothesis`, `target_metric` / `target_from` /
   `target_to` / `read_date` (`result-record.md`), `appetite` and `quote`, the slices, `flag_key` and its polarity or
   the Stage 6b carve-out. "(your North Star input)" only when the target metric is one of the keys `strategy.mjs` printed; no
-  target → leave out Moves, Target and Read date. Never invent a number or a hypothesis.
+  target → leave out Moves, Target and Read date (except as *Not grounded* says). Never invent a number or a hypothesis.
 - **Not grounded.** When `strategy.mjs` printed nothing (no strategy yet), the Moves line always shows, target or not:
   `<the target metric's name> (not grounded: no strategy yet)`, or `not grounded: no strategy yet` with no target. It is
   read at each gate, so it stops showing once a strategy exists.

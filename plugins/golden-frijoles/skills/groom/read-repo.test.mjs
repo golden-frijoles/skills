@@ -19,6 +19,8 @@ import {
   groupChanges,
   groupKey,
   isBot,
+  macroFor,
+  writePlan,
   outsideRoadmap,
   parseMergeCommit,
   planRead,
@@ -259,6 +261,78 @@ test('gatherFacts: a list cut at its limit is said out loud, for open and merged
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('macroFor: a 00-* folder (strategy, ideas) never holds epics', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'read-repo-macro-'));
+  try {
+    mkdirSync(join(dir, 'Roadmap', '00-ideas'), { recursive: true });
+    mkdirSync(join(dir, 'Roadmap', '00-strategy'));
+    assert.equal(macroFor(dir), '01-product');
+    mkdirSync(join(dir, 'Roadmap', '03-billing'));
+    assert.equal(macroFor(dir), '03-billing');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('gatherFacts: a gh list that fails is "could not read", never zero, and the write refuses', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'read-repo-fail-'));
+  mkdirSync(join(dir, 'Roadmap'));
+  const run = (cmd, args) => {
+    const a = args.join(' ');
+    if (cmd === 'git') return a.startsWith('rev-parse') ? 'true\n' : a.startsWith('rev-list') ? '5\n' : '';
+    if (a.startsWith('pr list --state open')) throw Object.assign(new Error('x'), { stderr: 'HTTP 502: bad gateway\n' });
+    if (a.startsWith('pr list --state merged')) return 'not json';
+    if (a.startsWith('issue list')) return '[]';
+    return '';
+  };
+  try {
+    const facts = gatherFacts(dir, { run, now: NOW });
+    assert.deepEqual(facts.unread, ['open pull requests (HTTP 502: bad gateway)', 'merged pull requests (gh answered something that is not a list)']);
+    assert.ok(planRead(facts, NOW).skipped.includes('could not read the open pull requests (HTTP 502: bad gateway), so they are not counted'));
+    assert.match(formatLook(facts), /open pull requests: could not read/);
+    assert.match(writeRefusal(facts), /^Could not read the open pull requests .* Nothing was written\.$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('writePlan: a generator failing part-way stops with what failed and how to start over', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'read-repo-stop-'));
+  mkdirSync(join(dir, 'Roadmap'));
+  const run = () => {
+    throw Object.assign(new Error('boom'), { stderr: 'scaffold-epic: refusing to clobber existing epic dir\n' });
+  };
+  try {
+    const plan = { source: 'pull requests', shipped: [{ slug: 'a', title: 'A', type: 'feature', changes: [{ number: 1 }] }], building: [], ideas: [] };
+    const { problems } = writePlan(plan, baseFacts({ root: dir, git: { ok: false, commits: 0 } }), { run });
+    assert.deepEqual(problems, [
+      'stopped part-way: scaffold-epic: refusing to clobber existing epic dir',
+      'to start over, delete the new files under Roadmap/ that `git status` lists, then run this again',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('planRead: an open close-out branch joins its merged family as one Building epic', () => {
+  const plan = planRead(
+    baseFacts({
+      mergedPrs: [{ number: 1, title: 'X', branch: 'feat/x', date: daysAgo(9), size: 10, author: { login: 'd' } }],
+      openPrs: [{ number: 2, title: 'Close x', branch: 'docs/x-close', date: daysAgo(1), size: 3, author: { login: 'd' } }],
+    }),
+    NOW
+  );
+  assert.deepEqual([plan.shipped.length, plan.building.map((g) => [g.slug, g.merged?.map((c) => c.number)])], [0, [['x', [1]]]]);
+});
+
+test('clusterIssues: labels that differ only in case are one idea', () => {
+  const ideas = clusterIssues([
+    { number: 1, title: 'a', labels: [{ name: 'Bug' }] },
+    { number: 2, title: 'b', labels: [{ name: 'bug' }] },
+  ]);
+  assert.deepEqual(ideas.map((i) => i.issues.length), [2]);
 });
 
 test('writeRefusal: first run only', () => {

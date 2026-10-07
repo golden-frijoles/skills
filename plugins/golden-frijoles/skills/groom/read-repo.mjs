@@ -110,8 +110,10 @@ export function appetiteFor(size) {
  * Group changes (merged or open pull requests, merge commits) into epics. A change is
  * `{ number, title, branch, date, size }`. Returns `[{ key, title, type, changes, size, latest }]`, oldest first.
  */
-export function groupChanges(changes) {
-  const exact = new Set(changes.map((c) => branchCandidates(c.branch)[0]?.slug).filter(Boolean));
+export function groupChanges(changes, siblings = []) {
+  // A branch joins the family of any other branch it extends, in this list or a sibling one (an open `docs/x-close`
+  // joins the merged `feat/x`: fresh review, #307).
+  const exact = new Set([...changes, ...siblings].map((c) => branchCandidates(c.branch)[0]?.slug).filter(Boolean));
   const groups = new Map();
   for (const c of changes) {
     const key = groupKey(c.branch, exact) || slugify(c.title) || (c.number != null ? `pr-${c.number}` : '');
@@ -178,7 +180,7 @@ export function clusterIssues(issues) {
   const unlabelled = [];
   for (const issue of issues) {
     const label = (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name)).filter(Boolean).sort()[0];
-    if (label) add(`label:${label}`, label, issue);
+    if (label) add(`label:${label.toLowerCase()}`, label, issue); // `Bug` and `bug` are one label
     else unlabelled.push(issue);
   }
   const words = new Map(unlabelled.map((i) => [i.number, titleWords(i.title)]));
@@ -227,6 +229,7 @@ export function planRead(facts, now = new Date()) {
   const plan = { source: 'none', shipped: [], building: [], ideas: [], leftOut: { older: 0, smaller: 0, bots: 0 }, skipped: [] };
   if (!facts.gh.ok) plan.skipped.push(facts.gh.why);
   // Every list is read with one more than its limit, so a cut list is said out loud, never silent (codex, #307).
+  for (const what of facts.unread ?? []) plan.skipped.push(`could not read the ${what}, so they are not counted`);
   if (facts.openMore) plan.skipped.push(`only the newest ${OPEN_LIMIT} open pull requests were read`);
   if (facts.mergedMore) plan.skipped.push(`only the newest ${MERGED_LIMIT} merged pull requests were read`);
   if (facts.issuesMore) plan.skipped.push(`only the first ${ISSUE_LIMIT} open issues were read`);
@@ -237,7 +240,9 @@ export function planRead(facts, now = new Date()) {
     return kept;
   };
 
-  const open = groupChanges(human(facts.openPrs ?? []));
+  const openHuman = human(facts.openPrs ?? []);
+  const mergedHuman = (facts.mergedPrs ?? []).filter((p) => !isBot(p));
+  const open = groupChanges(openHuman, mergedHuman);
   plan.building = open;
   const openKeys = new Set(open.map((g) => g.key));
 
@@ -245,10 +250,10 @@ export function planRead(facts, now = new Date()) {
   const merged = human(facts.mergedPrs ?? []);
   if (merged.length) {
     plan.source = 'pull requests';
-    shippedGroups = groupChanges(merged);
+    shippedGroups = groupChanges(merged, openHuman);
   } else if ((facts.gitMerges ?? []).length) {
     plan.source = 'merge commits';
-    shippedGroups = groupChanges(human(facts.gitMerges));
+    shippedGroups = groupChanges(human(facts.gitMerges), openHuman);
   } else if ((facts.tags ?? []).length) {
     plan.source = 'release tags';
     shippedGroups = facts.tags.map((t) => ({
@@ -325,7 +330,8 @@ export function formatLook(facts) {
   const parts = [];
   parts.push(facts.stack.length ? facts.stack.join(', ') : 'no manifest file found');
   parts.push(plural(facts.git.commits, 'commit'));
-  if (facts.gh.ok) parts.push(plural(facts.openPrs.filter((p) => !isBot(p)).length, 'open pull request'));
+  if (facts.gh.ok && !(facts.unread ?? []).length) parts.push(plural(facts.openPrs.filter((p) => !isBot(p)).length, 'open pull request'));
+  else if (facts.gh.ok) parts.push(`open pull requests: could not read (${facts.unread[0]})`);
   out.push(`  This repo ...... ${parts.join(' · ')}`);
   if (!facts.gh.ok) out.push(`  Pull requests .. not counted: ${facts.gh.why}`);
   return out.join('\n');
@@ -507,6 +513,7 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
     issues: [],
     issuesMore: false,
     openMore: false,
+    unread: [],
     mergedMore: false,
     gitMerges: [],
     tags: [],
@@ -534,25 +541,42 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
     author: p.author,
     date,
     size: (p.additions ?? 0) + (p.deletions ?? 0),
-    draft: Boolean(p.isDraft),
   });
+  // A list gh could not give is "could not read", never zero (fresh review, #307): named, and --write refuses.
+  const readList = (result, what) => {
+    if (!result.ok) {
+      facts.unread.push(`${what} (${String(result.err?.stderr || result.err?.message || 'gh failed').trim().split('\n')[0]})`);
+      return null;
+    }
+    try {
+      const list = JSON.parse(result.out);
+      if (Array.isArray(list)) return list;
+    } catch {
+      // fall through: not JSON
+    }
+    facts.unread.push(`${what} (gh answered something that is not a list)`);
+    return null;
+  };
   if (facts.gh.ok) {
     const open = tryRun(run, 'gh', ['pr', 'list', '--state', 'open', '--limit', String(OPEN_LIMIT + 1), '--json', `${prFields},isDraft,createdAt`], root);
-    if (open.ok) {
-      const list = JSON.parse(open.out);
+    const openList = readList(open, 'open pull requests');
+    if (openList) {
+      const list = openList;
       facts.openMore = list.length > OPEN_LIMIT;
       facts.openPrs = list.slice(0, OPEN_LIMIT).map((p) => asChange(p, p.createdAt));
     }
     if (!full) return facts;
     const merged = tryRun(run, 'gh', ['pr', 'list', '--state', 'merged', '--limit', String(MERGED_LIMIT + 1), '--json', `${prFields},mergedAt`], root);
-    if (merged.ok) {
-      const list = JSON.parse(merged.out);
+    const mergedList = readList(merged, 'merged pull requests');
+    if (mergedList) {
+      const list = mergedList;
       facts.mergedMore = list.length > MERGED_LIMIT;
       facts.mergedPrs = list.slice(0, MERGED_LIMIT).map((p) => asChange(p, p.mergedAt));
     }
     const issues = tryRun(run, 'gh', ['issue', 'list', '--state', 'open', '--limit', String(ISSUE_LIMIT + 1), '--json', 'number,title,labels'], root);
-    if (issues.ok) {
-      const list = JSON.parse(issues.out);
+    const issueList = readList(issues, 'open issues');
+    if (issueList) {
+      const list = issueList;
       facts.issuesMore = list.length > ISSUE_LIMIT;
       facts.issues = list.slice(0, ISSUE_LIMIT);
     }
@@ -592,15 +616,18 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
 
 /** Why `--write` must not run here, or null. First run only: an existing epic or idea means a roadmap already exists. */
 export function writeRefusal(facts) {
+  if ((facts.unread ?? []).length)
+    return `Could not read the ${facts.unread.join(' and the ')}: fix gh and run this again. Nothing was written.`;
   if (!facts.roadmap.present) return 'There is no Roadmap/ here yet: run setup\'s `gf-kit init` first. Nothing was written.';
   if (facts.roadmap.epics || facts.roadmap.ideas)
     return `Roadmap/ already holds ${plural(facts.roadmap.epics, 'epic')} and ${plural(facts.roadmap.ideas, 'idea')}: this read is for a first run only. Nothing was written.`;
   return null;
 }
 
-/** The one `Roadmap/NN-*` folder an epic goes in: the only one there, else `01-product` (D8). */
+/** The one `Roadmap/NN-*` folder an epic goes in: the only one there, else `01-product` (D8). `00-*` folders hold ideas
+ * and strategy, never epics (fresh review, #307: a coach's `00-strategy/` was picked). */
 export function macroFor(root) {
-  const dirs = readdirSync(join(root, 'Roadmap')).filter((d) => /^\d{2}-/.test(d) && d !== '00-ideas' && statSync(join(root, 'Roadmap', d)).isDirectory());
+  const dirs = readdirSync(join(root, 'Roadmap')).filter((d) => /^\d{2}-/.test(d) && !d.startsWith('00-') && statSync(join(root, 'Roadmap', d)).isDirectory());
   return dirs.length === 1 ? dirs[0] : '01-product';
 }
 
@@ -687,12 +714,16 @@ export function writePlan(plan, facts, { run = defaultRun, date = new Date().toI
   const problems = [];
   const epicDir = (slug) => join(root, 'Roadmap', macro, slug);
   const edit = (path, fn) => writeFileSync(path, fn(readFileSync(path, 'utf8')));
+  const seeds = join(root, 'Roadmap', '00-ideas', 'seeds');
 
   // A title is one sprint's name too: a `;` would split it into two sprints, and a leading `--` would read as a flag.
   const safe = (t) => t.replace(/;/g, ',').replace(/^-+\s*/, '') || 'Untitled';
   const scaffold = (g, risk) =>
     node('scaffold-epic.mjs', ['--slug', g.slug, '--area', area, '--macro', macro, '--title', safe(g.title), '--risk', risk, '--type', g.type, '--sprints', safe(g.title)]);
 
+  // A generator that fails part-way stops the write with what failed, what was written and how to start over — never a
+  // bare stack trace, and never a half-roadmap that "first run only" then refuses to finish (fresh review, #307).
+  try {
   for (const g of plan.shipped) {
     scaffold(g, 'low');
     const from = sourcesOf({ ...g, source: plan.source });
@@ -753,7 +784,6 @@ export function writePlan(plan, facts, { run = defaultRun, date = new Date().toI
   if (plan.building.length) written.push('Roadmap/bets/backfill.md');
 
   const template = readFileSync(join(GROOM, 'templates', 'scope-seed.md'), 'utf8');
-  const seeds = join(root, 'Roadmap', '00-ideas', 'seeds');
   if (plan.ideas.length) mkdirSync(seeds, { recursive: true });
   for (const idea of plan.ideas) {
     const path = join(seeds, `${idea.slug}.md`);
@@ -763,6 +793,13 @@ export function writePlan(plan, facts, { run = defaultRun, date = new Date().toI
     }
     writeFileSync(path, renderSeed(template, idea, { area, date }));
     written.push(`Roadmap/00-ideas/seeds/${idea.slug}.md`);
+  }
+
+  } catch (err) {
+    const why = String(err?.stderr || err?.message || err).trim().split('\n')[0];
+    problems.push(`stopped part-way: ${why}`);
+    problems.push('to start over, delete the new files under Roadmap/ that `git status` lists, then run this again');
+    return { written, problems };
   }
 
   // D9 — the contract on everything written, and nothing new outside Roadmap/.
