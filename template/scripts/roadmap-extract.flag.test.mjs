@@ -39,6 +39,11 @@ test('S2.3: the contract names a flag_key that is not a key, and accepts a key o
     validateFlagKey({ flag_key: 'Not A Key' }).map((o) => o.rule),
     ['contract-flag-key-invalid']
   );
+  assert.deepEqual(
+    validateFlagKey({ flag_key: 'null' }).map((o) => o.rule),
+    ['contract-flag-key-invalid'],
+    'a quoted "null" is named, as the push schema refuses it'
+  );
 });
 
 test('S2.3: buildRows puts flag_key and flag_note on the Epic row, read off a real README', () => {

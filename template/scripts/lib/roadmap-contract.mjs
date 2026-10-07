@@ -149,7 +149,8 @@ export const FLAG_KEY_RE = /^[a-z][a-z0-9_.-]{0,127}$/;
 export function validateFlagKey(fm) {
   const v = fm.flag_key;
   if (v === undefined || v === null) return [];
-  if (typeof v === 'string' && FLAG_KEY_RE.test(v)) return [];
+  // The string "null" fits the grammar but means "no flag": named here as the push schema refuses it (codex, #297).
+  if (typeof v === 'string' && v !== 'null' && FLAG_KEY_RE.test(v)) return [];
   return [
     {
       rule: 'contract-flag-key-invalid',
