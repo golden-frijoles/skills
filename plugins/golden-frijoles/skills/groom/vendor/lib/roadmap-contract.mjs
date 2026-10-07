@@ -67,8 +67,10 @@ export const RESULT_TEXT_FIELDS = ['hypothesis', 'target_metric', 'verdict_evide
 
 // D2 — what proven or disproven must point at, checked offline as syntax only: a link, a North Star input's reading
 // on a day, or an experiment's A/B decision record. Keys are the platform's own shape (lowercase, digits, _ . -).
+// Case-SENSITIVE on purpose (codex review, #290): with `/i`, `HTTPS:///` matched here and then skipped the URL parse
+// below, which keys on the lowercase scheme. Keys take either case; the scheme and prefixes are lowercase.
 export const EVIDENCE_POINTER_RE =
-  /^(?:https:\/\/\S+|north-star:[a-z0-9][a-z0-9_.-]*@\d{4}-\d{2}-\d{2}|ab:[a-z0-9][a-z0-9_.-]*)$/i;
+  /^(?:https:\/\/\S+|north-star:[A-Za-z0-9][A-Za-z0-9_.-]*@\d{4}-\d{2}-\d{2}|ab:[A-Za-z0-9][A-Za-z0-9_.-]*)$/;
 
 // Zero dependencies is load-bearing: projects and fixtures copy this file on its own. So the day check lives here and
 // `result-dates.mjs` imports it, not the other way round.

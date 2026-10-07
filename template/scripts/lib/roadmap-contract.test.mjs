@@ -368,6 +368,7 @@ test('result-record D2: the pointer grammar, syntax only', () => {
   assert.equal(isEvidencePointer('ab:checkout-v2'), true);
   assert.equal(isEvidencePointer('http://x.test'), false, 'https only');
   assert.equal(isEvidencePointer('https:///'), false, 'a link must parse, with a host');
+  assert.equal(isEvidencePointer('HTTPS:///'), false, 'no uppercase scheme slipping past the parse');
   assert.equal(isEvidencePointer('north-star:x@2026-02-30'), false, 'a real day');
   assert.equal(isEvidencePointer('north-star:x'), false, 'a reading has a day');
   assert.equal(isEvidencePointer('ab:'), false);
