@@ -82,7 +82,17 @@ export function isDay(v) {
 /** Whether `v` is an evidence pointer (D2). A `north-star:` pointer's day must be a real calendar day. */
 export function isEvidencePointer(v) {
   if (typeof v !== 'string' || !EVIDENCE_POINTER_RE.test(v.trim())) return false;
-  const day = /@(\d{4}-\d{2}-\d{2})$/.exec(v.trim())?.[1];
+  const t = v.trim();
+  // A link must PARSE as https with a host (codex review, #290): the regex alone lets `https:///` through.
+  if (t.startsWith('https://')) {
+    try {
+      const u = new URL(t);
+      return u.protocol === 'https:' && u.hostname.length > 0;
+    } catch {
+      return false;
+    }
+  }
+  const day = /@(\d{4}-\d{2}-\d{2})$/.exec(t)?.[1];
   return !day || isDay(day);
 }
 
