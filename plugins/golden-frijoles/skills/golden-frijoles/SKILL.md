@@ -75,6 +75,7 @@ requires_scripts:
   - build-state.mjs
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs
+  - lib/frontmatter-stamp.mjs
 ---
 
 # golden-frijoles — start here

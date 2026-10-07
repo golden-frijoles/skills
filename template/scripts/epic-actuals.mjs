@@ -52,7 +52,10 @@ import { fileURLToPath } from 'node:url';
 import { resolveTarget } from './build-state.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 import { projectRoot } from './lib/project-root.mjs';
-import { formatScalar, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
+import { parseDocFrontmatter } from './lib/roadmap-contract.mjs';
+import { stampFrontmatter } from './lib/frontmatter-stamp.mjs';
+
+export { stampFrontmatter };
 import { needSetting } from './lib/config.mjs';
 import { apiKeyFrom } from './roadmap-push.mjs';
 import { PRICES_AS_OF, PRICES_SOURCE, TOKEN_KINDS, tokensOf, usdOf } from './lib/model-prices.mjs';
@@ -728,25 +731,7 @@ export async function pushUsage({
 
 // ── Stamping actual_* (S1.4 backfill, S2.5 close) ───────────────────────────────────────────────────
 
-/**
- * Set `fields` in a doc's frontmatter: an existing `key:` line is replaced in place, a missing one is inserted just
- * before the closing fence. No other line is touched. Re-running with the same values is a no-op (idempotent).
- */
-export function stampFrontmatter(md, fields) {
-  const lines = md.split('\n');
-  if (lines[0].trim() !== '---') throw new Error('no frontmatter');
-  const end = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-  if (end === -1) throw new Error('unterminated frontmatter');
-  const missing = [];
-  for (const [key, value] of Object.entries(fields)) {
-    const line = `${key}: ${formatScalar(value)}`;
-    const at = lines.findIndex((l, i) => i > 0 && i < end && new RegExp(`^${key}:(\\s|$)`).test(l));
-    if (at === -1) missing.push(line);
-    else lines[at] = line;
-  }
-  lines.splice(end, 0, ...missing);
-  return lines.join('\n');
-}
+// stampFrontmatter moved to lib/frontmatter-stamp.mjs (result-record D8); re-exported above for existing callers.
 
 /** The three actual_* fields for an epic's report. */
 export function actualFields(report, basisPrefix, date) {
