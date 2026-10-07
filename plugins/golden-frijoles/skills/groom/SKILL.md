@@ -101,12 +101,8 @@ editable by them) and their **teach-back** answer in the seed's *The ask, as giv
 Ask the inverted estimation question: **how much is this problem worth?** Set `appetite: S | M | L` (sessions, never a
 time estimate — WAYS-OF-WORKING → *Betting & appetite*) and record it in the seed with its **quote**: run
 `node scripts/quote.mjs --appetite <A>` and copy its line into the seed's `quote:` (no history → `wide`; carry on). The
-solution must fit the appetite; if it can't, narrow the problem or cut scope — never grow the appetite mid-shaping.
-Then ask **once: which number should this move, from what to what, and when do we read it?** Offer the input keys
-`strategy.mjs` printed on its `Target:` line by name; with none, take free text (it shows as "not grounded"). Write the
-answers into the seed's frontmatter — `hypothesis`, `target_metric`, `target_from`, `target_to` (numbers), `read_date`
-(`YYYY-MM-DD`, or leave it null: 30 days after shipping). `scaffold-epic` carries them into the epic README, where
-`node scripts/epic-read.mjs` reads the result on that date. "No target" is an answer; never invent one.
+solution must fit the appetite; if it can't, narrow the problem or cut scope — never grow the appetite mid-shaping. Then ask
+**once: which number, from what to what, read when?** — the seed's target (`references/result-record.md`).
 
 ## Stage 2 — Classify
 | Class | Tell | Path |
@@ -126,10 +122,9 @@ the messaging that exposes it), **light enhancement** (a small story or copy/con
 **genuinely new**. Present buckets 1/2 first when they exist — pulling toward the lighter path is the job.
 
 ## Stage 3 — Disambiguate (structured Q&A)
-Ask in batches, only the questions actually open, and **research present-day facts** when the ask leans on
-anything recent or changing. The core bank — role & job, outcome & signal, scope boundary (write the
-"out" list), granularity, data model, agent surface, language & channels, overlap — is in
-`references/question-bank.md`.
+Ask in batches, only the questions actually open, and **research present-day facts** when the ask leans on anything
+recent or changing. The core bank — role & job, outcome & signal, scope boundary (write the "out" list), granularity,
+data model, agent surface, language & channels, overlap — is in `references/question-bank.md`.
 
 ## Stage 3.5 — Intent match (advisory)
 With criteria written, run `node scripts/intent-match.mjs Roadmap/00-ideas/seeds/<slug>.md --write` and make or answer
