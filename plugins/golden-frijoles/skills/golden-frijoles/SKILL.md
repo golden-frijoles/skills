@@ -156,9 +156,9 @@ needs a flag. Every other answer is that direct kit call: `config set project.<n
   stranger's own unrelated script instead of adopting the repo. It writes the `Roadmap/` skeleton,
   never overwrites anything, and writes nothing outside `Roadmap/`.
 - Q1 `planning-only` → write nothing but the config file. No `gf-kit init`.
-- Then, by Q2: `idea` or `plan` → offer `groom`, or the strategy coaches first (`pmf-narrative` →
-  `north-star` → `risk-validation`) when whether the idea is worth doing is still open; `building` → offer
-  `live-smoke`.
+- Then, by Q2: `idea` or `plan` → offer `groom`, or the strategy step first when whether the idea is worth doing is
+  still open: write the three strategy files from the conversation and the repo, then show the **Strategy gate**
+  (groom's `references/gates.md`, the one home of every gate and its words); `building` → offer `live-smoke`.
 
 Keep this stage to the table above plus the two next-step rules — don't re-explain the registry or
 restate `lib/config-registry.mjs` here.
@@ -168,7 +168,7 @@ restate `lib/config-registry.mjs` here.
 | The ask sounds like… | Route to |
 |---|---|
 | planning, shaping, a new idea, "what should we build" | `groom` |
-| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `pmf-narrative` → `north-star` → `risk-validation` (each writes `Roadmap/00-strategy/<name>.md` and offers the next) |
+| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `pmf-narrative` → `north-star` → `risk-validation` (each writes `Roadmap/00-strategy/<name>.md` and offers the next; approval is the Strategy gate in groom's `references/gates.md`) |
 | verifying rendered behavior, "does this look right", a build-time check | `live-smoke` (the cross-review rails also ship in the kit) |
 | daily/weekly ops: standups, recaps, PMO reporting, watching a PR, doc bloat, stale previews | `standup-post` / `weekly-recap` / `pmo-report` / `babysit-pr` / `doc-hygiene` / `vercel-prune` |
 | standing up a reviewed Claude Code routine | `node scripts/routine-bootstrap.mjs <name>`, then paste it into `/schedule` |

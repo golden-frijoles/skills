@@ -44,10 +44,41 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | approve (fund + scaffold) | Approve the plan |
 | approve, don't fund | Park it |
 
-## The Strategy gate
+## The Strategy gate (setup's strategy step)
 
-Shown by setup's strategy step after the agent has written the three strategy files. Its block lands with the
-Strategy gate (gates-in-plain-agile sprint 2).
+Setup's strategy step writes the three strategy files first, from the conversation and the repo, each by its coach's
+template and write rules with `status: draft`: `pmf-narrative`, `north-star`, `risk-validation`. Then:
+
+```gate strategy
+Your strategy is written and ready to review.
+
+Read them      Roadmap/00-strategy/  (<n> files, any Markdown viewer)
+
+Decided from the repo, no need to check unless you disagree
+               The problem: <the problem, one line>
+               The promise: <the value proposition, one line>
+               How you charge: <the business model, one line>
+
+Decisions only you can make:
+  1. Who first: <the segment question the repo leaves open>
+  2. North Star: <the metric, one line>. Keep it?
+  3. Riskiest assumption: <the assumption, one line>. Test that first?
+
+Answer them here, or:
+
+  1 Approve the strategy
+  2 Change something
+  3 Coach me through it, one piece at a time
+```
+
+- **Decided from the repo** comes from what the files say; a line the repo cannot answer becomes a decision instead
+  (never more than three) or is left out. Never invent a fact about the business.
+- **Answers to the decisions** are written into the files before anything else, then the gate is shown again.
+- **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter, and changes nothing else. Then
+  offer grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
+- **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
+- **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
+  step-by-step mode on the file already written, then shows this gate again.
 
 ## The Plan gate (groom Stage 7)
 
