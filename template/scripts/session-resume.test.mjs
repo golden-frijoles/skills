@@ -33,6 +33,7 @@ import {
   decideReadsDue,
   gatherRoadmapRows,
 } from './session-resume.mjs';
+import { resultFields } from './roadmap-extract.mjs';
 
 // ---- resolveRepos: the project's one repo list, from reporting.config.json ----
 // The origin hard-coded its three repos and their checkout dirs; the template reads them from config.
@@ -1106,4 +1107,19 @@ test('result-record D9: a due read leads the anomalies that follow the memory ch
     readsDue: due,
   });
   assert.equal(anomalies[0].type, 'read-due');
+});
+
+test('result-record D9: a DERIVED read date reaches session-resume — the extract writes it into read_date', () => {
+  // Codex (#291, twice) read decideReadsDue as never seeing the 30-days-after-shipping default. It does: the extract's
+  // resultFields replaces read_date with the derived day, so the row this function reads already carries it.
+  const row = {
+    grain: 'Epic',
+    slug: 'derived',
+    name: 'Derived',
+    stage: 'Shipped',
+    ...resultFields({ target_metric: 'x', target_from: '1', target_to: '2' }, '2026-10-04'),
+  };
+  assert.equal(row.read_date_derived, true);
+  assert.deepEqual(decideReadsDue([row], '2026-11-02'), [], 'not before shipped + 30');
+  assert.match(decideReadsDue([row], '2026-11-03')[0].detail, /Read due: Derived · since 3 Nov/);
 });
