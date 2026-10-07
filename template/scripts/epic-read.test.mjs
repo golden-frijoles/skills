@@ -230,7 +230,7 @@ test('S3.3: with gf signed in, the read arrives with the number and its pointer;
       'readings',
       'invoices_paid_on_time',
       '--to',
-      '2026-11-05',
+      '2026-11-04', // complete days only: the day before the read (today's count is partial)
       '--project',
       'acme',
       '--json',
@@ -259,6 +259,44 @@ test('S3.3: the owner’s --actual wins — nothing is fetched over it', async (
       spawnFn: gfStub({}, seen),
     });
     assert.deepEqual(seen, []);
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.3: an owner reason or verdict is their answer — nothing is fetched over it (fresh review, #293)', async () => {
+  const f = fixture([]);
+  try {
+    const seen = [];
+    const spawnFn = gfStub(
+      { 'north-star readings': { body: READINGS({ date: '2026-11-04', value: 72 }) } },
+      seen
+    );
+    const reason = await run(f.root, ['--today', '2026-11-05', '--evidence', 'traffic too low (n = 18)'], {
+      spawnFn,
+    });
+    assert.deepEqual(seen, []);
+    assert.match(reason.out, /verdict: {2}unclear/);
+    await run(f.root, ['--today', '2026-11-05', '--verdict', 'unclear', '--evidence', 'n = 18'], { spawnFn });
+    assert.deepEqual(seen, []);
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.3: a wrong project is "could not fetch", never "not grounded"', async () => {
+  const f = fixture([]);
+  try {
+    const out = await run(f.root, ['--today', '2026-11-05', '--project', 'typo'], {
+      spawnFn: gfStub({
+        'north-star readings': {
+          status: 3,
+          body: { ok: false, code: 'not_found', error: 'No project `typo` is available.' },
+        },
+      }),
+    });
+    assert.doesNotMatch(out.out, /not grounded/);
+    assert.match(out.out, /could not fetch the number: No project `typo` is available/);
   } finally {
     f.done();
   }

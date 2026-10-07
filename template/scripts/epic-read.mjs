@@ -45,7 +45,7 @@ import {
   parseDocFrontmatter,
   validateResultFields,
 } from './lib/roadmap-contract.mjs';
-import { READ_CAP_DAYS, dayOf, isLate, readDateOf, todayUtc, isDay } from './lib/result-dates.mjs';
+import { READ_CAP_DAYS, addDays, dayOf, isLate, readDateOf, todayUtc, isDay } from './lib/result-dates.mjs';
 import { stampFrontmatter } from './lib/frontmatter-stamp.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 
@@ -171,7 +171,8 @@ export function fetchEvidence({ metric, experiment = null, today, shippedAt, pro
   const out = { fetched: false, grounded: null };
   const readings = run(['north-star', 'readings', metric, '--to', today, ...scope]);
   if (!readings.ok) {
-    if (readings.code === 'not_found') out.grounded = false;
+    // `not_found` is also what an unknown or foreign PROJECT answers; only the input's own sentence means "not grounded".
+    if (readings.code === 'not_found' && /No North Star input/.test(readings.why ?? '')) out.grounded = false;
     out.why = readings.why;
   } else {
     out.grounded = true;
@@ -335,16 +336,21 @@ export async function main(argv, { spawnFn = spawnSync, env = process.env, stdou
   // never for an epic already read or not shipped, never over the owner's own --actual.
   let fetched = null;
   const readable = !['already-read', 'not-shipped', 'not-due'].includes(plan.state);
-  if (readable && plan.target.metric && actual === null) {
+  // The owner's word wins: a number (--actual), a reason or pointer (--evidence) or a verdict (--verdict) means the
+  // owner has answered, and a fetched number must not overrule them (fresh review, #293).
+  const ownerAnswered = actual !== null || evidenceFlag !== null || base.verdict !== null;
+  if (readable && plan.target.metric && !ownerAnswered) {
     fetched = fetchEvidence({
       metric: plan.target.metric,
       experiment: arg(argv, '--experiment'),
-      today,
+      // Complete days only: today's telemetry count is a partial day (fresh review, #293).
+      today: addDays(today, -1),
       shippedAt,
       project: arg(argv, '--project'),
       run: (args) => runGf(args, { env, spawnFn }),
     });
-    if (fetched.fetched || fetched.decision)
+    // Only a reading is a number to draft from; a decision on its own only names the pointer for the owner to confirm.
+    if (fetched.fetched)
       plan = planRead({
         ...base,
         actual: fetched.actual ?? null,
