@@ -30,6 +30,8 @@ import {
   readMemoryIndex,
   MEMORY_BUDGET_BYTES,
   MEMORY_HARD_LIMIT_BYTES,
+  decideReadsDue,
+  gatherRoadmapRows,
 } from './session-resume.mjs';
 
 // ---- resolveRepos: the project's one repo list, from reporting.config.json ----
@@ -505,6 +507,7 @@ function baseDeps(overrides = {}) {
     readLogFromBranchFn: () => null,
     now: new Date('2026-07-26T00:00:00Z'),
     resolveReposFn: () => ({ repos: FIXTURE_REPOS, note: null }),
+    buildRowsFn: () => [],
     ...overrides,
   };
 }
@@ -1005,4 +1008,74 @@ test('every memory-budget verdict is renderable — the population, not one samp
   }
   // And the healthy case still yields nothing at all.
   assert.equal(decideMemoryBudgetAnomaly({ available: true, bytes: 1024 }), null);
+});
+
+// ── result-record D9 — a due read, one line per epic ─────────────────────────────────────────────
+
+const epicRow = (over = {}) => ({
+  grain: 'Epic',
+  slug: 'overdue-reminders',
+  name: 'Overdue reminders',
+  stage: 'Shipped',
+  target_metric: 'invoices_paid_on_time',
+  verdict: null,
+  read_date: '2026-11-04',
+  ...over,
+});
+
+test('result-record D9: a due read is one line, oldest first, until its verdict is written', () => {
+  const rows = [
+    epicRow(),
+    epicRow({ slug: 'export-csv', name: 'Export CSV', read_date: '2026-10-28' }),
+    epicRow({ slug: 'read', verdict: 'proven' }),
+    epicRow({ slug: 'later', read_date: '2026-12-01' }),
+    epicRow({ slug: 'building', stage: 'Building' }),
+    epicRow({ slug: 'no-target', target_metric: null }),
+    { grain: 'Sprint', slug: 'x--s1', stage: 'Shipped', target_metric: 'x', read_date: '2026-01-01' },
+  ];
+  const due = decideReadsDue(rows, '2026-11-05');
+  assert.deepEqual(due, [
+    {
+      type: 'read-due',
+      detail: 'Read due: Export CSV · since 28 Oct · run node scripts/epic-read.mjs --epic export-csv',
+    },
+    {
+      type: 'read-due',
+      detail:
+        'Read due: Overdue reminders · since 4 Nov · run node scripts/epic-read.mjs --epic overdue-reminders',
+    },
+  ]);
+  assert.deepEqual(decideReadsDue(rows, '2026-10-01'), [], 'nothing due before its date');
+  assert.deepEqual(assertRenderableAnomalies(due), due);
+});
+
+test('result-record D9: main() leads with the due read; an unreadable roadmap is a gap, not "nothing due"', async () => {
+  let out = '';
+  await main(
+    [],
+    baseDeps({
+      now: new Date('2026-11-05T09:00:00Z'),
+      buildRowsFn: () => [epicRow()],
+      log: (m) => (out += m),
+    })
+  );
+  assert.match(out, /\[read-due\] Read due: Overdue reminders · since 4 Nov/);
+  const broken = gatherRoadmapRows({
+    root: '/nowhere',
+    buildRowsFn: () => {
+      throw new Error('bad README');
+    },
+  });
+  assert.deepEqual(broken, { available: false, rows: [], reason: 'bad README' });
+  let out2 = '';
+  await main(
+    [],
+    baseDeps({
+      buildRowsFn: () => {
+        throw new Error('bad README');
+      },
+      log: (m) => (out2 += m),
+    })
+  );
+  assert.match(out2, /reads due unknown — the roadmap could not be read: bad README/);
 });

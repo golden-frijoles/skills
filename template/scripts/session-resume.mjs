@@ -61,6 +61,8 @@ import {
   JOURNAL_PATH,
 } from './lib/session-journal.mjs';
 import { loadReportingConfig, ReportingConfigError } from './lib/reporting-config.mjs';
+import { isReadDue, todayUtc } from './lib/result-dates.mjs';
+import { buildRows } from './roadmap-extract.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = join(__dirname, '..');
@@ -495,7 +497,47 @@ export function readMemoryIndex(cwd = process.cwd(), deps = {}) {
   }
 }
 
-export function buildAnomalies({ repoStates, migrationResults, expandOrphans = false, memoryIndex }) {
+// result-record D9 — a read that is due is something to act on before anything else, so it rides the anomaly list:
+// one line per epic, from the docs alone (no network), gone as soon as its verdict is written into the README.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function decideReadsDue(rows, today = todayUtc()) {
+  return (rows || [])
+    .filter(
+      (r) =>
+        r.grain === 'Epic' &&
+        isReadDue(
+          {
+            targetMetric: r.target_metric,
+            verdict: r.verdict,
+            readDate: r.read_date,
+            shipped: r.stage === 'Shipped',
+          },
+          today
+        )
+    )
+    .sort((a, b) => a.read_date.localeCompare(b.read_date) || a.slug.localeCompare(b.slug))
+    .map((r) => ({
+      type: 'read-due',
+      detail: `Read due: ${r.name} · since ${Number(r.read_date.slice(8, 10))} ${MONTHS[Number(r.read_date.slice(5, 7)) - 1]} · run node scripts/epic-read.mjs --epic ${r.slug}`,
+    }));
+}
+
+/** The roadmap rows the reads-due check reads, docs only. A failure is a gap, never a silent "nothing due". */
+export function gatherRoadmapRows({ root, buildRowsFn = buildRows }) {
+  try {
+    return { available: true, rows: buildRowsFn({ root, facts: { mode: 'docs', prs: [], branches: [] } }) };
+  } catch (e) {
+    return { available: false, rows: [], reason: e.message };
+  }
+}
+
+export function buildAnomalies({
+  repoStates,
+  migrationResults,
+  expandOrphans = false,
+  memoryIndex,
+  readsDue = [],
+}) {
   const anomalies = [];
   // First, because it is the one anomaly that changes what the rest of this report is
   // worth: if the index is truncating, the session is missing facts it does not know it
@@ -525,14 +567,22 @@ export function buildAnomalies({ repoStates, migrationResults, expandOrphans = f
       for (const a of decideMigrationAnomalies({ ...m, expandOrphans })) anomalies.push(a);
     }
   }
+  anomalies.push(...readsDue);
   return assertRenderableAnomalies(anomalies);
 }
 
 // D4: names every degraded source instead of silently dropping it. A missing repo path, an
 // unauthenticated/unreachable gh, an unavailable migration check, and an empty/unfetchable journal all
 // land here — distinct from `buildAnomalies`, which only reports CONFIRMED surprising states.
-export function buildGaps({ repoStates, migrationResults, journalAvailable, journalReason }) {
+export function buildGaps({
+  repoStates,
+  migrationResults,
+  journalAvailable,
+  journalReason,
+  roadmapReason = null,
+}) {
   const gaps = [];
+  if (roadmapReason) gaps.push(`reads due unknown — the roadmap could not be read: ${roadmapReason}.`);
   for (const rs of repoStates || []) {
     if (!rs.git?.available)
       gaps.push(`${rs.repo}: git state unavailable — ${rs.git?.reason || 'unknown reason'}.`);
@@ -570,12 +620,14 @@ export function buildReport({
   journalLimit = JOURNAL_LIMIT_DEFAULT,
   expandOrphans = false,
   memoryIndex,
+  readsDue = [],
+  roadmapReason = null,
   generatedAt,
 }) {
   return {
     generatedAt: generatedAt || new Date().toISOString(),
-    anomalies: buildAnomalies({ repoStates, migrationResults, expandOrphans, memoryIndex }),
-    gaps: buildGaps({ repoStates, migrationResults, journalAvailable, journalReason }),
+    anomalies: buildAnomalies({ repoStates, migrationResults, expandOrphans, memoryIndex, readsDue }),
+    gaps: buildGaps({ repoStates, migrationResults, journalAvailable, journalReason, roadmapReason }),
     journal: {
       available: journalAvailable,
       reason: journalAvailable ? null : journalReason || null,
@@ -860,6 +912,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
     now,
     resolveReposFn = resolveRepos,
     gatherFactsFn = gatherFacts,
+    buildRowsFn = buildRows,
   } = deps;
 
   let args;
@@ -904,6 +957,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       spawn,
     });
     const journal = gatherJournal({ root: args.root, readLogFromBranchFn });
+    const roadmap = gatherRoadmapRows({ root: args.root, buildRowsFn });
 
     const report = buildReport({
       repoStates,
@@ -914,6 +968,8 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       journalLimit: args.journalLimit,
       expandOrphans: args.expandOrphans,
       memoryIndex: readMemoryIndex(args.root, { stat: statFn, home: homeDir }),
+      readsDue: decideReadsDue(roadmap.rows, todayUtc(now || new Date())),
+      roadmapReason: roadmap.available ? null : roadmap.reason,
       generatedAt: (now || new Date()).toISOString(),
     });
 
