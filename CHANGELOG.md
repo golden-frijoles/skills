@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-10-07
+
+### Added
+- **An epic's flag travels with it** (one-epic-page S2.3). When groom Stage 6b decides a flag, its key goes in the
+  seed's frontmatter as `flag_key:`. `scaffold-epic` copies it into the epic README, the doc-format contract checks it
+  against the SDK's key grammar (`contract-flag-key-invalid`), and `roadmap-extract` pushes it as `flag_key`. It also
+  pushes the README's own `**Flag:** …` line as `flag_note`, which is where an epic with no flag says why. The Hub's
+  epic page reads the flag's state from your project's registry and links to it in Ship.
+- **SESSION-KICKOFFS says the Hub's plain lines are the same steps**: "Wrap sprint 2 of the x epic in p" is
+  `Wrap S2`, "Resume the x epic in p where its last session stopped" is `Resume`, and so on.
+
+### Changed
+- **The agy pin is 1.3.1.** agy auto-updated mid-review, and `cross-agent-doctor agy --fix` re-verified its help
+  contract with a green live probe.
+
 ## [0.33.0] - 2026-10-07
 
 ### Changed

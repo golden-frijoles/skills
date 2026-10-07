@@ -293,3 +293,27 @@ test('result-record D3: a scaffolded epic carries the seed’s target fields, an
     }
   }
 });
+
+// one-epic-page D11: the flag decided at Stage 6b travels from the seed into the README; no seed or no flag → null.
+test('one-epic-page D11: a scaffolded epic carries the seed’s flag_key, and the contract accepts it', () => {
+  const seed = (key) =>
+    ['---', 'slug: tmp-check', 'underwritten_by: wave-x', `flag_key: ${key}`, '---', '# tmp', ''].join('\n');
+  for (const [s, want, ok] of [
+    [seed('auth.terminal_sign_in_enabled'), 'auth.terminal_sign_in_enabled', true],
+    [seed('null'), null, true],
+    [null, null, true],
+    [seed('Not A Key'), 'Not A Key', false],
+  ]) {
+    const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One'], { seed: s });
+    try {
+      const parsed = parseDocFrontmatter(readFileSync(join(dir, 'README.md'), 'utf8'));
+      assert.equal(parsed.error, null);
+      assert.equal(parsed.data.flag_key, want);
+      const offenses = validateEpicFrontmatter(parsed, { sprintCount: 1, storyCount: 1 });
+      if (ok) assert.deepEqual(offenses, [])
+      else assert.deepEqual(offenses.map((o) => o.rule), ['contract-flag-key-invalid']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});

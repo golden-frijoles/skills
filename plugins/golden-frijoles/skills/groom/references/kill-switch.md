@@ -13,7 +13,8 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
 
 - **Yes →** *recommend* a kill-switch **story** (the product owner evaluates it at the scope-doc gate — never
   auto-injected). Name **five** things:
-  1. **Flag** — `<domain>.<feature>_enabled`, created in **Golden Frijoles**, which is the flag
+  1. **Flag** — `<domain>.<feature>_enabled`, written as `flag_key:` in the seed's frontmatter (the scaffold copies it
+     into the epic README; the Hub's epic page shows its state and links to it), created in **Golden Frijoles**, which is the flag
      provider for every project spawned from this template (`AGENTS.md`'s cannot-be-violated rules:
      *never build a parallel flag store*). The taxonomy lives in the provider, not in docs and not in
      a checked-in default map.

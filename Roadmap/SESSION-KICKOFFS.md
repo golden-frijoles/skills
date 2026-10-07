@@ -60,6 +60,11 @@ Pleasantries are fine and cost nothing — the leverage is the defined verb, not
 | **Next** | proceed to the next story/sprint per the current `sprint-N.md` |
 | **Resume** | §8 — pick up a session that died mid-flight |
 
+The Hub's epic page writes these verbs as **plain lines** that name the epic and the product, and each begins with the
+verb above — "Wrap sprint 2 of the overdue-reminders epic in ledgerly" is **Wrap S2**, "Resume the overdue-reminders epic
+in ledgerly where its last session stopped" is **Resume**, "Review pull request #42 for the overdue-reminders epic in
+ledgerly" is **Review PR #42**. Same step, either spelling.
+
 ---
 
 ## 1 · Groom a raw ask into a shaped pitch — strong model *(the Shape stage)*

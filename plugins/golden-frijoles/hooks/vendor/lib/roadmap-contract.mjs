@@ -140,6 +140,24 @@ export function validateResultFields(fm) {
   return offenses;
 }
 
+// one-epic-page D11 — the epic's flag, decided at groom Stage 6b and copied into the README by the scaffold. The SDK's
+// flag-key grammar (`FLAG_KEY` in apps/web/lib/flag-admin-operation.ts). Optional: `flag_key: null` (no flag) is the
+// default and never an error; a value that is not a key is named, never pushed (the extract sends null for it).
+export const FLAG_KEY_RE = /^[a-z][a-z0-9_.-]{0,127}$/;
+
+/** `flag_key:` → offenses (`contract-flag-key-invalid`). Absent or null is fine. */
+export function validateFlagKey(fm) {
+  const v = fm.flag_key;
+  if (v === undefined || v === null) return [];
+  if (typeof v === 'string' && FLAG_KEY_RE.test(v)) return [];
+  return [
+    {
+      rule: 'contract-flag-key-invalid',
+      detail: `flag_key: "${v}" is not a flag key (a lowercase letter, then a-z 0-9 _ . -; at most 128) — or null`,
+    },
+  ];
+}
+
 // live-build-view D10 — `locked_at:` is stamped by `scripts/epic-phase.mjs lock` when the architecture lock is written;
 // the build view reads its absence as "Locking architecture". Optional (no epic before it has one), an ISO date-time
 // string when present: the command writes `"2026-10-03T20:34:34Z"` (quoted, so the frontmatter parser keeps the colons).
@@ -355,6 +373,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
   }
   offenses.push(...validateFinopsFields(fm));
   offenses.push(...validateResultFields(fm));
+  offenses.push(...validateFlagKey(fm));
   offenses.push(...validateLockedAt(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({

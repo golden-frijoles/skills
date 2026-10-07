@@ -210,10 +210,19 @@ function targetValue(key) {
   if (key === 'read_date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   return yaml(v);
 }
+// one-epic-page D11 — the flag decided at Stage 6b travels the same way: the seed's `flag_key:` into the README, where
+// the extract pushes it and the epic page reads its state. Copied as written (quoted when it is not a plain key, so
+// doc-format's contract names it); no seed, no flag: null.
+function flagKeyValue() {
+  const v = fromSeed('flag_key');
+  if (v == null) return 'null';
+  return /^[a-z][a-z0-9_.-]{0,127}$/.test(v) ? v : yaml(v);
+}
 const baseVars = {
   QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
   HYPOTHESIS: targetValue('hypothesis'), TARGET_METRIC: targetValue('target_metric'),
   TARGET_FROM: targetValue('target_from'), TARGET_TO: targetValue('target_to'), READ_DATE: targetValue('read_date'),
+  FLAG_KEY: flagKeyValue(),
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.

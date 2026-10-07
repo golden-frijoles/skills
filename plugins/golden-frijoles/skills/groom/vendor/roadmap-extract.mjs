@@ -73,6 +73,7 @@ import {
   FINOPS_NUMERIC_FIELDS,
   RESULT_DAY_FIELDS,
   RESULT_FIELDS,
+  FLAG_KEY_RE,
   RESULT_NUMERIC_FIELDS,
   VERDICTS,
 } from './lib/roadmap-contract.mjs';
@@ -159,6 +160,21 @@ export function resultFields(fm, shippedAt) {
   out.read_date_derived = derived;
   out.read_late = out.verdict ? isLate({ verdictAt: out.verdict_at, shippedAt }) : false;
   return out;
+}
+
+/**
+ * one-epic-page D11 — an epic's flag: `flag_key` off its README frontmatter (the SDK's key grammar, else null — the
+ * contract names a bad one) and `flag_note`, the README's own `**Flag:** …` line, which is where an epic with no flag
+ * says why. Both null when absent; nothing is inferred from prose about a flag the frontmatter does not name.
+ */
+export function flagFields(fm, readme) {
+  const raw = typeof fm.flag_key === 'string' ? fm.flag_key.trim() : '';
+  // This file's line reader yields the STRING "null" for `flag_key: null`, and "null" fits the key grammar — so the
+  // blank spellings are refused before the pattern is asked.
+  const blank = raw === '' || raw === 'null' || raw === '~';
+  const line = /^\*\*Flag:\*\*[ \t]*(.+)$/m.exec(readme ?? '');
+  const note = line ? line[1].replace(/[*`]/g, '').trim().slice(0, 280) : '';
+  return { flag_key: !blank && FLAG_KEY_RE.test(raw) ? raw : null, flag_note: note || null };
 }
 
 function parseFrontmatter(md) {
@@ -583,6 +599,7 @@ export function buildRows({
       }
     }
 
+    const readme = readFileSync(join(e.path, 'README.md'), 'utf8');
     // Epic row
     rows.push({
       name: epicTitle(e.path, e.slug),
@@ -605,7 +622,7 @@ export function buildRows({
       build_order_num: buildOrderNum(buildOrder),
       doc_link: readmePath,
       epic_slug: null,
-      goal: firstParagraph(readFileSync(join(e.path, 'README.md'), 'utf8'), ['Why', 'Goal', 'Problem']),
+      goal: firstParagraph(readme, ['Why', 'Goal', 'Problem']),
       sprints: boardSprints.map((sp) => ({ n: sp.n, title: sp.title, done: sp.done, total: sp.total })),
       links: {
         readme: readmePath,
@@ -618,6 +635,7 @@ export function buildRows({
       shipped_at: stage === 'Shipped' ? statusDay : null,
       ...finopsFields(epicFm),
       ...resultFields(epicFm, stage === 'Shipped' ? statusDay : null),
+      ...flagFields(epicFm, readme),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries

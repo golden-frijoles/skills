@@ -16,6 +16,7 @@ target_metric: null    # which number — a North Star input key `strategy.mjs` 
 target_from: null      # from what (a number)
 target_to: null        # to what (a number)
 read_date: null        # when we read it, YYYY-MM-DD; null = 30 days after shipping
+flag_key: null         # the flag, if Stage 6b decided one (`<domain>.<feature>_enabled`); the scaffold copies it
 intent_match: null     # written by `node scripts/intent-match.mjs <this seed> --write` (groom Stage 3.5) — advisory
 ---
 
