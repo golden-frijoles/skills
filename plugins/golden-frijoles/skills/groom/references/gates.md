@@ -114,6 +114,9 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
   `target_to` / `read_date` (`result-record.md`), `appetite` and `quote`, the slices, `flag_key` and its polarity or
   the Stage 6b carve-out. "(your North Star input)" only when the target metric is one of the keys `strategy.mjs` printed; no
   target → leave out Moves, Target and Read date. Never invent a number or a hypothesis.
+- **Not grounded.** When `strategy.mjs` printed nothing (no strategy yet), the Moves line always shows, target or not:
+  `<the target metric's name> (not grounded: no strategy yet)`, or `not grounded: no strategy yet` with no target. It is
+  read at each gate, so it stops showing once a strategy exists.
 - **Flag** says what Stage 6b decided (`kill-switch.md`): a kill switch ships **on, so you can switch it off**; an
   enablement flag ships **off until you try it**. "none: <why>" only when Stage 6b wrote a carve-out; an epic that never
   reached Stage 6b leaves the line out. When the seed does not say which polarity, leave out on/off rather than guess.

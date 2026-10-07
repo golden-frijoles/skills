@@ -23,9 +23,9 @@ intent_match: null     # written by `node scripts/intent-match.mjs <this seed> -
 # Pitch — {{TITLE}}
 
 Moves: <input key> · Tests: <dimension>
-<!-- Optional. Keep this line ONLY when `strategy.mjs` printed the project's strategy at Stage 0: name the input metric
+<!-- When `strategy.mjs` printed the project's strategy at Stage 0: name the input metric
      this seed moves and the PMF dimension it tests (or write "Moves · Tests: neither — <why>"). With no
-     Roadmap/00-strategy/, delete it: groom says nothing about strategy. -->
+     Roadmap/00-strategy/, write "Moves · Tests: not grounded — no strategy yet" (references/strategy.md). -->
 
 ## The ask, as given
 <!-- The product owner's words, VERBATIM, as they arrived (Stage 1) — never tidied, never summarised. The intent
