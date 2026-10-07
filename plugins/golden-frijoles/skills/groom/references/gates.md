@@ -27,8 +27,8 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | On screen | Behind it (files keep these) | Never on screen |
 |---|---|---|
 | Idea, in the backlog | a seed in `Roadmap/00-ideas/seeds/` | seed |
-| Epic · Sprint · User story | the epic `README.md`, `sprint-N.md`, a story heading | scaffold, scaffolded, kickoff, epic mode |
-| Approve the plan | `fund.mjs`: a row in `Roadmap/bets/wave-YYYY-MM.md`, `underwritten_by:`, a build position | fund, funds, funded, funding, underwritten, cycle |
+| Epic · Sprint · User story | the epic `README.md`, `sprint-N.md`, a story heading | scaffold, scaffolds, scaffolded, kickoff, kickoffs, epic mode |
+| Approve the plan | `fund.mjs`: a row in `Roadmap/bets/wave-YYYY-MM.md`, `underwritten_by:`, a build position | fund, funds, funded, funding, underwritten, cycle, cycles |
 | Park it | the seed stays `status: ready` | — |
 | What this pushes back | `fund.mjs --displaced` | displaced |
 | Approve the strategy | `status: agreed` in each `Roadmap/00-strategy/` file | agreed |

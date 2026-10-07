@@ -158,6 +158,11 @@ jobs:
             || echo "::warning::could not install @anthropic-ai/claude-code — the claude-plugin probe was SKIPPED, not passed."
           node scripts/check-onboarding-parity.mjs --exec
 
+      # The gates a person reads speak plain agile (gates-in-plain-agile S2.2): no gate block shows a bookkeeping word,
+      # no copy names a retired option, one gate has one wording. The word lists live in groom's references/gates.md.
+      - name: Gate words stay off the screen
+        run: node scripts/check-gate-words.mjs
+
       # The repo-tooling scripts. check-plugin-leaks.test.mjs fires the guard's own rules against
       # FIXTURES: until golden-flags-by-default S1.3 this guard had no test at all, and its
       # behaviour was only ever observed as "CI was green" — the one observation that cannot tell a
@@ -175,6 +180,7 @@ jobs:
             scripts/kit-bin.test.mjs \
             scripts/check-config-reads.test.mjs \
             scripts/check-onboarding-parity.test.mjs \
+            scripts/check-gate-words.test.mjs \
             scripts/strategy-templates.test.mjs
 
       # The Cowork install path. Cowork does NOT read a project's .claude/settings.json, so the
