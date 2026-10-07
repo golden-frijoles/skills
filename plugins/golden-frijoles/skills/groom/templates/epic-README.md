@@ -13,6 +13,15 @@ intent_match: {{INTENT_MATCH}}   # copied from the seed by scaffold-epic (intent
 quote_low_usd: {{QUOTE_LOW}}    # ≈ API $ — copied from the seed's `quote:` by scaffold-epic (finops); null = not quoted, never 0
 quote_high_usd: {{QUOTE_HIGH}}
 quote_basis: {{QUOTE_BASIS}}
+hypothesis: {{HYPOTHESIS}}   # the result record — copied from the seed by scaffold-epic; null = no target (never an error)
+target_metric: {{TARGET_METRIC}}   # which number: a North Star input key (grounded) or free text (not grounded)
+target_from: {{TARGET_FROM}}   # from what, a number
+target_to: {{TARGET_TO}}       # to what, a number
+read_date: {{READ_DATE}}       # YYYY-MM-DD; null = 30 days after shipping, derived by the extract and never written back
+verdict: null        # proven | disproven | unclear — stamped by `node scripts/epic-read.mjs --epic <slug> --write`
+verdict_actual: null
+verdict_evidence: null   # https:// link · north-star:<input>@YYYY-MM-DD · ab:<experiment> (unclear: the reason)
+verdict_at: null
 build_order: null    # integer position in the ONE global build sequence — the SSOT once the epic
                      # exists (the seed's value is only a fallback). Fill it in at the betting
                      # table; plain integers, no "#2a" suffixes. See 00-ideas/README.md → Ordering.

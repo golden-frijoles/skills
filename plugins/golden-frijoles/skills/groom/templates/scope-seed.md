@@ -11,6 +11,11 @@ epic: null
 build_order: null
 updated: {{DATE}}
 intent_ask: verbatim   # verbatim = the product owner's own words below · proxy = reconstructed after the fact
+hypothesis: null       # the result record (Stage 1.5): what this should change, in one sentence
+target_metric: null    # which number — a North Star input key `strategy.mjs` printed, or free text (not grounded)
+target_from: null      # from what (a number)
+target_to: null        # to what (a number)
+read_date: null        # when we read it, YYYY-MM-DD; null = 30 days after shipping
 intent_match: null     # written by `node scripts/intent-match.mjs <this seed> --write` (groom Stage 3.5) — advisory
 ---
 

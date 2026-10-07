@@ -10,6 +10,10 @@ import {
   SPRINT_FIELDS,
   FINOPS_FIELDS,
   validateFinopsFields,
+  RESULT_FIELDS,
+  VERDICTS,
+  validateResultFields,
+  isEvidencePointer,
 } from './roadmap-contract.mjs';
 
 const sprintDoc = (fields, body = '# E — Sprint 1: One\n') => `---\n${fields}\n---\n${body}`;
@@ -283,4 +287,84 @@ test('finops D6: validateEpicFrontmatter carries the FinOps check', () => {
     offenses.map((o) => o.rule),
     ['contract-finops-invalid']
   );
+});
+
+// ── result-record D1/D2 — the target and the verdict ──────────────────────────────────────────────
+
+const EPIC_HEAD =
+  'status: shipped\ntitle: T\narea: 09-x\nrisk: low\ntype: feature\nphase: Shipped\nsprints_total: 1\nstories_total: 1';
+
+test('result-record D1: the nine fields are declared once; no target at all is fine', () => {
+  assert.deepEqual(RESULT_FIELDS, [
+    'hypothesis',
+    'target_metric',
+    'target_from',
+    'target_to',
+    'read_date',
+    'verdict',
+    'verdict_actual',
+    'verdict_evidence',
+    'verdict_at',
+  ]);
+  assert.deepEqual(VERDICTS, ['proven', 'disproven', 'unclear']);
+  assert.deepEqual(validateResultFields({}), [], 'a missing target is "no target", never an error');
+});
+
+test('result-record D1: a full record read off real frontmatter passes', () => {
+  const md = `---\n${EPIC_HEAD}\nhypothesis: "Reminders get invoices paid on time"\ntarget_metric: invoices_paid_on_time\ntarget_from: 61\ntarget_to: 70\nread_date: 2026-11-04\nverdict: proven\nverdict_actual: 72.5\nverdict_evidence: "north-star:invoices_paid_on_time@2026-11-04"\nverdict_at: 2026-11-04\n---\n`;
+  assert.deepEqual(validateEpicFrontmatter(parseDocFrontmatter(md)), []);
+});
+
+test('result-record D1: verdict: provn fails the contract, through validateEpicFrontmatter', () => {
+  const md = `---\n${EPIC_HEAD}\nverdict: provn\nverdict_at: 2026-11-04\nverdict_evidence: "https://x.test/1"\n---\n`;
+  const offenses = validateEpicFrontmatter(parseDocFrontmatter(md));
+  assert.deepEqual(offenses.map((o) => o.rule), ['contract-result-invalid']);
+  assert.match(offenses[0].detail, /verdict: "provn" is not one of proven \| disproven \| unclear/);
+});
+
+test('result-record D1: each bad value is named', () => {
+  const details = (fm) => validateResultFields(fm).map((o) => o.detail).join(' / ');
+  assert.match(details({ target_from: '61%', target_to: 70 }), /target_from: "61%" is not a number/);
+  assert.match(details({ target_from: 61 }), /needs both target_from and target_to/);
+  assert.match(details({ target_from: 5, target_to: 5 }), /has to move the number/);
+  assert.match(details({ read_date: '2026-02-30' }), /read_date: "2026-02-30" is not a day/);
+  assert.match(details({ read_date: '4 Nov' }), /read_date: "4 Nov"/);
+  assert.match(details({ hypothesis: 3 }), /hypothesis: "3" is not text/);
+  assert.match(details({ verdict_actual: 72 }), /verdict_actual is set but there is no verdict/);
+  assert.match(details({ verdict: 'unclear' }), /needs verdict_at/);
+  assert.match(details({ verdict: 'unclear', verdict_at: '2026-11-04' }), /needs verdict_evidence/);
+  assert.deepEqual(
+    validateResultFields({ verdict: 'unclear', verdict_at: '2026-11-04', verdict_evidence: 'traffic too low (n = 18)' }),
+    [],
+    'unclear takes a reason, not a pointer'
+  );
+  assert.deepEqual(validateResultFields({ target_from: 44, target_to: 30.5 }), [], 'a target may go down');
+});
+
+test('result-record D2: proven or disproven without evidence that points somewhere is refused', () => {
+  const base = { verdict: 'disproven', verdict_actual: 43, verdict_at: '2026-10-28' };
+  assert.match(
+    validateResultFields({ ...base, verdict_evidence: 'it felt flat' }).map((o) => o.detail).join(),
+    /needs evidence that points somewhere/
+  );
+  assert.match(
+    validateResultFields({ verdict: 'proven', verdict_at: '2026-10-28', verdict_evidence: 'ab:smart-defaults' })
+      .map((o) => o.detail)
+      .join(),
+    /needs verdict_actual/
+  );
+  for (const ok of ['ab:smart-defaults', 'north-star:setup_completion@2026-10-28', 'https://example.com/r/12'])
+    assert.deepEqual(validateResultFields({ ...base, verdict_evidence: ok }), [], ok);
+});
+
+test('result-record D2: the pointer grammar, syntax only', () => {
+  assert.equal(isEvidencePointer('https://x.test/a?b=1'), true);
+  assert.equal(isEvidencePointer('north-star:grounded_bets_share@2026-11-04'), true);
+  assert.equal(isEvidencePointer('ab:checkout-v2'), true);
+  assert.equal(isEvidencePointer('http://x.test'), false, 'https only');
+  assert.equal(isEvidencePointer('north-star:x@2026-02-30'), false, 'a real day');
+  assert.equal(isEvidencePointer('north-star:x'), false, 'a reading has a day');
+  assert.equal(isEvidencePointer('ab:'), false);
+  assert.equal(isEvidencePointer('see the dashboard'), false);
+  assert.equal(isEvidencePointer(null), false);
 });

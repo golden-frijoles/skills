@@ -200,8 +200,20 @@ function quoteFrom(flag, basisFlag, seedText) {
   return { low: 'null', high: 'null', basis: 'null' };
 }
 const quote = quoteFrom(args.quote, args['quote-basis'], seedText ?? '');
+// result-record D3 — the target travels the same way: the seed's frontmatter holds it until here, the README from here
+// on. Copied, not judged: a number or a day goes in bare, anything else quoted, and doc-format's contract names a bad
+// value in the README the way it names a bad quote. No seed, or no target in it: every field scaffolds null.
+function targetValue(key) {
+  const v = fromSeed(key);
+  if (v == null) return 'null';
+  if ((key === 'target_from' || key === 'target_to') && /^-?\d+(?:\.\d+)?$/.test(v)) return v;
+  if (key === 'read_date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  return yaml(v);
+}
 const baseVars = {
   QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
+  HYPOTHESIS: targetValue('hypothesis'), TARGET_METRIC: targetValue('target_metric'),
+  TARGET_FROM: targetValue('target_from'), TARGET_TO: targetValue('target_to'), READ_DATE: targetValue('read_date'),
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.

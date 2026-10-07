@@ -251,3 +251,45 @@ test('review #271: numbered acceptance items and an "## Acceptance checks" headi
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// result-record S1.1 (D3): the seed's target travels into the README, as the quote does; no target scaffolds null.
+test('result-record D3: a scaffolded epic carries the seed’s target fields, and the contract accepts them', () => {
+  const seed = [
+    '---',
+    'slug: tmp-check',
+    'underwritten_by: wave-x',
+    'hypothesis: "Reminders: invoices get paid on time"',
+    'target_metric: invoices_paid_on_time   # a North Star input',
+    'target_from: 61',
+    'target_to: 70.5',
+    'read_date: 2026-11-04',
+    '---',
+    '# tmp',
+    '',
+  ].join('\n');
+  for (const [s, want] of [
+    [
+      seed,
+      {
+        hypothesis: 'Reminders: invoices get paid on time',
+        target_metric: 'invoices_paid_on_time',
+        target_from: 61,
+        target_to: 70.5,
+        read_date: '2026-11-04',
+      },
+    ],
+    [null, { hypothesis: null, target_metric: null, target_from: null, target_to: null, read_date: null }],
+  ]) {
+    const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One'], { seed: s });
+    try {
+      const parsed = parseDocFrontmatter(readFileSync(join(dir, 'README.md'), 'utf8'));
+      assert.equal(parsed.error, null);
+      for (const [k, v] of Object.entries(want)) assert.equal(parsed.data[k], v, k);
+      for (const k of ['verdict', 'verdict_actual', 'verdict_evidence', 'verdict_at'])
+        assert.equal(parsed.data[k], null, `${k} is born null`);
+      assert.deepEqual(validateEpicFrontmatter(parsed, { sprintCount: 1, storyCount: 1 }), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
