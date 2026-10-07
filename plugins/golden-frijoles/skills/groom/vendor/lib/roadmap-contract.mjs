@@ -83,11 +83,12 @@ export function isDay(v) {
 export function isEvidencePointer(v) {
   if (typeof v !== 'string' || !EVIDENCE_POINTER_RE.test(v.trim())) return false;
   const t = v.trim();
-  // A link must PARSE as https with a host (codex review, #290): the regex alone lets `https:///` through.
+  // A link must PARSE (codex review, #290): the regex alone lets `https:///` through. The WHATWG parser refuses an
+  // https URL with no host, so a successful parse is the whole check — the scheme was already matched above.
   if (t.startsWith('https://')) {
     try {
-      const u = new URL(t);
-      return u.protocol === 'https:' && u.hostname.length > 0;
+      new URL(t);
+      return true;
     } catch {
       return false;
     }
