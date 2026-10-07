@@ -53,7 +53,8 @@ export function readDateOf({ readDate, targetMetric, shippedAt }) {
   // A day written at grooming that passes before the epic ships is read on ship day (codex review, #290): there was
   // nothing out there to read before then, and "overdue since before release" would be a false alarm.
   const shipped = dayOf(shippedAt);
-  if (isDay(readDate)) return { readDate: shipped && readDate < shipped ? shipped : readDate, derived: false };
+  if (isDay(readDate))
+    return { readDate: shipped && readDate < shipped ? shipped : readDate, derived: false };
   if (!targetMetric || !dayOf(shippedAt)) return { readDate: null, derived: false };
   return { readDate: addDays(shippedAt, READ_DEFAULT_DAYS), derived: true };
 }
