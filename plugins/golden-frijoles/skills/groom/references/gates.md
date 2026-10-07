@@ -27,12 +27,12 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | On screen | Behind it (files keep these) | Never on screen |
 |---|---|---|
 | Idea, in the backlog | a seed in `Roadmap/00-ideas/seeds/` | seed |
-| Epic · Sprint · User story | the epic `README.md`, `sprint-N.md`, a story heading | scaffold, scaffolds, scaffolded, kickoff, kickoffs, epic mode |
-| Approve the plan | `fund.mjs`: a row in `Roadmap/bets/wave-YYYY-MM.md`, `underwritten_by:`, a build position | fund, funds, funded, funding, underwritten, cycle, cycles |
+| Epic · Sprint · User story | the epic `README.md`, `sprint-N.md`, a story heading | scaffold, scaffolds, scaffolded, scaffolding, kickoff, kickoffs, kick-off, epic mode |
+| Approve the plan | `fund.mjs`: a row in `Roadmap/bets/wave-YYYY-MM.md`, `underwritten_by:`, a build position | fund, funds, funded, funding, underwrite, underwritten, cycle, cycles |
 | Park it | the seed stays `status: ready` | — |
 | What this pushes back | `fund.mjs --displaced` | displaced |
 | Approve the strategy | `status: agreed` in each `Roadmap/00-strategy/` file | agreed |
-| Change something | `status: draft`, revised in place | draft, drafts |
+| Change something | `status: draft`, revised in place | draft, drafts, drafted |
 | Backlog → Grooming → Ready → Building → QA → Shipped | `status:` and `phase:` in the epic README | — |
 | Proven · Disproven · Unclear | `verdict:` in the epic README | — |
 | Flag | `flag_key:`, a flag in Golden Frijoles | — |
@@ -60,9 +60,9 @@ Decided from the repo, no need to check unless you disagree
                How you charge: <the business model, one line>
 
 Decisions only you can make:
-  1. Who first: <the segment question the repo leaves open>
-  2. North Star: <the metric, one line>. Keep it?
-  3. Riskiest assumption: <the assumption, one line>. Test that first?
+  a. Who first: <the segment question the repo leaves open>
+  b. North Star: <the metric, one line>. Keep it?
+  c. Riskiest assumption: <the assumption, one line>. Test that first?
 
 Answer them here, or:
 
@@ -78,7 +78,11 @@ Answer them here, or:
   offer grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
-  step-by-step mode on the file already written, then shows this gate again.
+  step-by-step mode on the file already written, one after the other without asking in between, then shows this gate
+  again.
+- **When a coach finishes** (each coach's last step points here): inside "Coach me through it", go on to the next coach,
+  or back to this gate after the last. Run on its own, once its file is written: when all three files exist and any is
+  not yet approved, show this gate; with a file missing, offer that file's coach first.
 
 ## The Plan gate (groom Stage 7)
 

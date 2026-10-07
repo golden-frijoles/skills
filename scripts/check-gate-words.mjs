@@ -105,8 +105,19 @@ export function gateBlocks(text) {
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const wordPattern = (w) => new RegExp(`(?<![\\w-])${w.split(/\s+/).map(escape).join('\\s+')}(?![\\w-])`, 'i');
 
-/** What a person reads of a gate line: inline code and `<placeholders>` removed. */
-export const screenText = (line) => line.replace(/`[^`]*`/g, ' ').replace(/<[^<>]*>/g, ' ');
+/**
+ * What a person reads of a gate line: inline code and `<placeholders>` removed. A `<…>` holding `|` lists literal
+ * alternatives (`<on | off>`, `<the first missing item: Install gh first | …>`), which DO reach the screen, so those
+ * are kept: everything after the first `:` (the part before it is an instruction), each alternative in turn.
+ */
+export const screenText = (line) =>
+  line
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/<([^<>]*)>/g, (_, inner) => {
+      if (!inner.includes('|')) return ' ';
+      const at = inner.indexOf(':');
+      return ` ${(at === -1 ? inner : inner.slice(at + 1)).split('|').join(' ')} `;
+    });
 
 /**
  * Check `files` ({ path, text }[]) against gates.md's lists. Returns `{ findings: string[] }`, empty when clean.
@@ -144,7 +155,7 @@ export function checkGateWords({ files, refText, refPath = GATES_REF }) {
     const lines = text.replace(/\r\n/g, '\n').split('\n');
     lines.forEach((line, k) => {
       if (path === refPath && wasTable.has(k + 1)) return; // gates.md's Was | Now table names them on purpose
-      const lower = line.toLowerCase();
+      const lower = line.toLowerCase().replace(/[\u2018\u2019]/g, "'"); // a curly don’t is the same option
       for (const phrase of retired) {
         if (lower.includes(phrase))
           findings.push(`${path}:${k + 1}: names the retired option "${phrase}" (gates.md: Was | Now)`);
@@ -180,7 +191,12 @@ export function run(argv, { root = ROOT, cwd = process.cwd(), log = console.log,
   const also = [];
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--also') {
+      const before = also.length;
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) also.push(resolve(cwd, argv[++i]));
+      if (also.length === before) {
+        error('check-gate-words: --also needs at least one path');
+        return 2;
+      }
     } else {
       error(`check-gate-words: unknown argument ${argv[i]}\nusage: node scripts/check-gate-words.mjs [--also <path> …]`);
       return 2;

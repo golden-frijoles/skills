@@ -89,6 +89,14 @@ test('PASSES: file values, keys and paths in inline code, and placeholders, are 
   assert.deepEqual(check([{ path: 'wow.md', text: 'Approve writes a cycle row and marks it funded.\n' }]), []);
 });
 
+test('FAILS: a literal alternative inside <a | b> reaches the screen, so it is checked; a bare placeholder is not', () => {
+  const blocks = (body) => [{ path: 'x.md', text: '```gate other\n' + body + '\n```\n' }];
+  assert.equal(check(blocks('  2 <the first missing item: Install gh first | Fund it first>')).length, 1);
+  assert.equal(check(blocks('  Flag ... <on | off, still a cycle away>')).length, 1);
+  assert.deepEqual(check(blocks('  <when the cycle is funded:>  <the funded epic>')), []); // instructions, not screen text
+  assert.equal(check([{ path: 'w.md', text: 'leaves it with \u201capprove, don\u2019t fund\u201d\n' }]).length, 1);
+});
+
 test('words match whole words only, multi-word phrases across any space', () => {
   const blocks = (body) => [{ path: 'x.md', text: '```gate other\n' + body + '\n```\n' }];
   assert.deepEqual(check(blocks('the fundamentals of a bicycle')), []);
