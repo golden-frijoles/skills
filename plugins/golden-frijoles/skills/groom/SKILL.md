@@ -219,8 +219,8 @@ Per-sprint kickoffs are the named exception (a one-sprint epic, or a sprint whos
 changes the next one's scope); say so if you emit one. WAYS-OF-WORKING → *Epic-mode builds* is the SOP;
 this skill emits the prompt.
 
-**Run the generator, never hand-write or save it** — end Stage 8 with `Build it: /build <epic-slug>` (the mod fills the
-prompt box), else `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <epic-slug>` from the project root. Here:
+**Run the generator, never hand-write or save it**: end Stage 8 with the **Build gate** (`references/gates.md`, which
+says when it is `/build <epic-slug>` and when the kit's `emit-epic-kickoff`). Here:
 
 ```
 node "$GROOM/vendor/emit-epic-kickoff.mjs" --epic <epic-slug>                 # epic mode (default)
