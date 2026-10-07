@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-10-07
+
+### Changed
+- **The Plan and Build gates speak plain agile** (gates-in-plain-agile S1). Every gate has one shape, written once in
+  groom's new `references/gates.md`: where to read it, what's decided for you, the two or three decisions only you can
+  make, then numbered options. The Plan gate shows the plan's path, "We bet that …", Moves, Target, Read date, Size,
+  Sprints, Flag and Measured by, then **1 Approve the plan · 2 Park it · 3 Change something** and "What this pushes
+  back". **Park it** is the old "approve, don't fund", unchanged in behaviour. After approval the Build gate says what
+  was created, the one command (`/build <slug>`), where to follow it (with `board.hubUrl` set) and only the optional
+  setup items that are missing. `fund.mjs`, `scaffold-epic.mjs` and every file value they write are unchanged.
+- **`strategy.mjs` prints the event behind a North Star input** (`event <name>`, only for a `telemetry_event` input),
+  so the Plan gate's "Measured by" line never invents an event name.
+- **The option names match everywhere**: the WAYS-OF-WORKING template, `SESSION-KICKOFFS.md` and the `bets/` and
+  `00-ideas/` READMEs say "Approve the plan" and "Park it".
+
 ## [0.34.0] - 2026-10-07
 
 ### Added
