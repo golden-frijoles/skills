@@ -294,8 +294,11 @@ export async function main(argv, { fetchFn = fetch, env = process.env, stdout = 
     const after = parseDocFrontmatter(next);
     const offenses = after.error ? [after.error] : validateResultFields(after.data).map((o) => o.detail);
     if (offenses.length) {
+      const refused = { ...plan, state: 'refused', reasons: offenses };
       stdout.write(
-        renderPlan({ ...plan, state: 'refused', reasons: offenses }, { slug, grounded, write }) + '\n'
+        argv.includes('--json')
+          ? `${JSON.stringify({ slug, ...refused, grounded, written: null })}\n`
+          : `${renderPlan(refused, { slug, grounded, write })}\n`
       );
       return 1;
     }

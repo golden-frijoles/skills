@@ -76,6 +76,7 @@ requires_scripts:
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs
   - lib/frontmatter-stamp.mjs
+  - epic-read.mjs
 ---
 
 # golden-frijoles — start here
