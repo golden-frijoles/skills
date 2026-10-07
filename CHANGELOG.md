@@ -7,6 +7,23 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-10-07
+
+### Added
+- **`epic-read.mjs` reads an epic's result on its read date** (result-record S2.1). Before the date it says when the
+  read is due and stops. On the date it drafts proven, disproven or unclear from the target and the number the owner
+  reports, with its evidence, and writes nothing until `--write`, which is the owner's approval. It re-runs the
+  contract on what it is about to write: proven or disproven without evidence that points somewhere is refused. A
+  read more than 90 days after shipping is written and marked late. An epic shipped with no target can take an owner
+  verdict, one epic at a time. With the project key, it checks the metric against the project's North Star inputs.
+- **`session-resume` says when a read is due**: one `[read-due]` line per epic, until its verdict is written.
+
+### Changed
+- `stampFrontmatter` moved from `epic-actuals.mjs` to `lib/frontmatter-stamp.mjs` (still re-exported there), so both
+  README writers share one line editor.
+- A target is now `target_metric`, `target_from` and `target_to` together; a written read date that passes before
+  shipping is read on ship day; an evidence link must parse as an https URL.
+
 ## [0.31.0] - 2026-10-07
 
 ### Added
