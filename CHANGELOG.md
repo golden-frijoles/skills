@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-10-07
+
+### Changed
+- **Setup says what happened and what it found before asking anything** (first-run-setup S1.1). Signed in, it opens
+  with "Signed in as …" and the product this machine is signed in for (from `gf whoami`), then "I looked first":
+  whether `Roadmap/` is here, the stack, the commit count and the open pull requests. Then one plain question: **What
+  are we working on? 1 This repo · 2 A new idea · 3 Just planning**, writing `project.mode` as before. The "where are
+  you starting" question is gone; the route records it.
+- **A new idea starts with one sentence** (S1.3), then **1 Strategy first** (the three coaches, ending at the Strategy
+  gate) or **2 A first epic now** (groom, with your sentence as the ask). With no strategy, a pitch now says
+  `Moves · Tests: not grounded — no strategy yet` and the Plan gate's Moves line says "not grounded: no strategy yet",
+  until a strategy exists.
+
+### Added
+- **`groom/read-repo.mjs`: an existing project, read into the roadmap** (S1.2). A dry run first: what shipped (merged
+  pull requests grouped by branch, else merge commits, release tags or `docs/`; the last 12 months, the 20 largest,
+  and what was left out), what's being built (open pull requests) and the open issues grouped into ideas. On approval
+  it writes them through `scaffold-epic.mjs`, `fund.mjs` and the seed template: shipped epics marked "backfilled, no
+  target", Building epics named by their branch so the live board finds them, ideas in the backlog listing their issue
+  numbers. New files under `Roadmap/` only, checked against the roadmap contract; nothing on GitHub is touched, and
+  without `gh` it reads git alone and says so.
+
 ## [0.36.0] - 2026-10-07
 
 ### Changed
