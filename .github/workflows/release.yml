@@ -142,8 +142,11 @@ jobs:
             exit 0
           fi
           node scripts/check-release.mjs --print-section > /tmp/release-notes.md
+          # The sums install.md lists, attached so a reader can fetch them from the release itself (S1.1).
+          node scripts/plugin-checksums.mjs --check
           gh release create "${tag}" \
             --title "${tag}" \
             --notes-file /tmp/release-notes.md \
-            --target "${GITHUB_SHA}"
+            --target "${GITHUB_SHA}" \
+            SHA256SUMS
           echo "release: created ${tag} at ${GITHUB_SHA}."

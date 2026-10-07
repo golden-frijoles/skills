@@ -7,7 +7,10 @@ the same number, and that number is the tag.
 ## The three-line procedure
 
 1. **Bump `plugin.json`'s `version`** (+ `kit/package.json` from S2 on) **and add a `CHANGELOG.md`
-   section** for it, in the same PR as the change that needs releasing.
+   section** for it, in the same PR as the change that needs releasing. **Then run
+   `node scripts/plugin-checksums.mjs`**: it rewrites `SHA256SUMS`, the SHA-256 of every plugin file that
+   `goldenfrijoles.com/install.md` lists so an installer can check a release before installing it. CI
+   fails while it is stale, and the release job attaches it to the GitHub Release.
 2. **Merge to `main`.** `scripts/check-release.mjs` already blocked the merge if a shipped file
    (`plugins/**`, `kit/**`, or anything in the kit's script closure) changed without the version
    moving, or if the tag/`plugin.json`/CHANGELOG heading would disagree.

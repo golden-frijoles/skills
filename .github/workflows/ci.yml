@@ -105,6 +105,12 @@ jobs:
         run: |
           node scripts/render-hook-vendor.mjs --check
           node --test scripts/render-hook-vendor.test.mjs
+      # install.md lists a SHA-256 per plugin file, rendered from SHA256SUMS (account-from-the-terminal S1.1). A
+      # plugin edit without regenerating it would publish sums a careful installer's check then fails.
+      - name: SHA256SUMS matches every file in the plugin
+        run: |
+          node scripts/plugin-checksums.mjs --check
+          node --test scripts/plugin-checksums.test.mjs
 
       # `claude plugin validate` needs NO API key, and it is the only thing that checks the hook module
       # against the real function-hooks contract: a malformed hooks.json, an unknown event name, or a `$`
