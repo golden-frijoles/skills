@@ -1065,6 +1065,7 @@ test('result-record D9: main() leads with the due read; an unreadable roadmap is
   assert.match(out, /\[read-due\] Read due: Overdue reminders · since 4 Nov/);
   const broken = gatherRoadmapRows({
     root: '/nowhere',
+    existsSyncFn: () => true,
     buildRowsFn: () => {
       throw new Error('bad README');
     },
@@ -1081,4 +1082,28 @@ test('result-record D9: main() leads with the due read; an unreadable roadmap is
     })
   );
   assert.match(out2, /reads due unknown — the roadmap could not be read: bad README/);
+});
+
+test('result-record D9: a project with no Roadmap/ has no reads to check, and no gap either', () => {
+  assert.deepEqual(gatherRoadmapRows({ root: '/nowhere', existsSyncFn: () => false }), {
+    available: true,
+    rows: [],
+  });
+});
+
+test('result-record D9: a due read leads the anomalies that follow the memory check', () => {
+  const due = decideReadsDue([epicRow()], '2026-11-05');
+  const anomalies = buildAnomalies({
+    repoStates: [
+      {
+        repo: 'r',
+        dir: '.',
+        git: { available: true, branch: 'feat/x', detached: false, dirtyFiles: 3, worktrees: [] },
+        gh: { available: true, open: [] },
+      },
+    ],
+    migrationResults: [],
+    readsDue: due,
+  });
+  assert.equal(anomalies[0].type, 'read-due');
 });

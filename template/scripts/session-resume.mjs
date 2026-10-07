@@ -526,7 +526,9 @@ export function decideReadsDue(rows, today = todayUtc()) {
 }
 
 /** The roadmap rows the reads-due check reads, docs only. A failure is a gap, never a silent "nothing due". */
-export function gatherRoadmapRows({ root, buildRowsFn = buildRows }) {
+export function gatherRoadmapRows({ root, buildRowsFn = buildRows, existsSyncFn = existsSync }) {
+  // A project with no Roadmap/ has nothing to read: no gap on every run (fresh review, #291).
+  if (!existsSyncFn(join(root, 'Roadmap'))) return { available: true, rows: [] };
   try {
     return { available: true, rows: buildRowsFn({ root, facts: { mode: 'docs', prs: [], branches: [] } }) };
   } catch (e) {
@@ -549,6 +551,8 @@ export function buildAnomalies({
     const mem = decideMemoryBudgetAnomaly(memoryIndex);
     if (mem) anomalies.push(mem);
   }
+  // result-record D9 — a due read leads the rest: it is the one line here that asks for a decision, not a cleanup.
+  anomalies.push(...readsDue);
   for (const rs of repoStates || []) {
     if (rs.git?.available) {
       const openPrs = rs.gh?.available ? rs.gh.open : undefined; // undefined → decideStrayBranch treats as "unknown"
@@ -570,7 +574,6 @@ export function buildAnomalies({
       for (const a of decideMigrationAnomalies({ ...m, expandOrphans })) anomalies.push(a);
     }
   }
-  anomalies.push(...readsDue);
   return assertRenderableAnomalies(anomalies);
 }
 
