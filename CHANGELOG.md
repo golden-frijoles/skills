@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-07
+
+### Added
+- **Every epic can carry its result record** (result-record S1). Groom's Stage 1.5 now asks once which number the
+  bet should move, from what to what, and when it is read, offering the North Star input keys `strategy.mjs` prints on
+  its new `Target:` line (free text otherwise, shown as "not grounded"). The seed holds `hypothesis`, `target_metric`,
+  `target_from`, `target_to` and `read_date`; `scaffold-epic` copies them into the epic README, which is born with
+  `verdict`, `verdict_actual`, `verdict_evidence` and `verdict_at` set to null. The Bet block shows the target.
+- **The contract knows the fields.** `roadmap-contract.mjs` validates them (`verdict` is proven, disproven or unclear;
+  dates are real days; proven or disproven needs a number and evidence that points somewhere: an `https://` link,
+  `north-star:<input>@YYYY-MM-DD` or `ab:<experiment>`). No target at all is fine.
+- **The extract carries them to the Hub**, with the default read date (30 days after shipping, only for a shipped
+  epic that has a target) labelled `read_date_derived`, and `read_late` for a verdict more than 90 days after
+  shipping. The day rule lives once, in `scripts/lib/result-dates.mjs`.
+
 ## [0.30.0] - 2026-10-06
 
 ### Changed

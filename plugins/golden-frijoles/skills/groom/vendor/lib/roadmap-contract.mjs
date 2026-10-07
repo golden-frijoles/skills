@@ -55,6 +55,71 @@ export const FINOPS_FIELDS = [
   'actual_basis',
 ];
 
+// result-record D1/D2 — the result record: what an epic should move (written at grooming) and its verdict (written at
+// the read), declared ONCE here. All optional: no target is "no target", never an error. Dates are calendar days.
+export const VERDICTS = ['proven', 'disproven', 'unclear'];
+export const TARGET_FIELDS = ['hypothesis', 'target_metric', 'target_from', 'target_to', 'read_date'];
+export const VERDICT_FIELDS = ['verdict', 'verdict_actual', 'verdict_evidence', 'verdict_at'];
+export const RESULT_FIELDS = [...TARGET_FIELDS, ...VERDICT_FIELDS];
+export const RESULT_NUMERIC_FIELDS = ['target_from', 'target_to', 'verdict_actual'];
+export const RESULT_DAY_FIELDS = ['read_date', 'verdict_at'];
+export const RESULT_TEXT_FIELDS = ['hypothesis', 'target_metric', 'verdict_evidence'];
+
+// D2 — what proven or disproven must point at, checked offline as syntax only: a link, a North Star input's reading
+// on a day, or an experiment's A/B decision record. Keys are the platform's own shape (lowercase, digits, _ . -).
+export const EVIDENCE_POINTER_RE =
+  /^(?:https:\/\/\S+|north-star:[a-z0-9][a-z0-9_.-]*@\d{4}-\d{2}-\d{2}|ab:[a-z0-9][a-z0-9_.-]*)$/i;
+
+// Zero dependencies is load-bearing: projects and fixtures copy this file on its own. So the day check lives here and
+// `result-dates.mjs` imports it, not the other way round.
+/** Whether `v` is a real calendar day written `YYYY-MM-DD` (`2026-02-30` is not), read in UTC. */
+export function isDay(v) {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
+/** Whether `v` is an evidence pointer (D2). A `north-star:` pointer's day must be a real calendar day. */
+export function isEvidencePointer(v) {
+  if (typeof v !== 'string' || !EVIDENCE_POINTER_RE.test(v.trim())) return false;
+  const day = /@(\d{4}-\d{2}-\d{2})$/.exec(v.trim())?.[1];
+  return !day || isDay(day);
+}
+
+/** The result-record fields of an epic's frontmatter data → offenses (`contract-result-invalid`). Absent is fine. */
+export function validateResultFields(fm) {
+  const offenses = [];
+  const bad = (detail) => offenses.push({ rule: 'contract-result-invalid', detail });
+  const has = (key) => fm[key] !== undefined && fm[key] !== null;
+  for (const key of RESULT_NUMERIC_FIELDS)
+    if (has(key) && (typeof fm[key] !== 'number' || !Number.isFinite(fm[key])))
+      bad(`${key}: "${fm[key]}" is not a number (or null)`);
+  for (const key of RESULT_DAY_FIELDS)
+    if (has(key) && !isDay(fm[key])) bad(`${key}: "${fm[key]}" is not a day written YYYY-MM-DD (or null)`);
+  for (const key of RESULT_TEXT_FIELDS)
+    if (has(key) && (typeof fm[key] !== 'string' || !fm[key].trim())) bad(`${key}: "${fm[key]}" is not text (or null)`);
+  if (has('target_from') !== has('target_to')) bad('a target needs both target_from and target_to');
+  else if (has('target_from') && fm.target_from === fm.target_to)
+    bad(`target_from and target_to are both ${fm.target_from}: a target has to move the number`);
+  if (has('verdict') && !VERDICTS.includes(fm.verdict))
+    bad(`verdict: "${fm.verdict}" is not one of ${VERDICTS.join(' | ')}`);
+  if (!has('verdict')) {
+    for (const key of VERDICT_FIELDS.slice(1)) if (has(key)) bad(`${key} is set but there is no verdict`);
+  } else {
+    if (!has('verdict_at')) bad('a verdict needs verdict_at (the day it was read)');
+    if (!has('verdict_evidence')) bad('a verdict needs verdict_evidence (a pointer, or for unclear, the reason)');
+    if (fm.verdict === 'proven' || fm.verdict === 'disproven') {
+      if (!has('verdict_actual')) bad(`verdict: ${fm.verdict} needs verdict_actual (the number that was read)`);
+      if (has('verdict_evidence') && !isEvidencePointer(fm.verdict_evidence))
+        bad(
+          `verdict: ${fm.verdict} needs evidence that points somewhere: an https:// link, ` +
+            `north-star:<input>@YYYY-MM-DD or ab:<experiment>, not "${fm.verdict_evidence}"`
+        );
+    }
+  }
+  return offenses;
+}
+
 // live-build-view D10 — `locked_at:` is stamped by `scripts/epic-phase.mjs lock` when the architecture lock is written;
 // the build view reads its absence as "Locking architecture". Optional (no epic before it has one), an ISO date-time
 // string when present: the command writes `"2026-10-03T20:34:34Z"` (quoted, so the frontmatter parser keeps the colons).
@@ -269,6 +334,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
       offenses.push({ rule: 'contract-total-invalid', detail: `${key}: "${fm[key]}" is not a whole number` });
   }
   offenses.push(...validateFinopsFields(fm));
+  offenses.push(...validateResultFields(fm));
   offenses.push(...validateLockedAt(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({

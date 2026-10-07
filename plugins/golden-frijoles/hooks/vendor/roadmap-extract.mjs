@@ -68,7 +68,15 @@ import { attributeFacts, resolveStage } from './lib/stage.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { epicKickoffFromDir, sprintBranch } from './lib/epic-kickoff.mjs';
 import { renderBoardText } from './lib/board-text.mjs';
-import { FINOPS_FIELDS, FINOPS_NUMERIC_FIELDS } from './lib/roadmap-contract.mjs';
+import {
+  FINOPS_FIELDS,
+  FINOPS_NUMERIC_FIELDS,
+  RESULT_DAY_FIELDS,
+  RESULT_FIELDS,
+  RESULT_NUMERIC_FIELDS,
+  VERDICTS,
+} from './lib/roadmap-contract.mjs';
+import { isDay, isLate, readDateOf } from './lib/result-dates.mjs';
 import { pushRoadmap, reportPush } from './roadmap-push.mjs';
 
 const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
@@ -117,6 +125,35 @@ export function finopsFields(fm) {
       out[key] = Number.isFinite(n) && n >= 0 ? n : null;
     } else out[key] = typeof raw === 'string' && raw ? raw : null;
   }
+  return out;
+}
+
+/**
+ * result-record D5 — an epic's target and verdict, off its README frontmatter, plus what is DERIVED from them: the
+ * default read date (30 days after shipping, only for a shipped epic that has a target) and whether a verdict came
+ * late (more than 90 days after shipping). Derived here and labelled, never written back into the README. A value
+ * that does not read as its type is null (doc-format names it); a number is never invented as 0.
+ */
+export function resultFields(fm, shippedAt) {
+  const out = {};
+  for (const key of RESULT_FIELDS) {
+    const raw = fm[key];
+    const blank = raw === null || raw === undefined || raw === '' || raw === 'null' || raw === '~';
+    if (RESULT_NUMERIC_FIELDS.includes(key)) {
+      const n = blank ? NaN : Number(raw);
+      out[key] = Number.isFinite(n) ? n : null;
+    } else if (RESULT_DAY_FIELDS.includes(key)) out[key] = isDay(raw) ? raw : null;
+    else if (key === 'verdict') out[key] = VERDICTS.includes(raw) ? raw : null;
+    else out[key] = !blank && typeof raw === 'string' ? raw : null;
+  }
+  const { readDate, derived } = readDateOf({
+    readDate: out.read_date,
+    targetMetric: out.target_metric,
+    shippedAt,
+  });
+  out.read_date = readDate;
+  out.read_date_derived = derived;
+  out.read_late = out.verdict ? isLate({ verdictAt: out.verdict_at, shippedAt }) : false;
   return out;
 }
 
@@ -576,6 +613,7 @@ export function buildRows({
       kickoff,
       shipped_at: stage === 'Shipped' ? statusDay : null,
       ...finopsFields(epicFm),
+      ...resultFields(epicFm, stage === 'Shipped' ? statusDay : null),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries
