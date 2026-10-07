@@ -23,7 +23,7 @@ export const REGISTRY = Object.freeze([
     required: true,
     default: 'existing',
     choices: ['existing', 'new', 'planning-only'],
-    question: 'What are we working on: an existing repo (adds Roadmap/, keeps everything else), a new project, or planning only (no repo changes)?',
+    question: "What are we working on? This repo (it already has a product), a new idea (nothing built yet), or just planning (don't change my repo)?",
   },
   {
     key: 'project.startPoint',
