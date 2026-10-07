@@ -11,8 +11,9 @@ Every gate prints four things, in this order, and nothing else:
 1. **Where to read it** — a path (and the console link, when there is one).
 2. **What's decided for you** — what the agent settled from the repo and the conversation; no need to check unless
    the person disagrees.
-3. **The two or three decisions only they can make** — numbered questions. None left open → leave the line out.
-4. **The numbered options** — the person answers with a number or in their own words.
+3. **The two or three decisions only they can make** — questions lettered a, b, c, so an answer to one is never
+   mistaken for an option. None left open → leave the line out.
+4. **The numbered options** — the person picks one by its number, or answers in their own words.
 
 Print each gate from its block below: fill every `<…>`, leave out a line whose value is missing, and never add a line.
 After the options, a gate may carry one closing line (the Plan gate's "What this pushes back"), then groom's budget
@@ -64,8 +65,8 @@ We bet that <the seed's hypothesis, or the problem in one sentence>.
   Measured by .. <the event the target metric counts>
 
 Decisions only you can make:
-  1. <question>
-  2. <question>
+  a. <question>
+  b. <question>
 
   1 Approve the plan
   2 Park it (it stays in the backlog, groomed)
