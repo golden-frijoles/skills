@@ -505,6 +505,9 @@ export function decideReadsDue(rows, today = todayUtc()) {
     .filter(
       (r) =>
         r.grain === 'Epic' &&
+        // A target is metric + from + to together (D1); a partial one is never due.
+        r.target_from != null &&
+        r.target_to != null &&
         isReadDue(
           {
             targetMetric: r.target_metric,

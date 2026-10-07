@@ -1018,6 +1018,8 @@ const epicRow = (over = {}) => ({
   name: 'Overdue reminders',
   stage: 'Shipped',
   target_metric: 'invoices_paid_on_time',
+  target_from: 61,
+  target_to: 70,
   verdict: null,
   read_date: '2026-11-04',
   ...over,
@@ -1031,6 +1033,7 @@ test('result-record D9: a due read is one line, oldest first, until its verdict 
     epicRow({ slug: 'later', read_date: '2026-12-01' }),
     epicRow({ slug: 'building', stage: 'Building' }),
     epicRow({ slug: 'no-target', target_metric: null }),
+    epicRow({ slug: 'partial', target_from: null }),
     { grain: 'Sprint', slug: 'x--s1', stage: 'Shipped', target_metric: 'x', read_date: '2026-01-01' },
   ];
   const due = decideReadsDue(rows, '2026-11-05');
