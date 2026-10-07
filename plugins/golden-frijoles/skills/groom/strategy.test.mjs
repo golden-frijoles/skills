@@ -92,6 +92,27 @@ test('all three files: the inputs a seed can move, the highest domino, and the p
   assert.match(out.stdout, /^Target \(Stage 1\.5\): target_metric one of activated_projects · seeds_groomed \(or free text: not grounded\)/m);
 });
 
+test('an input counted by an event carries it, so the Plan gate can say what measures it (gates-in-plain-agile D4)', () => {
+  const root = project({
+    'north-star.md': filledNorthStar().replace('"<event_the_product_sends>"', '"seed_groomed"'),
+  });
+  const ns = readStrategy(root).files.find((f) => f.kind === 'north-star');
+  assert.deepEqual(
+    ns.inputs.map((i) => [i.key, i.event]),
+    [
+      ['activated_projects', null], // external_push: nothing the product sends measures it
+      ['seeds_groomed', 'seed_groomed'],
+    ]
+  );
+  assert.match(
+    run(root).stdout,
+    /inputs a seed can move: activated_projects \("Activated projects"\) · seeds_groomed \("Seeds groomed", event seed_groomed\)/
+  );
+  // The template's placeholder event is not an event: the gate must never show `<event_the_product_sends>`.
+  const placeholder = readStrategy(project({ 'north-star.md': filledNorthStar() })).files[0];
+  assert.deepEqual(placeholder.inputs.map((i) => i.event), [null, null]);
+});
+
 test('only one file: the others are simply absent, and an unchosen domino says so', () => {
   const root = project({ 'risk-validation.md': template('risk-validation') });
   const { files } = readStrategy(root);

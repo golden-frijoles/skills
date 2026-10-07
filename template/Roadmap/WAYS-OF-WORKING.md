@@ -93,10 +93,11 @@ and session context. Fixed appetite, variable scope.
 | **L** | a multi-wave epic | per-wave: each wave is re-bet at the boundary |
 
 Four rules: **an exhausted bet returns to shaping**, never extends in flight; **the approval gate is the
-betting table** — approving a pitch in `groom` funds it in the same answer (`fund.mjs`: a row in the month's
-cycle file `Roadmap/bets/wave-YYYY-MM.md` recording what it displaced, `underwritten_by:`, and a build
-position), in the same commit as the scaffold, while "approve, don't fund" leaves it `ready` and scaffolds
-nothing; **nothing scaffolded is unfunded** — `build-order.mjs` fails a live bet with no `underwritten_by:`;
+betting table** — **Approve the plan** in `groom`'s Plan gate funds it in the same answer (`fund.mjs`: a row in
+the month's cycle file `Roadmap/bets/wave-YYYY-MM.md` recording what it displaced, `underwritten_by:`, and a
+build position), in the same commit as the scaffold, while **Park it** leaves it `ready` and scaffolds nothing
+(the gates' words: groom `references/gates.md`); **nothing scaffolded is unfunded** — `build-order.mjs` fails a
+live bet with no `underwritten_by:`;
 and **uphill work stays on the strongest model**. An L bet is re-bet at each wave boundary with one line
 when its builder stops there ("fund the next wave of `<slug>`? what does it displace?"; yes runs `fund.mjs`
 again, position kept). Fixed scope (appetite S) and reactive/ops work go through the same gate, straight to

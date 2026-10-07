@@ -3,17 +3,12 @@
 The approval gate is the betting table (WAYS-OF-WORKING → *Betting & appetite*). One answer approves the pitch and
 funds it, so nothing leaves grooming scaffolded but unfunded, and nobody has a follow-up step.
 
-## The Bet block
+## What the product owner sees
 
-Close the pitch with it and ONE question. Propose the position and what the bet displaces from the month's
-`Roadmap/bets/wave-YYYY-MM.md` and *Ready to build* in `BUILD-ORDER.md`; the product owner edits any of it.
-
-```
-Bet: <slug> · appetite <A> · quote $<lo>–<hi> · cycle wave-YYYY-MM · position: next | after <slug>
-     · displaced: <what stays parked because of it>
-Target: <hypothesis> · <target_metric> <from> → <to> · read <YYYY-MM-DD | 30 days after ship>   (or: no target)
-→ approve (fund + scaffold) · approve, don't fund · change something
-```
+The **Plan gate** in `gates.md`: plain words, with the bet in it ("We bet that …", Moves, Target, Read date, Size,
+Flag) and "What this pushes back". This file is what its answers write. You propose the position and what the epic
+pushes back from the month's `Roadmap/bets/wave-YYYY-MM.md` and *Ready to build* in `BUILD-ORDER.md`; the product
+owner edits either. **Approve the plan** runs `fund.mjs` then `scaffold-epic.mjs`; **Park it** runs neither.
 
 ## `fund.mjs` — the bet
 

@@ -87,11 +87,11 @@ stop and hammer scope instead.
 
 | Lane | Tell | What follows |
 |---|---|---|
-| **Shaped bet** | genuinely-new / strategic | pitch is complete (problem · appetite · bill of materials · rabbit holes · no-gos) → the gate: **approve** funds it (cycle row · `underwritten_by` · build position) and scaffolds it in one commit; **approve, don't fund** leaves it `ready` for §9. An unfunded epic is a plan nobody paid for, so none is scaffolded. |
+| **Shaped bet** | genuinely-new / strategic | pitch is complete (problem · appetite · bill of materials · rabbit holes · no-gos) → the Plan gate: **Approve the plan** funds it (cycle row · `underwritten_by` · build position) and scaffolds it in one commit; **Park it** leaves it `ready` for §9. An unfunded epic is a plan nobody paid for, so none is scaffolded. |
 | **Fixed scope** | bug, chore, well-specified story | default `appetite: S`, the same gate → on my approval fund it and scaffold it from the seed alone (`scaffold-epic.mjs --slug <seed>`: one sprint, its acceptance criteria as stories), commit path-scoped, and emit the kickoff (§2) |
 | **Reactive / ops** | incident, launch support, can't wait | no shaping — do it, then log it against the current wave's budget so the economics stay visible |
 
-*Add when it should wait:* `"Approve, don't fund — leave it ready for the next betting table."`
+*Add when it should wait:* `"Park it — leave it in the backlog, groomed, for the next betting table."`
 
 ## 2 · Build a WHOLE epic — epic mode *(the default)*
 
@@ -255,7 +255,7 @@ Two conventions that keep it honest:
 ## 9 · Bet a wave boundary — strong model *(the Bet stage)*
 
 **Most bets never need this session**: approving a pitch in `groom` funds it at the gate (`fund.mjs`, in the same
-commit as the scaffold). Run this one for what the gate did not settle — seeds approved with "approve, don't fund",
+commit as the scaffold). Run this one for what the gate did not settle — seeds parked with "Park it",
 an L bet's next wave, or a queue that needs reordering — at a **wave boundary, not on a calendar**.
 
 ```

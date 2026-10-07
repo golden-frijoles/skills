@@ -186,19 +186,19 @@ summarised away and the review policy silently reverts. A missing generator is a
 not a prompt to improvise. (If it is missing in Cowork, the install carried only `SKILL.md` — the
 fix is to re-install from the `.skill` archive, not to work around it here.)
 
-## Stage 7 — Fund + scaffold + commit (on the product owner's approval)
-**The approval gate is the betting table**: one answer approves the pitch AND funds it. Detail: `references/funding.md`.
+## Stage 7 — The Plan gate: approve, then fund + scaffold + commit
+**The approval gate is the betting table**: one answer approves the pitch AND funds it. What the product owner reads:
+`references/gates.md` (the one home of every gate); what it writes: `references/funding.md`.
 
 1. Write the **pitch** to `Roadmap/00-ideas/seeds/<slug>.md` — the Definition-of-Ready
    artifact (problem · appetite · bill of materials · rabbit holes · no-gos, plus UX heuristics ·
    acceptance criteria · the reuse list · open risks · any research citations · the Stage-2.5
    bucket), starting from `templates/scope-seed.md` and its frontmatter block (never a hand-typed key list:
    one drifts); set `status: ready`. **This is the gate: nothing scaffolds until the product owner approves it.**
-   Close it with the **Bet block** (appetite · quote · cycle · position · displaced · target, proposed by you) and ONE
-   question: *approve (fund + scaffold) · approve, don't fund · change something*. End it with the budget line and
-   act on its verdict (`$GROOM/session-line.mjs`; how: `references/session-budget.md`).
-2. **"Approve, don't fund"**: stop. The seed stays `ready`; nothing is funded or scaffolded.
-3. **"Approve"**: fund it, THEN scaffold it (the scaffolder refuses an unfunded seed):
+   Show the **Plan gate** (`references/gates.md`), with the position and what it pushes back proposed by you. End it
+   with the budget line and act on its verdict (`$GROOM/session-line.mjs`; how: `references/session-budget.md`).
+2. **"Park it"**: stop. The seed stays `ready`; nothing is funded or scaffolded.
+3. **"Approve the plan"**: fund it, THEN scaffold it (the scaffolder refuses an unfunded seed):
    ```
    node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next     # or --after <slug>
    node "$GROOM/scaffold-epic.mjs" --slug <slug>        # fixed scope: the rest comes from the seed

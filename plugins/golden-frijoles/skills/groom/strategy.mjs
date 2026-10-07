@@ -100,7 +100,16 @@ export function parseNorthStar(text) {
       : { key: metric.key, name: typeof metric.name === 'string' ? metric.name : metric.key },
     inputs: inputs
       .filter((input) => input && typeof input.key === 'string' && !unfilled(input.key))
-      .map((input) => ({ key: input.key, name: typeof input.name === 'string' ? input.name : input.key })),
+      .map((input) => ({
+        key: input.key,
+        name: typeof input.name === 'string' ? input.name : input.key,
+        // gates-in-plain-agile D4 — the Plan gate's "Measured by" line is this event, and only ever this event: an
+        // input pushed from outside, or one still holding the template's placeholder, has none.
+        event:
+          input.valueSource === 'telemetry_event' && typeof input.sourceEvent === 'string' && !unfilled(input.sourceEvent)
+            ? input.sourceEvent
+            : null,
+      })),
   };
 }
 
@@ -176,7 +185,7 @@ export function formatStrategy({ files }) {
         `${head} — North Star: ${f.metric ? `${f.metric.key} ("${f.metric.name}")` : 'not filled in yet'}`
       );
       out.push(
-        `    inputs a seed can move: ${f.inputs.map((i) => `${i.key} ("${i.name}")`).join(' · ') || 'none'}`
+        `    inputs a seed can move: ${f.inputs.map((i) => `${i.key} ("${i.name}"${i.event ? `, event ${i.event}` : ''})`).join(' · ') || 'none'}`
       );
     } else if (f.kind === 'risk-validation') {
       const domino = f.domino

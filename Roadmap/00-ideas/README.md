@@ -76,13 +76,13 @@ enforced enum — a present-but-unrecognized value fails the board, it never fal
    from a brain-dump).
 2. **Scope** — `groom` fills out the Definition-of-Ready (appetite included) and flips
    `status: ready`.
-3. **Fund + scaffold, in one answer** — the approval gate is the betting table. On "approve", `groom`
+3. **Fund + scaffold, in one answer** — the approval gate is the betting table. On "Approve the plan", `groom`
    runs its own `fund.mjs` (a row in the month's `Roadmap/bets/wave-YYYY-MM.md`, created on first use,
    recording what the bet displaced; `underwritten_by:`; a `build_order` placed with `--next` or
    `--after <slug>`, renumbering only the queue) and then `scaffold-epic.mjs` (the epic/sprint docs; the
    seed gets `epic:` + `status: scaffolded`), committed together. Both ship inside the `groom` skill,
    `golden-frijoles` plugin. A fixed-scope seed scaffolds from its slug alone, its acceptance criteria
-   becoming sprint 1's stories. "Approve, don't fund" leaves the seed `ready` and scaffolds nothing.
+   becoming sprint 1's stories. "Park it" leaves the seed `ready` and scaffolds nothing.
    **No file ever moves between folders** — the frontmatter carries the state.
 
 Filenames are kebab-case and match `slug`. Audits live in `audits/`, never in `seeds/`.
