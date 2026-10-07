@@ -16,5 +16,6 @@ Right after the appetite, ask **once: which number should this move, from what t
 Write the answers into the seed's frontmatter: `hypothesis` (one sentence), `target_metric`, `target_from`,
 `target_to`, `read_date`. The Bet block shows them on one `Target:` line (`references/funding.md`). `scaffold-epic`
 carries them into the epic README, which is born with `verdict`, `verdict_actual`, `verdict_evidence` and
-`verdict_at` null. On the read date, `node scripts/epic-read.mjs --epic <slug>` drafts the verdict (proven, disproven
+`verdict_at` null. On the read date, `node scripts/epic-read.mjs --epic <slug>` fetches the number through `gf` (signed in with
+`gf login`) and drafts the verdict (proven, disproven
 or unclear) with its evidence, and `--write` stamps it only after the product owner approves.

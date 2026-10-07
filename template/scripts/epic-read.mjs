@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // epic-read.mjs — read an epic's result on its read date: draft the verdict with its evidence; write it on approval.
 //
-//   node scripts/epic-read.mjs --epic <slug>                               # when is the read, and what it needs
+//   node scripts/epic-read.mjs --epic <slug>                               # fetches the number through gf, drafts
+//   node scripts/epic-read.mjs --epic <slug> --experiment smart-defaults   # … and cites the A/B decision record
 //   node scripts/epic-read.mjs --epic <slug> --actual 72 --evidence north-star:invoices_paid_on_time@2026-11-04
 //   node scripts/epic-read.mjs --epic <slug> --evidence "traffic too low (n = 18)"          # no number: unclear
 //   node scripts/epic-read.mjs --epic <slug> --verdict proven --evidence https://…           # an owner verdict
 //   … --write                                                              # the approval: stamp verdict_* into the README
-//   options: --today YYYY-MM-DD (default: today, UTC) · --repo-root <dir> · --json
+//   options: --project <slug> (gf's; default: the remembered one) · --today YYYY-MM-DD (default: today, UTC)
+//            · --repo-root <dir> · --json · GF_BIN=<path to gf> (default: gf on PATH)
 //
 // ── The shape (result-record D8) ─────────────────────────────────────────────────────────────────────────────────
 // The agent does the legwork, the owner decides. Without `--write` this prints a draft and the exact command that
@@ -22,15 +24,19 @@
 //   • More than 90 days after shipping, the read is still written, and said to be late (the extract marks it).
 //   • An epic shipped with no target can be read too — an owner verdict and its evidence, one epic per run.
 //
-// ── With an account, and without ─────────────────────────────────────────────────────────────────────────────────
-// No route reads a North Star reading or an A/B decision for a key yet (the lock checked: `gf north-star` only sets,
-// `GET /api/v1/north-star` lists metrics and inputs with no values), so the actual always comes from the owner. With the
-// project's key (the one `roadmap-push` uses) this asks that route whether `target_metric` is one of the project's
-// inputs — grounded or not. No key, or any failure, is "could not check", and the read carries on.
-//
+// ── The agent fetches the number (result-record S3, D17) ─────────────────────────────────────────────────────────
+// With a target and no `--actual`, this runs `gf north-star readings <target_metric> --to <today> --json` and takes
+// `latest`: the actual is its value, the evidence `north-star:<input>@<its day>`. A reading dated before the epic shipped
+// is no evidence for it. `--experiment <key>` also runs `gf experiments decision <key> --json`; a recorded decision
+// becomes the evidence, `ab:<key>`. gf is spawned without a shell (`$GF_BIN`, else `gf` on PATH), so a shell alias of
+// the same name never applies. `--actual` / `--evidence` still win: they are the owner's word. No gf, not signed in, no
+// project chosen, or any failure is one "could not fetch (why)" line, and the read asks the owner as before — it never
+// fails because the platform is not linked. Grounded is now "the readings route knows this input".
+
 // Zero deps — Node 18+.
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { projectRoot } from './lib/project-root.mjs';
 import {
@@ -39,10 +45,9 @@ import {
   parseDocFrontmatter,
   validateResultFields,
 } from './lib/roadmap-contract.mjs';
-import { READ_CAP_DAYS, isLate, readDateOf, todayUtc, isDay } from './lib/result-dates.mjs';
+import { READ_CAP_DAYS, dayOf, isLate, readDateOf, todayUtc, isDay } from './lib/result-dates.mjs';
 import { stampFrontmatter } from './lib/frontmatter-stamp.mjs';
 import { buildRows } from './roadmap-extract.mjs';
-import { apiKeyFrom } from './roadmap-push.mjs';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** `2026-11-04` → `4 Nov 2026`. */
@@ -133,41 +138,89 @@ export function planRead({ fm, shippedAt, shipped, today, actual = null, evidenc
   return { state: 'ready', target, drafted, owner, fields, late, readDate, derived };
 }
 
-/** `metric` against the project's North Star inputs, through the existing read route. Never throws. */
-export async function groundedCheck({ metric, apiKey, baseUrl, fetchFn = fetch }) {
-  if (!metric) return { checked: false, why: 'no target metric' };
-  if (!apiKey)
-    return { checked: false, why: 'no project key (SELF_PROJECT_API_KEY / GROWTH_ENGINE_API_KEY)' };
+/** Run one `gf … --json` and read its single JSON document. Never throws; `why` says what went wrong in words. */
+export function runGf(args, { env = process.env, spawnFn = spawnSync } = {}) {
+  const bin = env.GF_BIN || 'gf';
+  const res = spawnFn(bin, [...args, '--json'], { encoding: 'utf8', timeout: 30_000, env, shell: false });
+  if (res.error)
+    return {
+      ok: false,
+      why:
+        res.error.code === 'ENOENT'
+          ? 'gf is not installed (npm i -g @golden-frijoles/cli, then gf login)'
+          : `gf did not run: ${res.error.message}`,
+    };
+  let body = null;
   try {
-    const res = await fetchFn(`${String(baseUrl).replace(/\/$/, '')}/api/v1/north-star`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) return { checked: false, why: `the engine answered ${res.status}` };
-    const body = await res.json();
-    const keys = (body?.metrics ?? []).flatMap((m) => (m?.inputs ?? []).map((i) => i?.key)).filter(Boolean);
-    return { checked: true, grounded: keys.includes(metric), keys };
-  } catch (err) {
-    return { checked: false, why: `could not reach ${baseUrl}: ${err?.message ?? err}` };
+    body = JSON.parse(res.stdout || 'null');
+  } catch {
+    body = null;
   }
+  if (body && body.ok === true) return { ok: true, body };
+  if (res.status === 2) return { ok: false, code: 'unauthorized', why: 'gf is not signed in (run gf login)' };
+  const code = body?.code ?? null;
+  return { ok: false, code, why: body?.error ?? `gf exited ${res.status}` };
+}
+
+/**
+ * The number and its evidence, fetched through gf (D17). Pure apart from the injected `run`.
+ * Returns `{ fetched, actual?, evidence?, reading?, decision?, grounded, why? }`.
+ */
+export function fetchEvidence({ metric, experiment = null, today, shippedAt, project = null, run }) {
+  const scope = project ? ['--project', project] : [];
+  const out = { fetched: false, grounded: null };
+  const readings = run(['north-star', 'readings', metric, '--to', today, ...scope]);
+  if (!readings.ok) {
+    if (readings.code === 'not_found') out.grounded = false;
+    out.why = readings.why;
+  } else {
+    out.grounded = true;
+    const latest = readings.body.latest;
+    const shipped = dayOf(shippedAt);
+    if (!latest) out.why = `no reading of ${metric} yet`;
+    else if (shipped && latest.date < shipped)
+      out.why = `no reading of ${metric} since it shipped (the latest is ${latest.date})`;
+    else {
+      out.fetched = true;
+      out.reading = latest;
+      out.actual = latest.value;
+      out.evidence = `north-star:${metric}@${latest.date}`;
+    }
+  }
+  if (experiment) {
+    const decision = run(['experiments', 'decision', experiment, ...scope]);
+    if (decision.ok && decision.body.decisions?.state === 'decided') {
+      out.decision = decision.body.decisions.current;
+      out.evidence = `ab:${experiment}`; // the decision record is the stronger pointer; the reading stays the actual
+    } else if (decision.ok) out.decisionWhy = `${experiment} has no decision recorded yet`;
+    else out.decisionWhy = decision.why;
+  }
+  return out;
 }
 
 /** The text a person reads. Pure. */
-export function renderPlan(plan, { slug, grounded, write, written }) {
+export function renderPlan(plan, { slug, fetched, write, written }) {
   const out = [];
   const t = plan.target;
   const head = t.metric
     ? `${slug}: ${t.metric}${t.from !== null && t.to !== null ? ` ${fig(t.from)} → ${fig(t.to)}` : ''}${t.hypothesis ? ` — "${t.hypothesis}"` : ''}`
     : `${slug}: no target`;
   out.push(head);
-  if (grounded) {
-    if (grounded.checked)
+  if (fetched) {
+    if (fetched.grounded === true)
+      out.push(`  grounded: ${t.metric} is one of the project's North Star inputs`);
+    if (fetched.grounded === false)
+      out.push(`  not grounded: ${t.metric} is not one of the project's North Star inputs`);
+    if (fetched.fetched)
       out.push(
-        grounded.grounded
-          ? `  grounded: ${t.metric} is one of the project's North Star inputs`
-          : `  not grounded: ${t.metric} is not one of the project's North Star inputs (${grounded.keys.join(', ') || 'none'})`
+        `  fetched:  ${fig(fetched.reading.value)} on ${longDay(fetched.reading.date)} (gf north-star readings)`
       );
-    else if (t.metric) out.push(`  could not check the metric against the North Star (${grounded.why})`);
+    else if (fetched.why) out.push(`  could not fetch the number: ${fetched.why}`);
+    if (fetched.decision)
+      out.push(
+        `  decision: ${fetched.decision.outcome ?? 'recorded'}${fetched.decision.chosenVariantKey ? ` (${fetched.decision.chosenVariantKey})` : ''} (gf experiments decision)`
+      );
+    else if (fetched.decisionWhy) out.push(`  decision: ${fetched.decisionWhy}`);
   }
   switch (plan.state) {
     case 'already-read':
@@ -236,7 +289,7 @@ const arg = (argv, name) => {
   return i === -1 ? null : (argv[i + 1] ?? null);
 };
 
-export async function main(argv, { fetchFn = fetch, env = process.env, stdout = process.stdout } = {}) {
+export async function main(argv, { spawnFn = spawnSync, env = process.env, stdout = process.stdout } = {}) {
   const slug = arg(argv, '--epic');
   if (!slug) {
     process.stderr.write('epic-read: --epic <slug> is required\n');
@@ -268,24 +321,36 @@ export async function main(argv, { fetchFn = fetch, env = process.env, stdout = 
   const row = buildRows({ root, facts: { mode: 'docs', prs: [], branches: [] } }).find(
     (r) => r.grain === 'Epic' && r.slug === slug
   );
-  const plan = planRead({
+  const shippedAt = row?.shipped_at ?? null;
+  const evidenceFlag = arg(argv, '--evidence');
+  const base = {
     fm: parsed.data,
-    shippedAt: row?.shipped_at ?? null,
+    shippedAt,
     shipped: row?.stage === 'Shipped',
     today,
-    actual,
-    evidence: arg(argv, '--evidence'),
     verdict: arg(argv, '--verdict'),
-  });
-  const grounded =
-    plan.state === 'already-read' || plan.state === 'not-shipped'
-      ? null
-      : await groundedCheck({
-          metric: plan.target.metric,
-          apiKey: apiKeyFrom(env),
-          baseUrl: env.GROWTH_ENGINE_URL || 'http://localhost:3000',
-          fetchFn,
-        });
+  };
+  let plan = planRead({ ...base, actual, evidence: evidenceFlag });
+  // D17 — fetch only when there is a read to make and the owner has not given the number: never before the read date,
+  // never for an epic already read or not shipped, never over the owner's own --actual.
+  let fetched = null;
+  const readable = !['already-read', 'not-shipped', 'not-due'].includes(plan.state);
+  if (readable && plan.target.metric && actual === null) {
+    fetched = fetchEvidence({
+      metric: plan.target.metric,
+      experiment: arg(argv, '--experiment'),
+      today,
+      shippedAt,
+      project: arg(argv, '--project'),
+      run: (args) => runGf(args, { env, spawnFn }),
+    });
+    if (fetched.fetched || fetched.decision)
+      plan = planRead({
+        ...base,
+        actual: fetched.actual ?? null,
+        evidence: evidenceFlag ?? fetched.evidence ?? null,
+      });
+  }
   const write = argv.includes('--write');
   let written = null;
   if (write && plan.state === 'ready') {
@@ -297,16 +362,16 @@ export async function main(argv, { fetchFn = fetch, env = process.env, stdout = 
       const refused = { ...plan, state: 'refused', reasons: offenses };
       stdout.write(
         argv.includes('--json')
-          ? `${JSON.stringify({ slug, ...refused, grounded, written: null })}\n`
-          : `${renderPlan(refused, { slug, grounded, write })}\n`
+          ? `${JSON.stringify({ slug, ...refused, fetched, written: null })}\n`
+          : `${renderPlan(refused, { slug, fetched, write })}\n`
       );
       return 1;
     }
     writeFileSync(path, next);
     written = path.slice(root.length + 1);
   }
-  if (argv.includes('--json')) stdout.write(`${JSON.stringify({ slug, ...plan, grounded, written })}\n`);
-  else stdout.write(`${renderPlan(plan, { slug, grounded, write, written })}\n`);
+  if (argv.includes('--json')) stdout.write(`${JSON.stringify({ slug, ...plan, fetched, written })}\n`);
+  else stdout.write(`${renderPlan(plan, { slug, fetched, write, written })}\n`);
   if (plan.state === 'refused') return 1;
   if (write && plan.state !== 'ready') return 1; // asked to write, and there was nothing approvable to write
   return 0;

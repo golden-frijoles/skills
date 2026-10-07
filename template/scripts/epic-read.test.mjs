@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { draftVerdict, groundedCheck, main, planRead } from './epic-read.mjs';
+import { draftVerdict, fetchEvidence, main, planRead, runGf } from './epic-read.mjs';
 import { parseDocFrontmatter, validateEpicFrontmatter } from './lib/roadmap-contract.mjs';
 
 const TARGET = {
@@ -134,15 +134,25 @@ function fixture(extra) {
   return { root, readme, done: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-async function run(root, args, { env = {}, fetchFn } = {}) {
+// A spawn that answers like gf would, from a table of `args joined` → { status, body } (or `enoent`).
+function gfStub(table, seen = []) {
+  return (bin, args) => {
+    seen.push([bin, ...args]);
+    const key = args.filter((a) => a !== '--json').join(' ');
+    const hit = Object.entries(table).find(([k]) => key.startsWith(k));
+    if (!hit) return { error: Object.assign(new Error('spawn gf ENOENT'), { code: 'ENOENT' }) };
+    const [, answer] = hit;
+    return { status: answer.status ?? 0, stdout: JSON.stringify(answer.body), stderr: '' };
+  };
+}
+
+const NO_GF = () => ({ error: Object.assign(new Error('spawn gf ENOENT'), { code: 'ENOENT' }) });
+
+async function run(root, args, { env = {}, spawnFn = NO_GF } = {}) {
   let out = '';
   const code = await main(['--repo-root', root, '--epic', 'reminders', ...args], {
     env,
-    fetchFn:
-      fetchFn ??
-      (async () => {
-        throw new Error('no network in tests');
-      }),
+    spawnFn,
     stdout: { write: (s) => (out += s) },
   });
   return { code, out };
@@ -186,7 +196,7 @@ test('CLI: before the date it stops; without --write it never writes; --write st
     assert.equal(parsed.data.verdict_evidence, 'ab:reminders');
     assert.equal(parsed.data.verdict_at, '2026-11-05');
     assert.deepEqual(validateEpicFrontmatter(parsed), []);
-    assert.match(wrote.out, /could not check the metric against the North Star \(no project key/);
+    assert.doesNotMatch(wrote.out, /could not fetch/, 'the owner gave --actual: nothing is fetched over it');
     const again = await run(f.root, ['--today', '2026-11-06']);
     assert.match(again.out, /already read: proven on 5 Nov 2026/);
   } finally {
@@ -194,30 +204,124 @@ test('CLI: before the date it stops; without --write it never writes; --write st
   }
 });
 
-test('CLI: with a key it says whether the metric is grounded; a failing engine is "could not check"', async () => {
+const READINGS = (latest) => ({
+  ok: true,
+  project: 'acme',
+  input: { key: 'invoices_paid_on_time', name: 'Paid on time', valueSource: 'external_push' },
+  readings: latest ? [latest] : [],
+  latest,
+});
+
+test('S3.3: with gf signed in, the read arrives with the number and its pointer; --write approves it', async () => {
   const f = fixture([]);
   try {
     const seen = [];
-    const ok = await run(f.root, ['--today', '2026-11-05'], {
-      env: { SELF_PROJECT_API_KEY: 'k', GROWTH_ENGINE_URL: 'https://engine.test' },
-      fetchFn: async (url, init) => {
-        seen.push([url, init.headers.Authorization]);
-        return {
-          ok: true,
-          json: async () => ({ metrics: [{ key: 'm', inputs: [{ key: 'invoices_paid_on_time' }] }] }),
-        };
-      },
+    const spawnFn = gfStub(
+      { 'north-star readings invoices_paid_on_time': { body: READINGS({ date: '2026-11-04', value: 72 }) } },
+      seen
+    );
+    const draft = await run(f.root, ['--today', '2026-11-05', '--project', 'acme'], {
+      env: { GF_BIN: '/x/gf' },
+      spawnFn,
     });
-    assert.deepEqual(seen, [['https://engine.test/api/v1/north-star', 'Bearer k']]);
-    assert.match(ok.out, /grounded: invoices_paid_on_time is one of the project's North Star inputs/);
-    const down = await groundedCheck({
-      metric: 'x',
-      apiKey: 'k',
-      baseUrl: 'https://engine.test',
-      fetchFn: async () => ({ ok: false, status: 503 }),
-    });
-    assert.deepEqual(down, { checked: false, why: 'the engine answered 503' });
+    assert.deepEqual(seen[0], [
+      '/x/gf',
+      'north-star',
+      'readings',
+      'invoices_paid_on_time',
+      '--to',
+      '2026-11-05',
+      '--project',
+      'acme',
+      '--json',
+    ]);
+    assert.match(draft.out, /grounded: invoices_paid_on_time is one of the project's North Star inputs/);
+    assert.match(draft.out, /fetched: {2}72 on 4 Nov 2026/);
+    assert.match(draft.out, /verdict: {2}proven/);
+    assert.match(draft.out, /evidence: north-star:invoices_paid_on_time@2026-11-04/);
+    const wrote = await run(f.root, ['--today', '2026-11-05', '--write'], { spawnFn });
+    assert.equal(wrote.code, 0);
+    const fm = parseDocFrontmatter(readFileSync(f.readme, 'utf8')).data;
+    assert.deepEqual(
+      [fm.verdict, fm.verdict_actual, fm.verdict_evidence],
+      ['proven', 72, 'north-star:invoices_paid_on_time@2026-11-04']
+    );
   } finally {
     f.done();
   }
+});
+
+test('S3.3: the owner’s --actual wins — nothing is fetched over it', async () => {
+  const f = fixture([]);
+  try {
+    const seen = [];
+    await run(f.root, ['--today', '2026-11-05', '--actual', '65', '--evidence', 'ab:x'], {
+      spawnFn: gfStub({}, seen),
+    });
+    assert.deepEqual(seen, []);
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.3: every failure falls back to asking, with its reason', async () => {
+  const f = fixture([]);
+  try {
+    const missing = await run(f.root, ['--today', '2026-11-05']);
+    assert.match(missing.out, /could not fetch the number: gf is not installed/);
+    assert.match(missing.out, /needs: Ask the owner/);
+    const signedOut = await run(f.root, ['--today', '2026-11-05'], {
+      spawnFn: gfStub({
+        'north-star readings': { status: 2, body: { ok: false, code: 'unauthorized', error: 'x' } },
+      }),
+    });
+    assert.match(signedOut.out, /could not fetch the number: gf is not signed in \(run gf login\)/);
+    const unknown = await run(f.root, ['--today', '2026-11-05'], {
+      spawnFn: gfStub({
+        'north-star readings': {
+          status: 3,
+          body: { ok: false, code: 'not_found', error: 'No North Star input' },
+        },
+      }),
+    });
+    assert.match(unknown.out, /not grounded: invoices_paid_on_time/);
+    const empty = await run(f.root, ['--today', '2026-11-05'], {
+      spawnFn: gfStub({ 'north-star readings': { body: READINGS(null) } }),
+    });
+    assert.match(empty.out, /could not fetch the number: no reading of invoices_paid_on_time yet/);
+    assert.equal(parseDocFrontmatter(readFileSync(f.readme, 'utf8')).data.verdict, null, 'nothing written');
+  } finally {
+    f.done();
+  }
+});
+
+test('S3.3: a reading from before the epic shipped is not evidence for it; a recorded decision becomes the pointer', () => {
+  const run = gfStub({
+    'north-star readings': { body: READINGS({ date: '2026-09-30', value: 60 }) },
+    'experiments decision smart-defaults': {
+      body: {
+        ok: true,
+        decisions: { state: 'decided', current: { outcome: 'ship_treatment', chosenVariantKey: 'b' } },
+      },
+    },
+  });
+  const old = fetchEvidence({
+    metric: 'm',
+    today: '2026-11-05',
+    shippedAt: '2026-10-04',
+    run: (a) => runGf(a, { spawnFn: run, env: {} }),
+  });
+  assert.equal(old.fetched, false);
+  assert.match(old.why, /no reading of m since it shipped \(the latest is 2026-09-30\)/);
+  const withAb = fetchEvidence({
+    metric: 'm',
+    experiment: 'smart-defaults',
+    today: '2026-11-05',
+    shippedAt: '2026-09-01',
+    run: (a) => runGf(a, { spawnFn: run, env: {} }),
+  });
+  assert.deepEqual(
+    [withAb.actual, withAb.evidence, withAb.decision.outcome],
+    [60, 'ab:smart-defaults', 'ship_treatment']
+  );
 });
