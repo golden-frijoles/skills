@@ -62,6 +62,8 @@ test('S1.3: no read_date → the derived one (shipped + 30), labelled derived; o
   const untargeted = resultFields({}, '2026-10-04');
   assert.equal(untargeted.read_date, null, 'an epic shipped with no target is never given a read date');
   assert.equal(untargeted.read_date_derived, false);
+  const metricOnly = resultFields({ target_metric: 'x' }, '2026-10-04');
+  assert.equal(metricOnly.read_date, null, 'a metric with no numbers is not a target (D1)');
   const unshipped = resultFields({ target_metric: 'x' }, null);
   assert.equal(unshipped.read_date, null);
 });

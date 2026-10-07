@@ -148,9 +148,11 @@ export function resultFields(fm, shippedAt) {
     else if (key === 'verdict') out[key] = VERDICTS.includes(raw) ? raw : null;
     else out[key] = !blank && typeof raw === 'string' ? raw : null;
   }
+  // A target is the three together (D1): a metric with no numbers gets no derived read date (codex review, #290).
+  const complete = out.target_metric !== null && out.target_from !== null && out.target_to !== null;
   const { readDate, derived } = readDateOf({
     readDate: out.read_date,
-    targetMetric: out.target_metric,
+    targetMetric: complete ? out.target_metric : null,
     shippedAt,
   });
   out.read_date = readDate;
