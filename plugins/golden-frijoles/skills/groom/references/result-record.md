@@ -7,7 +7,10 @@ Right after the appetite, ask **once: which number should this move, from what t
   network at grooming.
 - **From → to.** Two numbers. A target may go down (`44 → 30`). From and to cannot be the same.
 - **Read when.** A day, `YYYY-MM-DD`, or leave it blank: blank means 30 days after shipping, derived by the extract and
-  never written back. A read more than 90 days after shipping is recorded and marked late.
+  never written back. A written day that passes before the epic ships is read the day it ships — prefer blank unless
+  the date matters. A read more than 90 days after shipping is recorded and marked late.
+- **All three or none.** `target_metric`, `target_from` and `target_to` go together (the contract refuses a partial
+  target, which would otherwise never come due); `read_date` only with them.
 - **"No target" is an answer.** Leave the fields null; never invent a number to fill the slot.
 
 Write the answers into the seed's frontmatter: `hypothesis` (one sentence), `target_metric`, `target_from`,

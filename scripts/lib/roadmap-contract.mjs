@@ -98,8 +98,15 @@ export function validateResultFields(fm) {
     if (has(key) && !isDay(fm[key])) bad(`${key}: "${fm[key]}" is not a day written YYYY-MM-DD (or null)`);
   for (const key of RESULT_TEXT_FIELDS)
     if (has(key) && (typeof fm[key] !== 'string' || !fm[key].trim())) bad(`${key}: "${fm[key]}" is not text (or null)`);
-  if (has('target_from') !== has('target_to')) bad('a target needs both target_from and target_to');
-  else if (has('target_from') && fm.target_from === fm.target_to)
+  // A target is the three together — which number, from what, to what (fresh review, #290): from/to or a read date
+  // with no metric would never come due (everything keys off target_metric), and a metric with no numbers has no
+  // direction to judge. A hypothesis on its own is allowed: a sentence is not a target.
+  const targetKeys = ['target_metric', 'target_from', 'target_to', 'read_date'];
+  if (targetKeys.some(has)) {
+    for (const key of ['target_metric', 'target_from', 'target_to'])
+      if (!has(key)) bad(`a target needs target_metric, target_from and target_to together — ${key} is missing`);
+  }
+  if (has('target_from') && has('target_to') && fm.target_from === fm.target_to)
     bad(`target_from and target_to are both ${fm.target_from}: a target has to move the number`);
   if (has('verdict') && !VERDICTS.includes(fm.verdict))
     bad(`verdict: "${fm.verdict}" is not one of ${VERDICTS.join(' | ')}`);

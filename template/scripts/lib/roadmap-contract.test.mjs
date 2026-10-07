@@ -324,11 +324,16 @@ test('result-record D1: verdict: provn fails the contract, through validateEpicF
 
 test('result-record D1: each bad value is named', () => {
   const details = (fm) => validateResultFields(fm).map((o) => o.detail).join(' / ');
-  assert.match(details({ target_from: '61%', target_to: 70 }), /target_from: "61%" is not a number/);
-  assert.match(details({ target_from: 61 }), /needs both target_from and target_to/);
-  assert.match(details({ target_from: 5, target_to: 5 }), /has to move the number/);
-  assert.match(details({ read_date: '2026-02-30' }), /read_date: "2026-02-30" is not a day/);
-  assert.match(details({ read_date: '4 Nov' }), /read_date: "4 Nov"/);
+  assert.match(details({ target_metric: 'x', target_from: '61%', target_to: 70 }), /target_from: "61%" is not a number/);
+  const T = { target_metric: 'x', target_from: 1, target_to: 2 };
+  assert.match(details({ target_metric: 'x', target_from: 61 }), /target_to is missing/);
+  assert.match(details({ target_from: 10, target_to: 20 }), /target_metric is missing/, 'never silently never due');
+  assert.match(details({ read_date: '2026-11-01' }), /target_metric is missing/);
+  assert.match(details({ target_metric: 'x' }), /target_from is missing/, 'a metric alone has no direction');
+  assert.deepEqual(validateResultFields({ hypothesis: 'a sentence is not a target' }), []);
+  assert.match(details({ ...T, target_from: 5, target_to: 5 }), /has to move the number/);
+  assert.match(details({ ...T, read_date: '2026-02-30' }), /read_date: "2026-02-30" is not a day/);
+  assert.match(details({ ...T, read_date: '4 Nov' }), /read_date: "4 Nov"/);
   assert.match(details({ hypothesis: 3 }), /hypothesis: "3" is not text/);
   assert.match(details({ verdict_actual: 72 }), /verdict_actual is set but there is no verdict/);
   assert.match(details({ verdict: 'unclear' }), /needs verdict_at/);
@@ -338,7 +343,7 @@ test('result-record D1: each bad value is named', () => {
     [],
     'unclear takes a reason, not a pointer'
   );
-  assert.deepEqual(validateResultFields({ target_from: 44, target_to: 30.5 }), [], 'a target may go down');
+  assert.deepEqual(validateResultFields({ target_metric: 'x', target_from: 44, target_to: 30.5 }), [], 'a target may go down');
 });
 
 test('result-record D2: proven or disproven without evidence that points somewhere is refused', () => {
