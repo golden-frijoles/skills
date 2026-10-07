@@ -200,7 +200,7 @@ fix is to re-install from the `.skill` archive, not to work around it here.)
 2. **"Park it"**: stop. The seed stays `ready`; nothing is funded or scaffolded.
 3. **"Approve the plan"**: fund it, THEN scaffold it (the scaffolder refuses an unfunded seed):
    ```
-   node "$GROOM/fund.mjs" --slug <slug> --displaced "<what stays parked>" --next     # or --after <slug>
+   node "$GROOM/fund.mjs" --slug <slug> --displaced "<what waits>" --next            # or --after <slug>
    node "$GROOM/scaffold-epic.mjs" --slug <slug>        # fixed scope: the rest comes from the seed
    node "$GROOM/scaffold-epic.mjs" --slug <epic-slug> --area <NN> --macro <NN-macro> --title "<Epic title>" \
      --risk <low|high> --type <feature|spike|bug|chore> --sprints "S1 title;S2 title"   # a shaped bet's slices

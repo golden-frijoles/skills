@@ -60,7 +60,7 @@ We bet that <the seed's hypothesis, or the problem in one sentence>.
   Read date .... <read date, or: 30 days after it ships>
   Size ......... <appetite>, about $<lo>–<hi> of agent time
   Sprints ...... <1 title  2 title …>. <n> user stories
-  Flag ......... <flag key, off until you try it> | none: <why>
+  Flag ......... <flag key>, <on, so you can switch it off | off until you try it> | none: <why>
   Measured by .. <the event the target metric counts>
 
 Decisions only you can make:
@@ -75,17 +75,20 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 ```
 
 - **The values** come from the seed's frontmatter and pitch: `hypothesis`, `target_metric` / `target_from` /
-  `target_to` / `read_date` (`result-record.md`), `appetite` and `quote`, the slices, `flag_key` or the Stage 6b
-  carve-out. "(your North Star input)" only when the target metric is one of the keys `strategy.mjs` printed; no
+  `target_to` / `read_date` (`result-record.md`), `appetite` and `quote`, the slices, `flag_key` and its polarity or
+  the Stage 6b carve-out. "(your North Star input)" only when the target metric is one of the keys `strategy.mjs` printed; no
   target → leave out Moves, Target and Read date. Never invent a number or a hypothesis.
+- **Flag** says what Stage 6b decided (`kill-switch.md`): a kill switch ships **on, so you can switch it off**; an
+  enablement flag ships **off until you try it**. "none: <why>" only when Stage 6b wrote a carve-out; an epic that never
+  reached Stage 6b leaves the line out.
 - **Measured by** is the event `strategy.mjs` prints beside the target metric's input (`event <name>`), only when it
   prints one. Otherwise leave the line out; never invent an event name.
 - **What this pushes back** is what you propose stays waiting because of this epic (from the month's
   `Roadmap/bets/` file and *Ready* in `BUILD-ORDER.md`), and where it goes in the queue. The person edits either.
-- **1 Approve the plan** runs groom Stage 7.3: `fund.mjs --displaced "<what waits>" --next` (or `--after <slug>` when
-  it builds after another), then `scaffold-epic.mjs`, then the one commit. Then show the Build gate.
-- **2 Park it** runs nothing: the seed stays `status: ready`, nothing is funded or scaffolded (the old "approve, don't
-  fund"). Say "Parked: it stays in the backlog, groomed." and stop.
+- **1 Approve the plan** runs groom Stage 7.3: `fund.mjs --slug <slug> --displaced "<what waits>" --next` (or
+  `--after <slug>` when it builds after another), then `scaffold-epic.mjs`, then the one commit. Then show the Build gate.
+- **2 Park it** runs nothing: the seed stays `status: ready`, nothing is funded or scaffolded, exactly as the old
+  option did (Was | Now). Say "Parked: it stays in the backlog, groomed." and stop.
 - **3 Change something**: revise the seed and show the gate again.
 
 ## The Build gate (groom Stage 8)
@@ -93,7 +96,7 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 ```gate build
 ✓  Plan approved: <epic title>
    Its sprints and user stories are in <epic folder>, committed
-✓  Flag planned: <flag key>, off. One user story creates it
+✓  Flag planned: <flag key>, <on | off> when it ships. One user story creates it
 
 Start building whenever you're ready:
   /build <slug>
@@ -101,28 +104,29 @@ Start building whenever you're ready:
 Follow it here: <board link>/epic/<slug>
 
 Setup is done. Optional, only if you want them:
-  gh ........... lets me open and watch pull requests        not installed
+  gh ........... lets me open and watch pull requests        <not installed | not signed in>
   Codex ........ a second model reviews each pull request     not installed
   Digest ....... a Telegram message when something is due     not set up
   Claude app ... see <project> from a chat: the console's Setup has your link
 
   1 Start building now
-  2 <the first missing item: Install gh first | Install Codex first | Set up the digest first>
+  2 <the first missing item: Install gh first | Sign in to gh first | Install Codex first | Set up the digest first>
   3 Later
 ```
 
-- **The flag line** only when the seed has a `flag_key`. Groom never creates a flag; its user story does
-  (`kill-switch.md`).
+- **The flag line** only when the seed has a `flag_key`, on or off as the Plan gate said. Groom never creates a flag;
+  its user story does (`kill-switch.md`).
 - **`/build <slug>`** is the line in Claude Code with the plugin. Anywhere else it is Stage 8's generator command (or
   `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` from the project root), shown as a command; its output
   is the prompt to paste into the building session.
-- **Follow it here** only when `board.hubUrl` is set (the kit's `config get board.hubUrl`); the link is that value plus
-  `/epic/<slug>`. Unset → leave the line out.
-- **Optional items, only the missing ones**, each found by a command, never assumed: gh — `gh auth status` fails;
+- **Follow it here** only when `board.hubUrl` is set (the kit's `config get board.hubUrl`); the link is that value, without a
+  trailing `/`, plus `/epic/<slug>`. Unset → leave the line out.
+- **Optional items, only the missing ones**, each found by a command, never assumed: gh — `command -v gh` finds nothing
+  (not installed), or `gh auth status` fails (not signed in);
   Codex — `command -v codex` finds nothing; Digest — `TELEGRAM_BOT_TOKEN` is in neither the environment nor
   `.env.local` (check the key's name, never print its value); its fix is setup's *Notify setup*. The Claude app line
-  only when the project is linked to Golden Frijoles, and it is never an option. Nothing missing → leave out the
-  "Optional" lines, and the options are **1 Start building now · 2 Later**.
+  only when the project is linked to Golden Frijoles, and it is never an option. "Setup is done." and the "Optional"
+  heading only when at least one item line shows. Nothing missing → the options are **1 Start building now · 2 Later**.
 - **1 Start building now**: in Claude Code, tell the person to type `/build <slug>`; elsewhere run the command above
-  and hand over its output. Groom never builds. **2** walks the one missing item, then shows this gate again.
-  **3 Later**: stop; the epic waits in *Ready*.
+  and hand over its output. Groom never builds. With an item missing, **2** walks it, then shows this
+  gate again. **Later**: stop; the epic waits in *Ready*.
