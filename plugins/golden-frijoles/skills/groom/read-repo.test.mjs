@@ -13,6 +13,9 @@ import {
   clusterIssues,
   formatLook,
   formatPlan,
+  gatherFacts,
+  MERGED_LIMIT,
+  OPEN_LIMIT,
   groupChanges,
   groupKey,
   isBot,
@@ -231,6 +234,31 @@ test('slugify: a long title is cut at a word boundary, a long word where it stan
   assert.equal(slugify('CI runs the browser tests and Playwright install on all three Node versions'), 'ci-runs-the-browser-tests-and-playwright-install-on-all');
   assert.equal(slugify('a'.repeat(70)).length, 60);
   assert.equal(slugify('  Checkout: v2! '), 'checkout-v2');
+});
+
+test('gatherFacts: a list cut at its limit is said out loud, for open and merged pull requests alike', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'read-repo-limit-'));
+  const prs = (n) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ number: i + 1, title: `PR ${i + 1}`, headRefName: `feat/p${i + 1}`, author: { login: 'd' } })));
+  const asked = [];
+  const run = (cmd, args) => {
+    const a = args.join(' ');
+    if (cmd === 'git') return a.startsWith('rev-parse') ? 'true\n' : a.startsWith('rev-list') ? '5\n' : '';
+    asked.push(a);
+    if (a.startsWith('pr list --state open')) return prs(OPEN_LIMIT + 1);
+    if (a.startsWith('pr list --state merged')) return prs(MERGED_LIMIT + 1);
+    if (a.startsWith('issue list')) return '[]';
+    return '';
+  };
+  try {
+    const facts = gatherFacts(dir, { run, now: NOW });
+    assert.ok(asked.some((a) => a.includes(`--limit ${OPEN_LIMIT + 1}`)) && asked.some((a) => a.includes(`--limit ${MERGED_LIMIT + 1}`)));
+    assert.deepEqual([facts.openPrs.length, facts.openMore, facts.mergedPrs.length, facts.mergedMore], [OPEN_LIMIT, true, MERGED_LIMIT, true]);
+    const plan = planRead(facts, NOW);
+    assert.ok(plan.skipped.includes(`only the newest ${OPEN_LIMIT} open pull requests were read`));
+    assert.ok(plan.skipped.includes(`only the newest ${MERGED_LIMIT} merged pull requests were read`));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('writeRefusal: first run only', () => {

@@ -39,7 +39,8 @@ const GROOM = dirname(fileURLToPath(import.meta.url));
 export const WINDOW_DAYS = 365;
 export const SHIPPED_CAP = 20;
 export const ISSUE_LIMIT = 500;
-const PR_LIMIT = 1000;
+export const MERGED_LIMIT = 1000;
+export const OPEN_LIMIT = 200;
 const FIRST_FEW = 5;
 
 // ── Pure: names ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -225,6 +226,9 @@ export function uniqueSlugs(items, base, taken = new Set()) {
 export function planRead(facts, now = new Date()) {
   const plan = { source: 'none', shipped: [], building: [], ideas: [], leftOut: { older: 0, smaller: 0, bots: 0 }, skipped: [] };
   if (!facts.gh.ok) plan.skipped.push(facts.gh.why);
+  // Every list is read with one more than its limit, so a cut list is said out loud, never silent (codex, #307).
+  if (facts.openMore) plan.skipped.push(`only the newest ${OPEN_LIMIT} open pull requests were read`);
+  if (facts.mergedMore) plan.skipped.push(`only the newest ${MERGED_LIMIT} merged pull requests were read`);
   if (facts.issuesMore) plan.skipped.push(`only the first ${ISSUE_LIMIT} open issues were read`);
 
   const human = (prs) => {
@@ -502,6 +506,8 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
     openPrs: [],
     issues: [],
     issuesMore: false,
+    openMore: false,
+    mergedMore: false,
     gitMerges: [],
     tags: [],
     docs,
@@ -531,11 +537,19 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
     draft: Boolean(p.isDraft),
   });
   if (facts.gh.ok) {
-    const open = tryRun(run, 'gh', ['pr', 'list', '--state', 'open', '--limit', '200', '--json', `${prFields},isDraft,createdAt`], root);
-    if (open.ok) facts.openPrs = JSON.parse(open.out).map((p) => asChange(p, p.createdAt));
+    const open = tryRun(run, 'gh', ['pr', 'list', '--state', 'open', '--limit', String(OPEN_LIMIT + 1), '--json', `${prFields},isDraft,createdAt`], root);
+    if (open.ok) {
+      const list = JSON.parse(open.out);
+      facts.openMore = list.length > OPEN_LIMIT;
+      facts.openPrs = list.slice(0, OPEN_LIMIT).map((p) => asChange(p, p.createdAt));
+    }
     if (!full) return facts;
-    const merged = tryRun(run, 'gh', ['pr', 'list', '--state', 'merged', '--limit', String(PR_LIMIT), '--json', `${prFields},mergedAt`], root);
-    if (merged.ok) facts.mergedPrs = JSON.parse(merged.out).map((p) => asChange(p, p.mergedAt));
+    const merged = tryRun(run, 'gh', ['pr', 'list', '--state', 'merged', '--limit', String(MERGED_LIMIT + 1), '--json', `${prFields},mergedAt`], root);
+    if (merged.ok) {
+      const list = JSON.parse(merged.out);
+      facts.mergedMore = list.length > MERGED_LIMIT;
+      facts.mergedPrs = list.slice(0, MERGED_LIMIT).map((p) => asChange(p, p.mergedAt));
+    }
     const issues = tryRun(run, 'gh', ['issue', 'list', '--state', 'open', '--limit', String(ISSUE_LIMIT + 1), '--json', 'number,title,labels'], root);
     if (issues.ok) {
       const list = JSON.parse(issues.out);
