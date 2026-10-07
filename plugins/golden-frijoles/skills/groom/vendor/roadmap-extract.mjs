@@ -169,8 +169,8 @@ export function resultFields(fm, shippedAt) {
  */
 export function flagFields(fm, readme) {
   const raw = typeof fm.flag_key === 'string' ? fm.flag_key.trim() : '';
-  // This file's line reader yields the STRING "null" for `flag_key: null`, and "null" fits the key grammar — so the
-  // blank spellings are refused before the pattern is asked.
+  // A QUOTED `flag_key: "null"` (or `~`) arrives as a string, and "null" fits the key grammar — so the blank
+  // spellings are refused before the pattern is asked. (Unquoted `null` is already null from this file's reader.)
   const blank = raw === '' || raw === 'null' || raw === '~';
   const line = /^\*\*Flag:\*\*[ \t]*(.+)$/m.exec(readme ?? '');
   const note = line ? line[1].replace(/[*`]/g, '').trim().slice(0, 280) : '';

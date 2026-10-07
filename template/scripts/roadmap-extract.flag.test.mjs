@@ -12,7 +12,7 @@ test('S2.3: flag_key is a flag key or null; the blank spellings this file’s re
     flagFields({ flag_key: 'auth.terminal_sign_in_enabled' }, '').flag_key,
     'auth.terminal_sign_in_enabled'
   );
-  // `flag_key: null` reads as the STRING "null", which fits the key grammar — the trap this guards.
+  // A quoted `flag_key: "null"` arrives as the STRING "null", which fits the key grammar — the trap this guards.
   for (const blank of ['null', '~', '', '  ', undefined])
     assert.equal(flagFields({ flag_key: blank }, '').flag_key, null);
   for (const bad of ['Auth.Enabled', '2fa_enabled', 'has space', 'x'.repeat(129)])
