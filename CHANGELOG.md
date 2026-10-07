@@ -7,6 +7,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-10-07
+
+### Changed
+- **The strategy step ends in one Strategy gate** (gates-in-plain-agile S2.1). From setup's idea path, the agent
+  writes the three strategy files from the conversation and the repo, then shows where to read them, what was decided
+  from the repo, up to three decisions only you can make (who first, the North Star, the riskiest assumption), and
+  **1 Approve the strategy · 2 Change something · 3 Coach me through it, one piece at a time**. Approve sets
+  `status: agreed` in each file, as the coaches did; the coaches no longer ask you to mark a file agreed.
+
+### Added
+- **`scripts/check-gate-words.mjs`** (plugin-repo tooling, S2.2): no gate block shows a bookkeeping word (fund,
+  scaffold, underwritten, displaced, cycle, kickoff, epic mode, agreed, draft), no copy names a retired option, and a
+  gate has one wording everywhere. Both lists are read from groom's `references/gates.md`; file values, keys and
+  paths in inline code are never flagged. Runs in the skills CI and, for the root Roadmap copies, the monorepo CI.
+
 ## [0.35.0] - 2026-10-07
 
 ### Changed
