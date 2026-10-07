@@ -140,8 +140,10 @@ export function resultFields(fm, shippedAt) {
     const raw = fm[key];
     const blank = raw === null || raw === undefined || raw === '' || raw === 'null' || raw === '~';
     if (RESULT_NUMERIC_FIELDS.includes(key)) {
-      const n = blank ? NaN : Number(raw);
-      out[key] = Number.isFinite(n) ? n : null;
+      // A numeral or a number, nothing else (codex review, #290): `Number(' ')` is 0 and `Number(true)` is 1.
+      const numeral = typeof raw === 'string' && /^-?\d+(?:\.\d+)?$/.test(raw.trim());
+      const n = typeof raw === 'number' ? raw : numeral ? Number(raw) : NaN;
+      out[key] = !blank && Number.isFinite(n) ? n : null;
     } else if (RESULT_DAY_FIELDS.includes(key)) out[key] = isDay(raw) ? raw : null;
     else if (key === 'verdict') out[key] = VERDICTS.includes(raw) ? raw : null;
     else out[key] = !blank && typeof raw === 'string' ? raw : null;

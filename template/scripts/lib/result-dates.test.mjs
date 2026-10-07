@@ -34,6 +34,11 @@ test('the default read date: only a shipped epic with a target gets one, marked 
     readDate: '2026-11-04',
     derived: false,
   });
+  assert.deepEqual(
+    readDateOf({ readDate: '2026-09-01', targetMetric: 'x', shippedAt: '2026-10-04' }),
+    { readDate: '2026-10-04', derived: false },
+    'a written day that passed before shipping is read on ship day'
+  );
   assert.deepEqual(readDateOf({ readDate: null, targetMetric: 'x', shippedAt: '2026-10-04' }), {
     readDate: '2026-11-03',
     derived: true,

@@ -36,11 +36,20 @@ test('S1.3: every result field is on the row, typed; absent is null, never 0', (
 
 test('S1.3: a bad value reads as null (doc-format names it), not as something the board would show', () => {
   const out = resultFields(
-    { target_from: '61%', target_to: 'null', verdict: 'provn', read_date: '4 Nov', verdict_at: '2026-02-30' },
+    {
+      target_from: '61%',
+      target_to: 'null',
+      verdict_actual: ' ',
+      verdict: 'provn',
+      read_date: '4 Nov',
+      verdict_at: '2026-02-30',
+    },
     null
   );
   assert.equal(out.target_from, null);
   assert.equal(out.target_to, null);
+  assert.equal(out.verdict_actual, null, 'whitespace is not 0');
+  assert.equal(resultFields({ target_from: true }, null).target_from, null, 'a boolean is not 1');
   assert.equal(out.verdict, null);
   assert.equal(out.read_date, null);
   assert.equal(out.verdict_at, null);

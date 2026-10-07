@@ -45,12 +45,15 @@ export function todayUtc(now = new Date()) {
 }
 
 /**
- * The read date an epic is held to: the one written, else — only for a SHIPPED epic that HAS a target — 30 days after
+ * The read date an epic is held to: the one written (or ship day, if it passed before shipping), else — only for a SHIPPED epic that HAS a target — 30 days after
  * shipping, marked derived. An epic with no target has no read date (it can still be read by hand), so the 54 epics
  * shipped before the result record existed are never due (the no-backfill rule).
  */
 export function readDateOf({ readDate, targetMetric, shippedAt }) {
-  if (isDay(readDate)) return { readDate, derived: false };
+  // A day written at grooming that passes before the epic ships is read on ship day (codex review, #290): there was
+  // nothing out there to read before then, and "overdue since before release" would be a false alarm.
+  const shipped = dayOf(shippedAt);
+  if (isDay(readDate)) return { readDate: shipped && readDate < shipped ? shipped : readDate, derived: false };
   if (!targetMetric || !dayOf(shippedAt)) return { readDate: null, derived: false };
   return { readDate: addDays(shippedAt, READ_DEFAULT_DAYS), derived: true };
 }
