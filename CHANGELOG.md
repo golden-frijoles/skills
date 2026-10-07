@@ -7,6 +7,16 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-07
+
+### Changed
+- **`epic-read` fetches the number itself** (result-record S3). With a target and no `--actual`, it runs
+  `gf north-star readings <target_metric> --to <today> --json` and drafts from the latest reading since the epic
+  shipped, citing `north-star:<input>@<day>`. `--experiment <key>` also reads the experiment's decision record through
+  `gf experiments decision` and cites `ab:<key>`. All you do is approve with `--write`. The owner's `--actual` /
+  `--evidence` still win. No `gf`, not signed in, or no reading → one "could not fetch the number" line, and it asks,
+  as before. Needs `@golden-frijoles/cli` 0.6.0 and `gf login`; the project-key check (`SELF_PROJECT_API_KEY`) is gone.
+
 ## [0.32.0] - 2026-10-07
 
 ### Added
