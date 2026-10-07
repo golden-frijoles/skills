@@ -74,6 +74,12 @@ test('FAILS: a retired option named in prose, outside any gate', () => {
   assert.deepEqual(check([doc]), [`WAYS.md:1: names the retired option "approve, don't fund" (gates.md: Was | Now)`]);
 });
 
+test('FAILS: a retired option in any other table of gates.md — only the Was | Now table is exempt', () => {
+  const extra = REF + '\n| Option | Note |\n|---|---|\n| approve, don\'t fund | old |\n';
+  const findings = checkGateWords({ files: [{ path: 'gates.md', text: extra }], refText: extra, refPath: 'gates.md' }).findings;
+  assert.deepEqual(findings, [`gates.md:${extra.split('\n').length - 1}: names the retired option "approve, don't fund" (gates.md: Was | Now)`]);
+});
+
 test('PASSES: file values, keys and paths in inline code, and placeholders, are not words on screen', () => {
   const block = '```gate strategy\n  1 Approve the strategy\n```\n';
   const fine = { path: 'coach.md', text: `${block}\nIt sets \`status: agreed\` in \`Roadmap/bets/wave-2026-10.md\`.\n` };

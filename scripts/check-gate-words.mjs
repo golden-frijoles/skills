@@ -34,6 +34,20 @@ const ROADMAP_COPIES = [
   'Roadmap/00-ideas/README.md',
 ];
 
+/** The 1-based line numbers of the first table whose header row has a cell equal to `header` (header to last row). */
+export function tableLines(text, header) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim().startsWith('|')) continue;
+    const cells = lines[i].trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+    if (!cells.includes(header)) continue;
+    const out = [];
+    for (let j = i; j < lines.length && lines[j].trim().startsWith('|'); j++) out.push(j + 1);
+    return out;
+  }
+  return [];
+}
+
 /** The cells of every body row of the first table whose header row has a cell equal to `header`. */
 function tableColumn(text, header) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -107,6 +121,7 @@ export function checkGateWords({ files, refText, refPath = GATES_REF }) {
       findings.push(`${refPath}: the \`gate ${name}\` block is missing, so nothing would be checked for it`);
   }
   const patterns = words.map((w) => [w, wordPattern(w)]);
+  const wasTable = new Set(tableLines(refText, 'Was')); // the one place a retired option may be named
   const seen = new Map(); // gate name → { path, body }
   for (const { path, text } of files) {
     for (const block of gateBlocks(text)) {
@@ -128,7 +143,7 @@ export function checkGateWords({ files, refText, refPath = GATES_REF }) {
     }
     const lines = text.replace(/\r\n/g, '\n').split('\n');
     lines.forEach((line, k) => {
-      if (path === refPath && line.trim().startsWith('|')) return; // gates.md's own tables name them on purpose
+      if (path === refPath && wasTable.has(k + 1)) return; // gates.md's Was | Now table names them on purpose
       const lower = line.toLowerCase();
       for (const phrase of retired) {
         if (lower.includes(phrase))
