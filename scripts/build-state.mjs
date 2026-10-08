@@ -486,7 +486,8 @@ export function boardState({ root, facts, state, now = new Date() }) {
       qa: cols.QA.length,
       ready: cols['Ready to build'].length,
       next: next ? { name: next.name, slug: next.slug, build_order: next.build_order_num ?? null } : null,
-      url: hubUrl ? `${hubUrl}/board${slug && row ? `?card=${encodeURIComponent(slug)}` : ''}` : null,
+      // build-view-upgrade D4 — the work's own page when the board has a row for it, else the board.
+      url: hubUrl ? (slug && row ? `${hubUrl}/epic/${encodeURIComponent(slug)}` : `${hubUrl}/board`) : null,
     },
   };
 }

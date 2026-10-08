@@ -928,7 +928,7 @@ test('S3.1: the Board line links to the card on the Hub when board.hubUrl is set
     );
     const linked = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
     assert.ok(
-      linked.includes('           ↗ https://goldenfrijoles.com/hub/demo/board?card=arranged-only'),
+      linked.includes('           ↗ https://goldenfrijoles.com/hub/demo/epic/arranged-only'),
       linked.join('\n')
     );
   } finally {
