@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-10-08
+
+### Added
+- **Three one-pagers from the strategy files** (coaches-v2 S3.2). `gf-kit one-pagers` renders a business model canvas
+  (with "Strategyzer.com" under it, CC BY-SA 3.0), a value proposition sheet (our own layout: the customer's outcome,
+  motivation and gaps against the product's promise, the North Star, and what is not claimed yet) and a persona poster,
+  as printable HTML and Markdown in `Roadmap/00-strategy/one-pagers/`. Every line is derived from the files and shows
+  its label (true today, aspirational, agreed, sourced, hypothesis); an unlabelled persona line reads as a hypothesis;
+  a sheet from a draft file is watermarked. The Strategy gate's Approve renders them, and so does each coach's last
+  step. The narrative template gains labelled lines and a `### Persona` block; its headings are unchanged.
+
+### Changed
+- **Per-coach fixes** (S3.1). The narrative coach distils a rich first answer into one insight (earned · unique ·
+  grounded), picks the one person who hurts most before asking the problem, and fills the persona from laddered-up
+  needs. The North Star coach runs its candidates against 4–5 customer scenarios, in a table, before the maker picks.
+  The risk coach reads the North Star too and starts from every claim the earlier files mark as untested.
+- **Voice and one copy** (S3.3). The coaches speak as the Golden Frijoles strategy coach; outside methods and brands
+  appear only in each coach's Sources credit. The CLI version a skill quotes is derived from the CLI's own
+  `package.json` (north-star and setup now name 0.8.0, not 0.3.0 and 0.7.0), and the monorepo's unit suite fails while
+  one differs.
+
 ## [0.42.0] - 2026-10-08
 
 ### Changed
