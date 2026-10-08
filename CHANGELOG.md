@@ -7,6 +7,19 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-10-08
+
+### Added
+- **`cold-read`: an independent read before the strategy coaches** (coaches-v2 S1.1). A separate agent reads the repo
+  under an exclusion list (no strategy files, no coaching methods, no positioning) and writes a cold read with a
+  reading log and its own contamination; `gf-kit cold-read run` gives it to Codex when it is reachable, and says so
+  (exit 3) when no other model family is, so the skill runs it as a same-family agent and records that. The read is
+  sealed with a sha256 (`<file>.sha256`, `shasum -a 256 -c` format) and a seal is never replaced.
+- **The compare** (coaches-v2 S1.2). `gf-kit cold-read compare <read>` refuses a read whose hash changed, naming both
+  hashes, and otherwise writes the compare skeleton: converged · diverged · only the cold read · only coached ·
+  decisions · did it earn its place. Sections a coach wrote on the maker's behalf are listed as facilitator-authored,
+  read from the strategy files.
+
 ## [0.40.0] - 2026-10-08
 
 ### Changed

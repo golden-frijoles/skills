@@ -147,3 +147,12 @@ test('north-star names `gf north-star set`, pinned, as the user\'s step', () => 
   assert.ok(skill.includes('`npx -y @golden-frijoles/cli@0.3.0 north-star set Roadmap/00-strategy/north-star.md`'));
   assert.match(skill, /Do not run the command yourself\./);
 });
+
+// coaches-v2 D1: groom's strategy reader ships inside the plugin and cannot import from the kit, so it keeps its own
+// copy of the folder and the three file names. They must agree with the kit's, or a rename lands in only one.
+test('groom/strategy.mjs and the kit\'s lib/strategy-files.mjs agree on the folder and the three files', async () => {
+  const groom = await import('../plugins/golden-frijoles/skills/groom/strategy.mjs');
+  const kit = await import('../template/scripts/lib/strategy-files.mjs');
+  assert.equal(groom.STRATEGY_DIR, kit.STRATEGY_DIR);
+  assert.deepEqual(groom.KINDS, kit.KINDS);
+});

@@ -34,6 +34,7 @@ list anywhere in this repo.
 |---|---|
 | `babysit-pr` | Advisory PR watch — retries flaky CI and flags merge conflicts; never merges, never gates. |
 | `build-order-sync` | Regenerates BUILD-ORDER.md when it has drifted from the epic READMEs and opens a PR for it. |
+| `cold-read` | Runs a sealed, independent read of the product before the strategy coaches, then compares it with what they agreed. |
 | `doc-hygiene` | Measures the always-read session-start docs and writes a dated report of bloat and duplication. |
 | `golden-frijoles` | The umbrella skill: detects what's here, sets up a bare repo, and routes to the right named skill. |
 | `groom` | The planning front door: shapes a raw ask into a seed, an appetite, and a scaffolded epic. |
