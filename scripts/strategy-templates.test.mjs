@@ -156,3 +156,34 @@ test('groom/strategy.mjs and the kit\'s lib/strategy-files.mjs agree on the fold
   assert.equal(groom.STRATEGY_DIR, kit.STRATEGY_DIR);
   assert.deepEqual(groom.KINDS, kit.KINDS);
 });
+
+// coaches-v2 S2 (D5–D9): one shared reference every coach reads, and the few exact strings the scripts depend on.
+const COACH_STEPS = { 'pmf-narrative': 8, 'north-star': 7, 'risk-validation': 6 };
+
+for (const [name, steps] of Object.entries(COACH_STEPS)) {
+  test(`${name}: reads the shared coaching reference, and its X is its real step count (${steps})`, () => {
+    const skill = read(name, 'SKILL.md');
+    assert.ok(skill.includes("groom's `references/coaching.md`"), 'points at the shared reference');
+    assert.equal((skill.match(/^### Step \d+/gm) ?? []).length, steps, 'counted ### Step headings');
+    assert.ok(skill.includes(`\`Step N of ${steps} · <step name>\``), 'states X once');
+    assert.ok(skill.includes(`this coach has\n> ${steps} steps`) || skill.includes(`this coach has ${steps} steps`));
+    assert.match(skill, /requires_scripts:\n(?: {2}- .+\n)*? {2}- strategy-private\.mjs\n/, 'declares the private-folder script');
+  });
+}
+
+test('the shared reference carries the exact marker, labels and commands the scripts and the gate read', async () => {
+  const { PROPOSED_LINE } = await import('../template/scripts/lib/strategy-files.mjs');
+  const coaching = read('groom', 'references', 'coaching.md');
+  for (const s of [
+    PROPOSED_LINE,
+    '`(true today)`',
+    '`(aspirational)`',
+    '`(hypothesis)`',
+    '`> Parked (step N): <their words>`',
+    '`node scripts/strategy-private.mjs ensure`',
+    '`cold-read`',
+  ])
+    assert.ok(coaching.includes(s), s);
+  for (const [name, steps] of Object.entries(COACH_STEPS)) assert.ok(coaching.includes(`\`${name}\` ${steps}`), `${name} ${steps}`);
+  assert.ok(read('groom', 'references', 'gates.md').includes(PROPOSED_LINE), 'the Strategy gate asks about proposed sections');
+});

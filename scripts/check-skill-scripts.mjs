@@ -63,11 +63,8 @@ const SKILLS_DIR = join(repoRoot, 'plugins', 'golden-frijoles', 'skills');
 // A skill listed here that DOES declare requires_scripts is a stale entry and fails, so the list
 // has to keep describing the plugin as it actually is.
 export const NO_SCRIPTS_EXPECTED = {
-  // think-skills D1: the three strategy coaches are a conversation plus a file the agent writes from the skill's own
-  // `templates/`. There is nothing to run, so there is nothing a project or the kit could be missing.
-  'pmf-narrative': 'a coaching conversation that writes one file from its own template — no script to run',
-  'north-star': 'a coaching conversation that writes one file from its own template — no script to run',
-  'risk-validation': 'a coaching conversation that writes one file from its own template — no script to run',
+  // Empty since coaches-v2 S2 (0.42.0): the three strategy coaches used to run nothing (think-skills D1); they now run
+  // `strategy-private.mjs` before their first write, so they declare it like every other script-wrapping skill.
 };
 
 // ── The debt ledger ────────────────────────────────────────────────────────────────────────────
