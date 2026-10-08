@@ -302,7 +302,7 @@ test('the CLI writes six files from a project, and says so plainly when there is
 
 test('the narrative template itself renders nothing but "Not written yet": no placeholder ever reaches a sheet', () => {
   // This spec runs from skills/template/scripts and from the monorepo's byte copy in scripts/: find the template from either.
-  const tail = ['plugins', 'golden-frijoles', 'skills', 'pmf-narrative', 'templates', 'pmf-narrative.md'];
+  const tail = ['plugins', 'golden-frijoles', 'skills', 'strategy', 'templates', 'pmf-narrative.md'];
   const here = dirname(SCRIPT);
   const path = [join(here, '..', '..', ...tail), join(here, '..', 'skills', ...tail)].find((p) =>
     existsSync(p)

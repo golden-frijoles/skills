@@ -83,12 +83,12 @@ Answer them here, or:
   one-pagers from the approved files (`node scripts/one-pagers.mjs`, run as the coaches' kit rule says), tell the
   person where they are in one line, and offer refining (`refine`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
-- **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
+- **3 Coach me through it** runs the `strategy` skill's chapters `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
   again.
 - **When a coach finishes** (each coach's last step points here): inside "Coach me through it", go on to the next coach,
   or back to this gate after the last. **Before showing this gate**, when `Roadmap/00-strategy/cold-read/` holds a sealed
-  read (a `.sha256` beside it) with no `<read>-compare.md` yet, offer the compare first (the `cold-read` skill, Part 2):
+  read (a `.sha256` beside it) with no `<read>-compare.md` yet, offer the compare first (the cold-read chapter of `strategy`, Part 2):
   it must run while the proposed lines are still in the files, and Approve removes them. Run on its own, once its file is written: when all three files exist and any is
   not yet approved, show this gate; with a file missing, offer that file's coach first.
 

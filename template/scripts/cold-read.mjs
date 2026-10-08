@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// cold-read.mjs — the deterministic half of the `cold-read` skill: the brief, the run, the seal and the compare
+// cold-read.mjs — the deterministic half of the cold-read chapter of the `strategy` skill: the brief, the run, the seal and the compare
 // (coaches-v2 D2–D4).
 //
 //   node scripts/cold-read.mjs brief [--out <file>]   print the agent's brief (the exclusion list is in it); --out

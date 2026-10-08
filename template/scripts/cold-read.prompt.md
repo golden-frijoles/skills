@@ -8,7 +8,9 @@ the end, says where it goes.
 Skip these, and anything whose purpose is positioning, brand, messaging, landing copy or a strategy method:
 
 - `Roadmap/00-strategy/` (all of it): the makers' own strategy and any earlier cold read
-- any `pmf-narrative`, `north-star`, `risk-validation` or `cold-read` skill folder: the coaching methods
+- the `strategy` skill folder (and, on an older install, any `pmf-narrative`, `north-star`, `risk-validation` or
+  `cold-read` skill folder), and the `refine` skill's `references/coaching.md` and `references/strategy.md`: the
+  coaching methods
 - `references/`, `brand/`, landing-page and marketing copy, positioning or messaging modules
 - `.env*`, secrets, `node_modules/`, `.git/`
 

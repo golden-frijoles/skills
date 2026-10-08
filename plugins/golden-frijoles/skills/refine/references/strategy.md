@@ -1,6 +1,6 @@
 # Strategy at Stage 0 — the Moves · Tests line
 
-The three strategy coaches (`pmf-narrative`, `north-star`, `risk-validation`) each leave one file in
+The three strategy coaches (the `strategy` skill's chapters `pmf-narrative`, `north-star`, `risk-validation`) each leave one file in
 `Roadmap/00-strategy/`, and render three one-pagers from those files into `Roadmap/00-strategy/one-pagers/` (a business
 model canvas, a value proposition sheet and a persona poster; `scripts/one-pagers.mjs`). When that folder exists, Stage 0 runs the reader that ships beside the generators:
 

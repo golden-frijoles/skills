@@ -4,7 +4,7 @@
 //   node "$REFINE/strategy.mjs"                 # from the project root
 //   node "$REFINE/strategy.mjs" --root <dir>    # another project root
 //
-// The three strategy coaches (`pmf-narrative`, `north-star`, `risk-validation`) each leave one file in
+// The three strategy coaches (the `strategy` skill's chapters `pmf-narrative`, `north-star`, `risk-validation`) each leave one file in
 // `Roadmap/00-strategy/`, shaped by the template that ships with the coach. This reads those files and prints the few
 // facts a pitch can be tied to: the input metrics a seed could move, and the riskiest dimension a seed could test.
 //

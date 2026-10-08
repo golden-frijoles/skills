@@ -207,7 +207,7 @@ needs a flag. Ask Q4 last, after the route below has finished.
   > assumption; saved as you go) · **2 A first epic now** (strategy can come later; until then the epic is marked as
   > not grounded)
 
-  1 (`config set project.startPoint idea`): run `pmf-narrative`, then `north-star`, then `risk-validation`, each from
+  1 (`config set project.startPoint idea`): run the `strategy` skill's chapters PMF narrative, then North Star, then risk validation, each from
   the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the **Strategy
   gate**. 2 (`config set project.startPoint plan`): hand off to `refine` with the sentence as the ask, word for word.
   With no strategy, refine marks the epic not grounded (its `references/strategy.md`; the Plan gate's *Not grounded*).
@@ -220,7 +220,7 @@ Keep this stage to the steps above — don't re-explain the registry or restate 
 | The ask sounds like… | Route to |
 |---|---|
 | planning, shaping, a new idea, "what should we build" | `refine` |
-| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `pmf-narrative` → `north-star` → `risk-validation` (each writes `Roadmap/00-strategy/<name>.md` and offers the next; approval is the Strategy gate in refine's `references/gates.md`; outputs: the three files and three one-pagers in `Roadmap/00-strategy/one-pagers/`, a business model canvas, a value proposition sheet and a persona poster; a sealed `cold-read` can go first) |
+| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `strategy`: its chapters PMF narrative → North Star → risk validation (each writes `Roadmap/00-strategy/<name>.md` and offers the next; approval is the Strategy gate in refine's `references/gates.md`; outputs: the three files and three one-pagers in `Roadmap/00-strategy/one-pagers/`, a business model canvas, a value proposition sheet and a persona poster; a sealed cold read, its chapter 0, can go first) |
 | verifying rendered behavior, "does this look right", a build-time check | `live-smoke` (the cross-review rails also ship in the kit) |
 | daily/weekly ops: standups, recaps, PMO reporting, watching a PR, doc bloat, stale previews | `standup-post` / `weekly-recap` / `pmo-report` / `babysit-pr` / `doc-hygiene` / `vercel-prune` |
 | standing up a reviewed Claude Code routine | `node scripts/routine-bootstrap.mjs <name>`, then paste it into `/schedule` |

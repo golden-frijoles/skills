@@ -15,6 +15,9 @@ import { fileURLToPath } from 'node:url';
 
 const SKILLS = join(dirname(fileURLToPath(import.meta.url)), '..', 'plugins', 'golden-frijoles', 'skills');
 const read = (...parts) => readFileSync(join(SKILLS, ...parts), 'utf8');
+// plugin-1-0 S3.1: the coaches are chapters of one `strategy` skill; its frontmatter (requires_scripts) is the router's.
+const chapter = (name) => read('strategy', 'references', `${name}.md`);
+const ROUTER = () => read('strategy', 'SKILL.md');
 
 /** The six PMF dimensions, as `pmf-narrative` names them. Risk Validation's rows must use the same words. */
 const DIMENSIONS = [
@@ -60,19 +63,19 @@ const h2 = (text) => [...text.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
 
 for (const [name, headings] of Object.entries(CONTRACTS)) {
   test(`${name}: the template carries the frontmatter contract`, () => {
-    const fm = frontmatter(read(name, 'templates', `${name}.md`));
+    const fm = frontmatter(read('strategy', 'templates', `${name}.md`));
     assert.equal(fm.kind, name);
     assert.equal(fm.status, 'draft');
     assert.equal(fm.updated, 'YYYY-MM-DD');
   });
 
   test(`${name}: the template's headings are the contract, in order`, () => {
-    assert.deepEqual(h2(read(name, 'templates', `${name}.md`)), headings);
+    assert.deepEqual(h2(read('strategy', 'templates', `${name}.md`)), headings);
   });
 
   test(`${name}: the skill writes its file from its template, and asks before overwriting an agreed one`, () => {
-    const skill = read(name, 'SKILL.md');
-    assert.match(skill, new RegExp(`^name: ${name}$`, 'm'));
+    const skill = chapter(name);
+    assert.ok(ROUTER().includes(`\`references/${name}.md\``), 'the router lists this chapter');
     assert.ok(skill.includes(`\`templates/${name}.md\``), 'names its template');
     assert.ok(skill.includes(`\`Roadmap/00-strategy/${name}.md\``), 'names the file it writes');
     assert.ok(skill.includes('`status: draft`'), 'writes a draft');
@@ -81,7 +84,7 @@ for (const [name, headings] of Object.entries(CONTRACTS)) {
 }
 
 test('north-star: exactly one json fence, and it sits under ## Sync payload', () => {
-  const text = read('north-star', 'templates', 'north-star.md');
+  const text = read('strategy', 'templates', 'north-star.md');
   const fences = [...text.matchAll(/^```json$/gm)];
   assert.equal(fences.length, 1);
   assert.ok(fences[0].index > text.indexOf('\n## Sync payload\n'));
@@ -91,7 +94,7 @@ test('north-star: exactly one json fence, and it sits under ## Sync payload', ()
 });
 
 test('risk-validation: every dimension row uses the narrative\'s own heading names', () => {
-  const text = read('risk-validation', 'templates', 'risk-validation.md');
+  const text = read('strategy', 'templates', 'risk-validation.md');
   for (const table of ['## Broad validation', '## Conviction map']) {
     const section = text.slice(text.indexOf(table)).split('\n## ')[0];
     const rows = [...section.matchAll(/^\| ([^|]+?) \|/gm)].map((m) => m[1]).slice(1); // drop the header row
@@ -101,13 +104,13 @@ test('risk-validation: every dimension row uses the narrative\'s own heading nam
 
 // The chain (D4): each coach offers the next; nothing auto-invokes.
 test('the chain: pmf-narrative offers north-star, north-star offers risk-validation, risk-validation offers refine', () => {
-  assert.match(read('pmf-narrative', 'SKILL.md'), /offering the North Star workshop \(the `north-star` skill\)/);
-  assert.match(read('north-star', 'SKILL.md'), /offering risk validation \(the `risk-validation` skill\)/);
-  assert.match(read('risk-validation', 'SKILL.md'), /\(the `refine` skill\)/);
+  assert.match(read('strategy', 'references', 'pmf-narrative.md'), /offering the North Star workshop \(the North Star chapter, `references\/north-star\.md`\)/);
+  assert.match(read('strategy', 'references', 'north-star.md'), /offering risk validation \(the risk-validation chapter, `references\/risk-validation\.md`\)/);
+  assert.match(read('strategy', 'references', 'risk-validation.md'), /\(the `refine` skill\)/);
 });
 
 test('risk-validation reads the narrative before asking for it', () => {
-  const skill = read('risk-validation', 'SKILL.md');
+  const skill = read('strategy', 'references', 'risk-validation.md');
   const step1 = skill.slice(skill.indexOf('### Step 1'), skill.indexOf('### Step 2'));
   assert.ok(step1.includes('`Roadmap/00-strategy/pmf-narrative.md`'));
   for (const dimension of DIMENSIONS) assert.ok(step1.includes(dimension), dimension);
@@ -115,25 +118,27 @@ test('risk-validation reads the narrative before asking for it', () => {
 
 // The mis-trigger this epic was refined to fix: the account copy's description was Risk Validation's, word for word.
 test('north-star describes a North Star workshop, not risk validation', () => {
-  const description = (name) => read(name, 'SKILL.md').match(/^description: >\n((?: {2}.+\n)+)/m)[1];
-  const northStar = description('north-star');
+  // After the merge the mis-trigger risk lives in the router's table: each row must pick its chapter by its own words.
+  const row = (file) => ROUTER().split('\n').find((l) => l.includes(`\`references/${file}\``));
+  const northStar = row('north-star.md');
   assert.match(northStar, /North Star/);
   assert.match(northStar, /input metrics/);
-  assert.doesNotMatch(northStar, /riskiest|validation technique/);
-  assert.notEqual(northStar, description('risk-validation'));
+  assert.doesNotMatch(northStar, /riskiest|validat/);
+  assert.match(row('risk-validation.md'), /riskiest/);
+  assert.match(ROUTER(), /^description: >\n(?: {2}.+\n)*? {2}.*input metrics/m, 'the description still triggers on a North Star ask');
 });
 
 // D4: an offer is a sentence. Nothing auto-invokes the next coach (S1 review nit: deleting this rule left every test green).
 test('every coach offers the next without starting it', () => {
   for (const name of Object.keys(CONTRACTS)) {
-    assert.match(read(name, 'SKILL.md'), /Offer it; don't start it unasked\./, name);
+    assert.match(chapter(name), /Offer it; don't start it unasked\./, name);
   }
 });
 
 // Grooming D7 + the D1 amendment: each public skill credits its sources by name and URL, never a local path.
 test('every coach credits its sources by name and URL', () => {
   for (const name of Object.keys(CONTRACTS)) {
-    const line = read(name, 'SKILL.md').match(/^> \*\*Sources\.\*\* (.+)$/m);
+    const line = chapter(name).match(/^> \*\*Sources\.\*\* (.+)$/m);
     assert.ok(line, `${name} has a Sources line under its title`);
     assert.match(line[1], /https:\/\/\S+/, name);
     assert.doesNotMatch(line[1], /references\//, name);
@@ -143,7 +148,7 @@ test('every coach credits its sources by name and URL', () => {
 // think-skills S3 (D10): the North Star coach names the one command that sends its file, pinned to the CLI version
 // that has it, and leaves running it to the user (the skill never writes to an engine itself).
 test('north-star names `frijoles north-star set`, pinned, as the user\'s step', () => {
-  const skill = read('north-star', 'SKILL.md');
+  const skill = read('strategy', 'references', 'north-star.md');
   // The version is derived from packages/cli by the monorepo's render-plugin-release.mjs (coaches-v2 D12), which this
   // mirror cannot see; here only the command's shape is pinned.
   assert.match(skill, /`npx -y @golden-frijoles\/cli@\d+\.\d+\.\d+ north-star set Roadmap\/00-strategy\/north-star\.md`/);
@@ -164,12 +169,12 @@ const COACH_STEPS = { 'pmf-narrative': 8, 'north-star': 7, 'risk-validation': 6 
 
 for (const [name, steps] of Object.entries(COACH_STEPS)) {
   test(`${name}: reads the shared coaching reference, and its X is its real step count (${steps})`, () => {
-    const skill = read(name, 'SKILL.md');
+    const skill = chapter(name);
     assert.ok(skill.includes("refine's `references/coaching.md`"), 'points at the shared reference');
     assert.equal((skill.match(/^### Step \d+/gm) ?? []).length, steps, 'counted ### Step headings');
     assert.ok(skill.includes(`\`Step N of ${steps} · <step name>\``), 'states X once');
     assert.ok(skill.includes(`this coach has\n> ${steps} steps`) || skill.includes(`this coach has ${steps} steps`));
-    assert.match(skill, /requires_scripts:\n(?: {2}- .+\n)*? {2}- strategy-private\.mjs\n/, 'declares the private-folder script');
+    assert.match(ROUTER(), /requires_scripts:\n(?: {2}- .+\n)*? {2}- strategy-private\.mjs\n/, 'the router declares the private-folder script');
   });
 }
 
@@ -192,26 +197,26 @@ test('the shared reference carries the exact marker, labels and commands the scr
 
 // coaches-v2 S3: the per-coach fixes, the one-pagers, and the voice.
 test('pmf-narrative: distil and test, one person before the problem, ladder up, and the persona block', () => {
-  const skill = read('pmf-narrative', 'SKILL.md');
+  const skill = read('strategy', 'references', 'pmf-narrative.md');
   for (const s of ['**Distil and test**', '**One person first:**', '**Ladder up every example**', '`### Persona` block'])
     assert.ok(skill.includes(s), s);
   assert.ok(skill.indexOf('**One person first:**') < skill.indexOf('**Question:** Ask: "What is the ultimate **outcome**'), 'the person is picked before the problem is asked');
 });
 
 test('north-star: the scenario table comes before the pick; risk-validation reads the North Star and carries risks forward', () => {
-  const ns = read('north-star', 'SKILL.md');
+  const ns = read('strategy', 'references', 'north-star.md');
   const table = ns.indexOf('**Run the candidates against customer scenarios, before anyone picks.**');
   assert.ok(table > ns.indexOf('### Step 4') && table < ns.indexOf('### Step 5'), 'inside Step 4');
-  const risk = read('risk-validation', 'SKILL.md');
+  const risk = read('strategy', 'references', 'risk-validation.md');
   assert.ok(risk.includes('**Read the narrative and the North Star first:**') && risk.includes('`north-star.md`'));
   assert.ok(risk.includes('**Carry the earlier risks forward:**'));
 });
 
 test('every coach renders the one-pagers at its last write, and so does the Strategy gate\'s Approve', () => {
   for (const name of ['pmf-narrative', 'north-star', 'risk-validation']) {
-    const skill = read(name, 'SKILL.md');
+    const skill = chapter(name);
     assert.ok(skill.includes('`node scripts/one-pagers.mjs`'), name);
-    assert.match(skill, /requires_scripts:\n(?: {2}- .+\n)*? {2}- one-pagers\.mjs\n/, `${name} declares it`);
+    assert.match(ROUTER(), /requires_scripts:\n(?: {2}- .+\n)*? {2}- one-pagers\.mjs\n/, 'the router declares it');
   }
   assert.ok(read('refine', 'references', 'gates.md').includes('`node scripts/one-pagers.mjs`'));
 });
@@ -219,9 +224,10 @@ test('every coach renders the one-pagers at its last write, and so does the Stra
 test('voice: no outside method or brand in coach text, except the one Sources line that credits it (D11)', () => {
   const BRANDS = /Reforge|Amplitude|Strategyzer|Deliberate Startup|Deliberate Risk|7 Powers|Helmer|Finding PMF Loop|North Star Framework facilitator/;
   const files = [
-    ...['pmf-narrative', 'north-star', 'risk-validation'].flatMap((n) => [[n, 'SKILL.md'], [n, 'templates', `${n}.md`]]),
+    ...['pmf-narrative', 'north-star', 'risk-validation'].flatMap((n) => [['strategy', 'references', `${n}.md`], ['strategy', 'templates', `${n}.md`]]),
     ['refine', 'references', 'coaching.md'],
-    ['cold-read', 'SKILL.md'],
+    ['strategy', 'references', 'cold-read.md'],
+    ['strategy', 'SKILL.md'],
   ];
   for (const parts of files) {
     const offending = read(...parts)

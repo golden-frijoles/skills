@@ -1,6 +1,6 @@
 // strategy.test.mjs — refine's reader for Roadmap/00-strategy/ (think-skills D5).
 //
-// The fixtures ARE the three coaches' templates (`../<coach>/templates/<coach>.md`), filled the way a coach fills
+// The fixtures ARE the three coaches' templates (`../strategy/templates/<coach>.md`), filled the way a coach fills
 // them. So a heading renamed in a template turns this red here, instead of refine silently reading nothing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { formatStrategy, readStrategy } from './strategy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const template = (coach) => readFileSync(join(HERE, '..', coach, 'templates', `${coach}.md`), 'utf8');
+const template = (coach) => readFileSync(join(HERE, '..', 'strategy', 'templates', `${coach}.md`), 'utf8');
 
 /** A project root with the given strategy files written into Roadmap/00-strategy/. */
 function project(files = {}) {

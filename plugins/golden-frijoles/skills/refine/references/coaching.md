@@ -1,6 +1,6 @@
 # How every strategy coach behaves
 
-The three strategy coaches (`pmf-narrative`, `north-star`, `risk-validation`) read this before their first message and
+The three strategy coaches (the `strategy` skill's chapters `pmf-narrative`, `north-star`, `risk-validation`) read this before their first message and
 follow it on every step. Each coach's own SKILL.md says *what* to ask; this says *how*, once, for all three. When the
 two disagree, the coach's own step wins on content and this file wins on behaviour.
 
@@ -18,7 +18,7 @@ no files at all, say so in one line and start.
 
 **Offer the cold read once.** When `Roadmap/00-strategy/cold-read/` holds no sealed read (no `.sha256` file) and no
 strategy file is `agreed` yet, offer it in the first message, after the play-back and before Step 1's question: "Before we start: want an independent read of the product
-first, written without your answers? It takes one agent run and none of your time (`cold-read`)." If they decline,
+first, written without your answers? It takes one agent run and none of your time (the `cold-read` chapter of `strategy`)." If they decline,
 don't offer it again this session.
 
 ## 2. Show where they are, on every message
