@@ -7,6 +7,19 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-10-08
+
+### Changed
+- **The planning skill is `refine`** (plugin-1-0 S2): `/golden-frijoles:refine`, formerly `groom`. It moves an idea from
+  Backlog through Refining to Ready, so it carries the stage's name. Every locator, reference and the vendored kickoff
+  follow; the installed path is `skills/refine/`.
+- **The screens say Backlog → Refining → Ready.** The board, the epic page, the build view's stage track and the
+  generated `BUILD-ORDER.md` headings; stored stage keys are unchanged. "Grooming" is retired: Scrum renamed it
+  refinement in 2013, and in UK and Australian English the word mostly means child abuse. `check-gate-words` bans
+  groom, grooming and groomed on screen.
+- **Plain agile in the last two places:** the L-bet question is now "Start the next part of `<slug>`? What waits for
+  it?", and the session kickoff's shaped-bet row describes the Plan gate.
+
 ## [0.44.0] - 2026-10-08
 
 ### Changed
