@@ -199,6 +199,7 @@ test('a seal is never replaced, and the compare writes once, listing the propose
     const made = cli(root, 'compare', file, '--expect', sha256(READ).slice(0, 12));
     assert.equal(made.status, 0, made.stderr);
     const out = readdirSync(dirname(file)).find((f) => f.endsWith('-compare.md'));
+    assert.equal(out, '2026-10-08-cold-read-compare.md', 'named after its read');
     const text = readFileSync(join(dirname(file), out), 'utf8');
     assert.match(text, /cold_read: Roadmap\/00-strategy\/cold-read\/2026-10-08-cold-read\.md/);
     assert.match(text, /north-star\.md` → \*\*North Star metric\*\*/);

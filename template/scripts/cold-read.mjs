@@ -278,7 +278,8 @@ function compare(file, root, expect) {
     .map((rel) => ({ path: rel.split('\\').join('/'), text: readOrNull(join(root, rel)) }))
     .filter((c) => c.text !== null);
   const date = localDate();
-  const out = join(dirname(file), `${date}-compare.md`);
+  // Named after its read, not the day: two reads sealed and compared on one day each get their own compare.
+  const out = join(dirname(file), `${basename(file).replace(/\.md$/, '')}-compare.md`);
   if (existsSync(out))
     return { code: 1, err: `cold-read: ${out} exists; edit it rather than starting again.` };
   writeFileSync(
