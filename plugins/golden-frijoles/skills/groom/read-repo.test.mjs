@@ -338,7 +338,7 @@ test('clusterIssues: labels that differ only in case are one idea', () => {
 test('writeRefusal: first run only', () => {
   assert.equal(writeRefusal(baseFacts()), null);
   assert.match(writeRefusal(baseFacts({ roadmap: { present: true, epics: 1, ideas: 0 } })), /first run only/);
-  assert.match(writeRefusal(baseFacts({ roadmap: { present: false, epics: 0, ideas: 0 } })), /gf-kit init/);
+  assert.match(writeRefusal(baseFacts({ roadmap: { present: false, epics: 0, ideas: 0 } })), /frijoles-kit init/);
 });
 
 // ── Fixture repos, end to end ─────────────────────────────────────────────────────────────────────────────────────

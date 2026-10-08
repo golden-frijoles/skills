@@ -13,7 +13,7 @@ test('parseValue: JSON when it is JSON, else the literal string', () => {
   assert.equal(parseValue('every-pr'), 'every-pr');
 });
 
-/** Run `gf-kit config` against a temp project (GF_PROJECT_ROOT is how gf-kit --root reaches a script). */
+/** Run `frijoles-kit config` against a temp project (GF_PROJECT_ROOT is how frijoles-kit --root reaches a script). */
 function run(argv, root) {
   const prev = process.env.GF_PROJECT_ROOT;
   process.env.GF_PROJECT_ROOT = root;

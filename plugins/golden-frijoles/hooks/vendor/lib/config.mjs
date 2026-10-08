@@ -15,7 +15,7 @@
 // Secrets never go in this file, only the NAMES of the env vars that hold them. `setKey` refuses a value that looks
 // like a credential.
 //
-// Zero deps. Imported by the kit's `gf-kit config` and, via `@golden-frijoles/kit/config`, by the `gf` CLI (D10).
+// Zero deps. Imported by the kit's `frijoles-kit config` and, via `@golden-frijoles/kit/config`, by the `gf` CLI (D10).
 
 import { existsSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';

@@ -5,7 +5,7 @@ Paste this into your agent, in an empty repo or an existing one:
 > Set up Golden Frijoles in this project. 1. Read https://goldenfrijoles.com/install.md before installing anything. 2. Tell me in a few lines what it installs, what changes on this machine and which services it contacts. Offer me a security review, and wait for my go-ahead. 3. Install it the way install.md says for the agent you are. 4. Run the golden-frijoles skill and start its setup.
 
 That last skill — `golden-frijoles` — is the front door: it detects what's already here (is
-`Roadmap/` present, is the kit reachable, which channel you're on), offers `gf-kit init` to adopt a
+`Roadmap/` present, is the kit reachable, which channel you're on), offers `frijoles-kit init` to adopt a
 bare repo, and routes you to the right named skill below. Golden Frijoles is a planning-and-operating
 system for shipping software with an agent — shape a raw idea into sliced work (`groom`), verify what
 you built against a real rendered page (`live-smoke`), and run the operate rails (standups, weekly
@@ -18,7 +18,7 @@ of that tooling itself. Two layers, built in strict order:
 2. **A project template** (`template/`) — the *copy-once* skeleton a brand-new project spawns from:
    generalized `Roadmap/` (WAYS-OF-WORKING, LEARNINGS, `00-ideas` funnel), an `AGENTS.md` skeleton with
    a per-project rules slot, CI workflows, `scripts/`, and the Playwright `api` harness shape. An
-   **existing** repo doesn't need the whole template — `gf-kit init` (below) writes just the
+   **existing** repo doesn't need the whole template — `frijoles-kit init` (below) writes just the
    `Roadmap/` skeleton the skills need to have somewhere to plan.
 
 ## The skills
@@ -117,7 +117,7 @@ npx skills add golden-frijoles/skills --skill '*'
 This installs `SKILL.md` folders only — no hooks, no agents directory. The umbrella skill says so the
 first time it detects that channel; don't assume parity with the Claude Code plugin install above.
 
-### Adopt an existing repo — `gf-kit init`
+### Adopt an existing repo — `frijoles-kit init`
 
 A repo with no `Roadmap/` yet has nowhere for `groom` to write. One command adds just that:
 

@@ -98,7 +98,7 @@ test('kitClosureFiles is derived live from requires_scripts (a fixture skills/ d
   assert.ok(kitClosureFiles({ skillsDir: dir, skeleton: ['Roadmap/X.md'] }).has('template/Roadmap/X.md'), 'the skeleton joins the closure');
 });
 
-test('kitClosureFiles covers the Roadmap skeleton gf-kit init writes (kickoff-generator-path S2)', () => {
+test('kitClosureFiles covers the Roadmap skeleton frijoles-kit init writes (kickoff-generator-path S2)', () => {
   const files = kitClosureFiles();
   assert.ok(files.has('template/Roadmap/WAYS-OF-WORKING.md'), 'the skeleton’s WAYS-OF-WORKING ships in the kit');
   assert.equal(touchesShippedSurface(['template/Roadmap/WAYS-OF-WORKING.md'], files), true);

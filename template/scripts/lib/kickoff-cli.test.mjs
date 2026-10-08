@@ -20,7 +20,7 @@ test('a bare --repo-root (no value) is ignored, not taken as the string "true"',
   assert.equal(root, '/p');
 });
 
-test('GF_PROJECT_ROOT (gf-kit --root) is taken as given, even without a Roadmap/', () => {
+test('GF_PROJECT_ROOT (frijoles-kit --root) is taken as given, even without a Roadmap/', () => {
   const root = resolveRepoRoot({}, { env: { GF_PROJECT_ROOT: 'other' }, cwd: '/home', exists: () => false, project: () => '/kit' });
   assert.equal(root, '/home/other');
 });

@@ -618,7 +618,7 @@ export function gatherFacts(root, { run = defaultRun, now = new Date(), full = t
 export function writeRefusal(facts) {
   if ((facts.unread ?? []).length)
     return `Could not read the ${facts.unread.join(' and the ')}: fix gh and run this again. Nothing was written.`;
-  if (!facts.roadmap.present) return 'There is no Roadmap/ here yet: run setup\'s `gf-kit init` first. Nothing was written.';
+  if (!facts.roadmap.present) return 'There is no Roadmap/ here yet: run setup\'s `frijoles-kit init` first. Nothing was written.';
   if (facts.roadmap.epics || facts.roadmap.ideas)
     return `Roadmap/ already holds ${plural(facts.roadmap.epics, 'epic')} and ${plural(facts.roadmap.ideas, 'idea')}: this read is for a first run only. Nothing was written.`;
   return null;

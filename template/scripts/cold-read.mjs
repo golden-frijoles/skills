@@ -316,7 +316,7 @@ function run(root) {
       err: 'cold-read: no other model family reachable (codex is not installed). Run the brief with a same-family agent and record `family: claude (same family)`.',
     };
   }
-  // Codex reads the repository it is started in. Under `gf-kit --root <dir>` that is not this process's cwd, so move
+  // Codex reads the repository it is started in. Under `frijoles-kit --root <dir>` that is not this process's cwd, so move
   // there first: otherwise it reads one repo and the read is sealed into another's strategy folder (review of #314).
   process.chdir(root);
   const r = tryCodex(brief, '');

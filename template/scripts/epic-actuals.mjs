@@ -660,7 +660,7 @@ export async function pushUsage({
     return { sent: 0, reason: `config unreadable — ${err && err.message ? err.message : err}` };
   }
   if (setting !== 'on')
-    return { sent: 0, reason: 'off — spend.telemetry is not on (gf-kit config set spend.telemetry on)' };
+    return { sent: 0, reason: 'off — spend.telemetry is not on (frijoles-kit config set spend.telemetry on)' };
   // The throttle counts ATTEMPTS, not successes: a persistent 401 or 429 retries every 10 minutes, not every minute.
   const last = Math.max(index.pushed_at ?? -Infinity, index.push_attempt_at ?? -Infinity);
   if (throttle && Number.isFinite(last) && now - last < PUSH_EVERY_MS)

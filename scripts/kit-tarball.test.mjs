@@ -60,7 +60,7 @@ test('the packed kit, installed in a stranger repo, runs build-order from a subd
   });
   assert.equal(install.status, 0, install.stderr);
 
-  const bin = join(tools, 'node_modules', '.bin', 'gf-kit');
+  const bin = join(tools, 'node_modules', '.bin', 'frijoles-kit');
   const run = spawnSync(bin, ['build-order'], { cwd: join(repo, 'apps', 'web', 'src'), encoding: 'utf8', env: sealedEnv() });
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
 
@@ -191,9 +191,9 @@ test('the packed kit degrades review routing and session resume without gh or re
   assert.doesNotMatch(resumeOutput, /^ {4}at /m);
 });
 
-// golden-frijoles-plugin S3.2: `gf-kit init` adopts a repo that has NOTHING yet — no Roadmap/, no .git even,
+// golden-frijoles-plugin S3.2: `frijoles-kit init` adopts a repo that has NOTHING yet — no Roadmap/, no .git even,
 // the true "stranger pasted the prompt into an empty folder" case the epic's whole promise rests on.
-test('the packed kit runs `gf-kit init` in an EMPTY temp repo and writes the Roadmap/ skeleton, nothing else', { skip: !hasNpm && 'npm not found — could not look' }, () => {
+test('the packed kit runs `frijoles-kit init` in an EMPTY temp repo and writes the Roadmap/ skeleton, nothing else', { skip: !hasNpm && 'npm not found — could not look' }, () => {
   const kitDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stage-init-')));
   stageKit(kitDir);
   const packDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-pack-init-')));
@@ -209,7 +209,7 @@ test('the packed kit runs `gf-kit init` in an EMPTY temp repo and writes the Roa
     { encoding: 'utf8', env: sealedEnv() }
   );
   assert.equal(install.status, 0, install.stderr);
-  const bin = join(tools, 'node_modules', '.bin', 'gf-kit');
+  const bin = join(tools, 'node_modules', '.bin', 'frijoles-kit');
 
   // A truly empty folder — no Roadmap/, no .git, no package.json — the projectRoot() fallback for
   // "installed, and no marker directory found anywhere above cwd" (D2: falls back to cwd itself).
@@ -226,9 +226,9 @@ test('the packed kit runs `gf-kit init` in an EMPTY temp repo and writes the Roa
     'Roadmap/00-ideas/seeds/.gitkeep',
     'Roadmap/00-ideas/audits/.gitkeep',
   ]) {
-    assert.ok(existsSync(join(repo, rel)), `gf-kit init did not write ${rel}`);
+    assert.ok(existsSync(join(repo, rel)), `frijoles-kit init did not write ${rel}`);
   }
-  assert.equal(existsSync(join(repo, 'scripts')), false, 'gf-kit init must not create a scripts/ dir');
+  assert.equal(existsSync(join(repo, 'scripts')), false, 'frijoles-kit init must not create a scripts/ dir');
   const pkgDir = join(tools, 'node_modules', '@golden-frijoles', 'kit');
   assert.equal(existsSync(join(pkgDir, 'dist', 'skeleton', 'Roadmap')), true, 'the kit must carry its own skeleton source');
 
@@ -253,7 +253,7 @@ test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project
   const tools = realpathSync(mkdtempSync(join(tmpdir(), 'kit-tools-')));
   const install = spawnSync('npm', ['install', '--offline', '--no-audit', '--no-fund', '--prefix', tools, join(packDir, tgz)], { encoding: 'utf8', env: sealedEnv() });
   assert.equal(install.status, 0, install.stderr);
-  const bin = join(tools, 'node_modules', '.bin', 'gf-kit');
+  const bin = join(tools, 'node_modules', '.bin', 'frijoles-kit');
 
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'kit-kickoff-')));
   const epic = join(repo, 'Roadmap', '09-x', 'kick-fixture');
@@ -279,8 +279,8 @@ test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project
   ];
   for (const [name, args, expected] of runs) {
     const kit = spawnSync(bin, [name, ...args], { cwd: join(repo, 'docs'), encoding: 'utf8', env: sealedEnv() });
-    assert.equal(kit.status, 0, `gf-kit ${name} ${args.join(' ')}\n${kit.stdout}\n${kit.stderr}`);
-    assert.match(kit.stdout, expected, `gf-kit ${name} ${args.join(' ')}`);
+    assert.equal(kit.status, 0, `frijoles-kit ${name} ${args.join(' ')}\n${kit.stdout}\n${kit.stderr}`);
+    assert.match(kit.stdout, expected, `frijoles-kit ${name} ${args.join(' ')}`);
     // groom's vendored copy, run the way groom's Stage 8 runs it: from the project, no --repo-root.
     const groom = spawnSync(process.execPath, [groomCopy(name), ...args], { cwd: repo, encoding: 'utf8', env: sealedEnv() });
     assert.equal(groom.status, 0, groom.stderr);

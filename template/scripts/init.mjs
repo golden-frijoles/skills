@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// init.mjs — `gf-kit init`: adopt any repo by writing the Roadmap/ skeleton (golden-frijoles-plugin S3.2, D2).
+// init.mjs — `frijoles-kit init`: adopt any repo by writing the Roadmap/ skeleton (golden-frijoles-plugin S3.2, D2).
 //
 //   node scripts/init.mjs             # write the skeleton into projectRoot(); never overwrite a file
 //
 // ── Why ───────────────────────────────────────────────────────────────────────────────────────
 // A stranger who pastes the install prompt into an EXISTING repo gets the plugin, but `groom` needs
 // somewhere to write on day one — `Roadmap/README.md`, `WAYS-OF-WORKING.md`, `LEARNINGS.md`, and the
-// `00-ideas/` funnel. `gf-kit init` is that one step: it writes the same skeleton a project spawned
+// `00-ideas/` funnel. `frijoles-kit init` is that one step: it writes the same skeleton a project spawned
 // from `template/` already has, into any repo, copied or installed (D2's two roots).
 //
 // ── Where the skeleton's SOURCE lives ─────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ import { dirname, join, resolve } from 'node:path';
 import { isInstalled, kitRoot, projectRoot } from './lib/project-root.mjs';
 
 /**
- * The Roadmap skeleton `gf-kit init` writes, relative both to its source root (template/, or
+ * The Roadmap skeleton `frijoles-kit init` writes, relative both to its source root (template/, or
  * kit/dist/skeleton/ once built) and to the project it writes into. ONE list: `build-kit.mjs` reads
  * this export to populate `kit/dist/skeleton/`, so there is no second copy of the file names to drift.
  */
@@ -104,7 +104,7 @@ export function initSkeleton({
 }
 
 /**
- * True when `project` resolves to the operator's own home directory — the one place `gf-kit init`
+ * True when `project` resolves to the operator's own home directory — the one place `frijoles-kit init`
  * must never write, even though `projectRoot()`'s walk-up can legitimately land there (a non-git
  * folder under a dotfiles repo tracked at `$HOME`). Pure given its injected `home`.
  */
@@ -116,7 +116,7 @@ function main() {
   const project = projectRoot();
   if (isHomeDirectory({ project })) {
     console.error(
-      `gf-kit init: refusing to run — the resolved project root is your home directory (${project}).\n` +
+      `frijoles-kit init: refusing to run — the resolved project root is your home directory (${project}).\n` +
         '  This usually means no Roadmap/ or .git was found between the current directory and $HOME,\n' +
         '  and $HOME itself is a git repo (a dotfiles checkout, for example). Run this from inside a\n' +
         '  real project — a directory with its own .git — or pass --root explicitly.'
@@ -124,7 +124,7 @@ function main() {
     return 2;
   }
   const { wrote, skipped } = initSkeleton({ project, log: (line) => console.log(line) });
-  console.log(`gf-kit init: ${wrote.length} written, ${skipped.length} already present.`);
+  console.log(`frijoles-kit init: ${wrote.length} written, ${skipped.length} already present.`);
   return 0;
 }
 

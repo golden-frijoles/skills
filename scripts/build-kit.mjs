@@ -45,7 +45,7 @@ export function kitManifest({ skillsDir = SKILLS_DIR, read = readFileSync } = {}
  * Build dist/. Throws, naming every absent file, before writing anything.
  *
  * Alongside the script closure, it copies the S3.2 Roadmap skeleton (`init.mjs`'s own `SKELETON`
- * export — one list, read here and by `gf-kit init` itself) from `template/<rel>` into
+ * export — one list, read here and by `frijoles-kit init` itself) from `template/<rel>` into
  * `kit/dist/skeleton/<rel>`, which is where `skeletonRoot()` looks for it in installed mode.
  */
 export function buildKit({

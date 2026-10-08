@@ -89,7 +89,7 @@ export function changelogSection(changelogText, version) {
  * Pure — every file a version bump must cover: `plugins/**`, `kit/**` (S2 on) and what the kit carries: its script
  * closure (every skill's declared `requires_scripts:`, resolved against `template/scripts/` — the
  * root `check-skill-scripts.mjs` audits by default, and its own guard proves declared === actual), plus the Roadmap
- * skeleton `gf-kit init` writes (`init.mjs`'s `SKELETON`, the one list build-kit copies into `dist/skeleton/`).
+ * skeleton `frijoles-kit init` writes (`init.mjs`'s `SKELETON`, the one list build-kit copies into `dist/skeleton/`).
  * Before kickoff-generator-path S2 the skeleton was missing here, so an edit to `template/Roadmap/WAYS-OF-WORKING.md`
  * changed what the kit hands a new project without asking for the version that would publish it.
  */

@@ -2,7 +2,7 @@
 //
 // A script in this set runs in one of two places:
 //   • COPIED:    the project's own `scripts/<x>.mjs` (a project spawned from the template, or a deliberate fork).
-//   • INSTALLED: `@golden-frijoles/kit`, run by `npx … gf-kit <x>` from npm's cache, far from the project.
+//   • INSTALLED: `@golden-frijoles/kit`, run by `npx … frijoles-kit <x>` from npm's cache, far from the project.
 // The same bytes run in both. What differs is only where "the project" and "my own files" are, so every
 // path goes through exactly one of:
 //

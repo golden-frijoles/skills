@@ -423,7 +423,7 @@ export function formatReport(report) {
 export function liveRefusal(config, getKey) {
   if (config.egress !== true)
     // false: no text leaves this machine; null: nobody has said yes yet (D12). `--live` sends fixtures.
-    return `jev-eval --live: jev.egress is ${JSON.stringify(config.egress)}, not true — refusing to send fixtures to Jev. Say yes with \`gf-kit config set jev.egress true\` first.`;
+    return `jev-eval --live: jev.egress is ${JSON.stringify(config.egress)}, not true — refusing to send fixtures to Jev. Say yes with \`frijoles-kit config set jev.egress true\` first.`;
   if (!getKey())
     return 'jev-eval --live needs TYPESAFE_API_KEY: put TYPESAFE_API_KEY=… in .env.local (or the environment).';
   return null;

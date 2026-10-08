@@ -1,4 +1,4 @@
-// init.test.mjs — `gf-kit init` writes the Roadmap skeleton and never overwrites (golden-frijoles-plugin S3.2).
+// init.test.mjs — `frijoles-kit init` writes the Roadmap skeleton and never overwrites (golden-frijoles-plugin S3.2).
 // Run: node --test template/scripts/init.test.mjs
 
 import { test } from 'node:test';
@@ -91,7 +91,7 @@ test('writes nothing outside Roadmap/', () => {
   const project = mkdtempSync(join(tmpdir(), 'init-scope-'));
   initSkeleton({ project, source });
   for (const rel of SKELETON) assert.ok(rel.startsWith('Roadmap/'), `${rel} is outside Roadmap/`);
-  assert.equal(existsSync(join(project, 'scripts')), false, 'gf-kit init must not create a scripts/ dir');
+  assert.equal(existsSync(join(project, 'scripts')), false, 'frijoles-kit init must not create a scripts/ dir');
 });
 
 // ── Cross-review of #47: copied mode's source can equal the destination ──────────────────────────

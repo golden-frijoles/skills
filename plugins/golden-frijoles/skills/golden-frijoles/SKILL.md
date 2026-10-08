@@ -5,7 +5,7 @@ description: >
   The front door for a stranger's agent that just installed this plugin. Use whenever the
   golden-frijoles plugin is freshly installed, or when a session isn't sure which of the thirteen named
   skills to reach for. Detects state with commands, never guesses (is Roadmap/ present, is gf linked,
-  is the kit reachable, which install channel is this), offers `gf-kit init` to adopt a bare repo, and
+  is the kit reachable, which install channel is this), offers `frijoles-kit init` to adopt a bare repo, and
   routes by job to groom / live-smoke / the operate skills / gf. States plainly what the `npx skills`
   channel lacks (no build-view hook, no pr-reviewer agent) instead of pretending it has parity with
   the Claude Code plugin channel.
@@ -93,7 +93,7 @@ command, and its answer decides what you offer next.
 > The project's own copy always wins. The kit needs no install and copies nothing into the repo. If npx fails on
 > the network or the registry (ENOTFOUND, ECONNREFUSED, ETIMEDOUT, E404, a proxy error), report **could not
 > look: the kit is unreachable**, not a broken project, and offer to retry online or to copy the script into
-> `scripts/`. This covers the scripts the kit carries (`gf-kit --list`). Any other `scripts/` command here is
+> `scripts/`. This covers the scripts the kit carries (`frijoles-kit --list`). Any other `scripts/` command here is
 > project tooling: if the project lacks it, say so and stop. Never re-implement a script's logic inline.
 > If a script prints `GF-NEEDS-SETTING {"key",…}`, ask the user that question once, save the answer with
 > `npx -y @golden-frijoles/kit@0.43.0 config set <key> <value>` (always the kit, never local-wins: a project
@@ -118,7 +118,7 @@ is broken because a network probe failed.
 
 ## Stage 2 — No `Roadmap/`, no `golden-frijoles.config.json`, or a `Roadmap/` with no epic and no idea yet? Setup: say what happened, then one question at a time
 
-A fresh skeleton counts as not set up: `gf setup` and `gf-kit init` leave the config and an empty `Roadmap/`, and the
+A fresh skeleton counts as not set up: `gf setup` and `frijoles-kit init` leave the config and an empty `Roadmap/`, and the
 route below (the read of an existing repo, a new idea's sentence) has still not run. `read-repo.mjs --look` prints the
 epic and idea counts.
 
@@ -182,7 +182,7 @@ needs a flag. Ask Q4 last, after the route below has finished.
 
 ### 2.3 The routes, decided by Q1
 
-- **Before either of the first two routes**, run `gf-kit init` **directly against the kit**, pinned to the version
+- **Before either of the first two routes**, run `frijoles-kit init` **directly against the kit**, pinned to the version
   stamped in the run rule above — never through that rule's "local wins" fallback. `scripts/init.mjs` is a generic
   filename a stranger's existing repo may already own for something unrelated (a database seed script, for example);
   running local-wins here could silently execute a stranger's own unrelated script instead of adopting the repo. It
@@ -211,7 +211,7 @@ needs a flag. Ask Q4 last, after the route below has finished.
   the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the **Strategy
   gate**. 2 (`config set project.startPoint plan`): hand off to `groom` with the sentence as the ask, word for word.
   With no strategy, groom marks the epic not grounded (its `references/strategy.md`; the Plan gate's *Not grounded*).
-- **3 Just planning**: write nothing but the config file. No `gf-kit init`. Then offer `groom`.
+- **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `groom`.
 
 Keep this stage to the steps above — don't re-explain the registry or restate `lib/config-registry.mjs` here.
 

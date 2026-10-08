@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// gf-kit — run one of the Golden Frijoles skills' scripts in the current project (golden-frijoles-plugin D1–D3).
+// frijoles-kit — run one of the Golden Frijoles skills' scripts in the current project (golden-frijoles-plugin D1–D3).
 //
-//   gf-kit <name> [args…]        run dist/<name>.mjs against the project you're standing in
-//   gf-kit --root <dir> <name>   …against <dir> instead (exported to the script as GF_PROJECT_ROOT)
-//   gf-kit --list                the scripts this kit carries
-//   gf-kit --version
+//   frijoles-kit <name> [args…]        run dist/<name>.mjs against the project you're standing in
+//   frijoles-kit --root <dir> <name>   …against <dir> instead (exported to the script as GF_PROJECT_ROOT)
+//   frijoles-kit --list                the scripts this kit carries
+//   frijoles-kit --version
 //
 // The script is SPAWNED, never imported: every entry guards `main()` behind an isMain check on process.argv[1]
 // and several end with process.exit, so an import() would silently run nothing. stdio, the exit code and a
@@ -26,7 +26,7 @@ export function listScripts(dist = DIST) {
     .sort();
 }
 
-/** Pure — split gf-kit's own flags from the script's. Only flags BEFORE the script name belong to gf-kit. */
+/** Pure — split frijoles-kit's own flags from the script's. Only flags BEFORE the script name belong to frijoles-kit. */
 export function parseArgs(argv) {
   const out = { root: null, list: false, version: false, help: false, name: null, rest: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -51,7 +51,17 @@ export function parseArgs(argv) {
   return out;
 }
 
-const USAGE = 'usage: gf-kit [--root <dir>] <script> [args…]   ·   gf-kit --list   ·   gf-kit --version';
+const USAGE = 'usage: frijoles-kit [--root <dir>] <script> [args…]   ·   frijoles-kit --list   ·   frijoles-kit --version';
+
+/**
+ * plugin-1-0 D2 — started as the old name `gf-kit`? One line on stderr (stdout is a script's own output, often parsed),
+ * until the date `scripts/check-deprecations.mjs` enforces. Pure, so the test pins it.
+ */
+export function deprecatedNameNotice(invokedPath) {
+  const name = String(invokedPath ?? '').split(/[\\/]/).pop() ?? '';
+  if (name.replace(/\.(cmd|ps1|js|mjs|cjs)$/i, '') !== 'gf-kit') return null;
+  return 'gf-kit is now frijoles-kit. gf-kit stops working on 2026-12-31 (or in kit 1.1.0).\n';
+}
 
 function main(argv) {
   const args = parseArgs(argv);
@@ -69,12 +79,12 @@ function main(argv) {
     return args.help ? 0 : 2;
   }
   if (args.root === '') {
-    process.stderr.write('gf-kit: --root needs a directory\n');
+    process.stderr.write('frijoles-kit: --root needs a directory\n');
     return 2;
   }
   // A plain name from the list only — never a path, so nothing outside dist/ can be reached through it.
   if (!scripts.includes(args.name)) {
-    process.stderr.write(`gf-kit: no script "${args.name}". This kit carries:\n  ${scripts.join('\n  ')}\n`);
+    process.stderr.write(`frijoles-kit: no script "${args.name}". This kit carries:\n  ${scripts.join('\n  ')}\n`);
     return 2;
   }
   const env = { ...process.env };
@@ -83,21 +93,21 @@ function main(argv) {
     // re-resolved against that cwd in every child (fresh review of #45: pmo-report read zero rows, silently).
     const root = resolve(args.root);
     if (!existsSync(root)) {
-      process.stderr.write(`gf-kit: --root ${args.root}: no such directory\n`);
+      process.stderr.write(`frijoles-kit: --root ${args.root}: no such directory\n`);
       return 2;
     }
     env.GF_PROJECT_ROOT = root;
   }
   const run = spawnSync(process.execPath, [join(DIST, `${args.name}.mjs`), ...args.rest], { stdio: 'inherit', env });
   if (run.error) {
-    process.stderr.write(`gf-kit: could not start ${args.name}: ${run.error.message}\n`);
+    process.stderr.write(`frijoles-kit: could not start ${args.name}: ${run.error.message}\n`);
     return 1;
   }
   if (run.signal) process.kill(process.pid, run.signal);
   return run.status ?? 1;
 }
 
-// npm installs `gf-kit` as a symlink in node_modules/.bin, so compare real paths on both sides.
+// npm installs `frijoles-kit` as a symlink in node_modules/.bin, so compare real paths on both sides.
 const isMain = (() => {
   try {
     return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
@@ -105,4 +115,8 @@ const isMain = (() => {
     return false;
   }
 })();
-if (isMain) process.exitCode = main(process.argv.slice(2));
+if (isMain) {
+  const notice = deprecatedNameNotice(process.argv[1]);
+  if (notice) process.stderr.write(notice);
+  process.exitCode = main(process.argv.slice(2));
+}

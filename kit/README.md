@@ -15,7 +15,7 @@ npx -y @golden-frijoles/kit@<version> --root ../other build-order
   `Roadmap/00-ideas/BUILD-ORDER.md`.
 - **Your own copy wins.** If your project has `scripts/<name>.mjs`, the skills run that instead of the kit, so a
   deliberate fork keeps working. That's by name, so an unrelated `scripts/preflight.mjs` of your own would be run in
-  its place. Rename yours, or pass the script through `gf-kit` directly.
+  its place. Rename yours, or pass the script through `frijoles-kit` directly.
 - **Some files stay yours even when the kit runs:** `scripts/prose/cpo-persona.md`, `scripts/prose-lessons.md`,
   `scripts/cross-panel.prompt.md` and `scripts/doc-format.enforced.json` override the kit's defaults.
 - **Zero dependencies.** A script that drives another tool, like Playwright or a reviewer CLI, uses *your*

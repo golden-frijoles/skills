@@ -4,7 +4,7 @@
 //   node scripts/intent-reader.mjs --epic <slug> [--timeout <seconds>]
 //
 // The epic kickoff's lock step names this command on every run. With `intent.reader` off — the default — it prints
-// one line and exits before touching any CLI, so it costs nothing. Turned on (`gf-kit config set intent.reader on`),
+// one line and exits before touching any CLI, so it costs nothing. Turned on (`frijoles-kit config set intent.reader on`),
 // it hands the epic's seed (the pitch file, nothing else) to the first of codex, agy and vibe that is installed,
 // once, with a hard timeout, and asks Jev one Noul: would that reader build the same thing as the lock's plan? The
 // answer is the fifth signal, "agreement", and it is written into the epic README's `## Intent match` section.
@@ -235,7 +235,7 @@ export async function run(argv, io) {
   const setting = io.setting();
   if (setting !== 'on') {
     io.out(
-      `intent reader: off (intent.reader: ${JSON.stringify(setting)}) — no reader asked. Turn it on with \`gf-kit config set intent.reader on\`.`
+      `intent reader: off (intent.reader: ${JSON.stringify(setting)}) — no reader asked. Turn it on with \`frijoles-kit config set intent.reader on\`.`
     );
     return 0;
   }

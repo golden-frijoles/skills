@@ -29,7 +29,7 @@ requires_scripts:
 > The project's own copy always wins. The kit needs no install and copies nothing into the repo. If npx fails on
 > the network or the registry (ENOTFOUND, ECONNREFUSED, ETIMEDOUT, E404, a proxy error), report **could not
 > look: the kit is unreachable**, not a broken project, and offer to retry online or to copy the script into
-> `scripts/`. This covers the scripts the kit carries (`gf-kit --list`). Any other `scripts/` command here is
+> `scripts/`. This covers the scripts the kit carries (`frijoles-kit --list`). Any other `scripts/` command here is
 > project tooling: if the project lacks it, say so and stop. Never re-implement a script's logic inline.
 > If a script prints `GF-NEEDS-SETTING {"key",…}`, ask the user that question once, save the answer with
 > `npx -y @golden-frijoles/kit@0.43.0 config set <key> <value>` (always the kit, never local-wins: a project

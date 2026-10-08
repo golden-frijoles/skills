@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// config.mjs — `gf-kit config`: read and change golden-frijoles.config.json (golden-frijoles-plugin S4.1, D10).
+// config.mjs — `frijoles-kit config`: read and change golden-frijoles.config.json (golden-frijoles-plugin S4.1, D10).
 //
-//   gf-kit config list [--json]            every section's effective value, where it came from, any duplicates
-//   gf-kit config get <key> [--json]       one key's effective value (or its registry default)
-//   gf-kit config set <key> <value>        write one key; <value> is parsed as JSON when it is valid JSON
-//   gf-kit config migrate [--dry-run]      fold the legacy files into golden-frijoles.config.json (never edits them)
+//   frijoles-kit config list [--json]            every section's effective value, where it came from, any duplicates
+//   frijoles-kit config get <key> [--json]       one key's effective value (or its registry default)
+//   frijoles-kit config set <key> <value>        write one key; <value> is parsed as JSON when it is valid JSON
+//   frijoles-kit config migrate [--dry-run]      fold the legacy files into golden-frijoles.config.json (never edits them)
 //
 // A thin front end: every rule (precedence, the secret guard, what migrate folds) lives in lib/config.mjs, which the
 // `gf` CLI imports too. Exit 0 ok · 1 usage · 2 configuration error (a malformed file, a secret, an unknown section).
@@ -13,7 +13,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CONFIG_FILENAME, ConfigError, getKey, loadConfig, migrate, setKey } from './lib/config.mjs';
 
-const USAGE = 'usage: gf-kit config list|get <key>|set <key> <value>|migrate [--dry-run] [--json]';
+const USAGE = 'usage: frijoles-kit config list|get <key>|set <key> <value>|migrate [--dry-run] [--json]';
 
 /** Pure — a CLI value: JSON when it parses (true, 3, ["a"], null), otherwise the literal string. */
 export function parseValue(text) {
@@ -63,7 +63,7 @@ export function main(argv, { out = (s) => process.stdout.write(s), err = (s) => 
     }
   } catch (e) {
     if (e instanceof ConfigError) {
-      err(`gf-kit config: ${e.message}\n`);
+      err(`frijoles-kit config: ${e.message}\n`);
       return 2;
     }
     throw e;
