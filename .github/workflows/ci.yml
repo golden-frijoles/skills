@@ -81,19 +81,19 @@ jobs:
       - name: Skill adverts are generated, not hand-kept
         run: node scripts/render-skill-adverts.mjs --check
 
-      # The groom generators' own unit tests. The two kickoff generators moved to template/scripts/
+      # The refine generators' own unit tests. The two kickoff generators moved to template/scripts/
       # (kickoff-generator-path C4) and run in the `template script tests` step below.
         # Files named explicitly, not a directory: `node --test <dir>` resolves the path as a MODULE
         # on Node 22 and dies with MODULE_NOT_FOUND — a red step that looks like a real test failure.
-      - name: groom generator tests
+      - name: refine generator tests
         run: |
           node --test \
-            plugins/golden-frijoles/skills/groom/fund.test.mjs \
-            plugins/golden-frijoles/skills/groom/read-repo.test.mjs \
-            plugins/golden-frijoles/skills/groom/scaffold-epic.test.mjs \
-            plugins/golden-frijoles/skills/groom/session-budget.test.mjs \
-            plugins/golden-frijoles/skills/groom/session-line.test.mjs \
-            plugins/golden-frijoles/skills/groom/strategy.test.mjs
+            plugins/golden-frijoles/skills/refine/fund.test.mjs \
+            plugins/golden-frijoles/skills/refine/read-repo.test.mjs \
+            plugins/golden-frijoles/skills/refine/scaffold-epic.test.mjs \
+            plugins/golden-frijoles/skills/refine/session-budget.test.mjs \
+            plugins/golden-frijoles/skills/refine/session-line.test.mjs \
+            plugins/golden-frijoles/skills/refine/strategy.test.mjs
 
       # ── The build view mod (build-visualization-claude-mods S4) ─────────────────────────────
       # Its pure half: the cache decision and the status text. The hook file itself is four calls on `$`
@@ -166,7 +166,7 @@ jobs:
           node scripts/check-onboarding-parity.mjs --exec
 
       # The gates a person reads speak plain agile (gates-in-plain-agile S2.2): no gate block shows a bookkeeping word,
-      # no copy names a retired option, one gate has one wording. The word lists live in groom's references/gates.md.
+      # no copy names a retired option, one gate has one wording. The word lists live in refine's references/gates.md.
       - name: Gate words stay off the screen
         run: node scripts/check-gate-words.mjs
 
@@ -191,19 +191,19 @@ jobs:
             scripts/strategy-templates.test.mjs
 
       # The Cowork install path. Cowork does NOT read a project's .claude/settings.json, so the
-      # only way `groom` — which is written FOR Cowork — reaches it is a .skill archive. The zip
+      # only way `refine` — which is written FOR Cowork — reaches it is a .skill archive. The zip
       # writer is hand-rolled (zero deps), so it is verified with a REAL unzip rather than the
       # reader we wrote ourselves, and asserted reproducible.
       - name: Cowork .skill packaging
         run: |
           node scripts/pack-skills.mjs --out /tmp/skills-a
           node scripts/pack-skills.mjs --out /tmp/skills-b
-          test -f /tmp/skills-a/groom.skill
-          unzip -t /tmp/skills-a/groom.skill
-          unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/SKILL.md'
-          # session-budget D6: Cowork reaches the budget line through $GROOM, so the archive must carry it whole.
-          unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/session-line.mjs'
-          unzip -l /tmp/skills-a/groom.skill | grep -q 'groom/session-budget.mjs'
+          test -f /tmp/skills-a/refine.skill
+          unzip -t /tmp/skills-a/refine.skill
+          unzip -l /tmp/skills-a/refine.skill | grep -q 'refine/SKILL.md'
+          # session-budget D6: Cowork reaches the budget line through $REFINE, so the archive must carry it whole.
+          unzip -l /tmp/skills-a/refine.skill | grep -q 'refine/session-line.mjs'
+          unzip -l /tmp/skills-a/refine.skill | grep -q 'refine/session-budget.mjs'
           for f in /tmp/skills-a/*.skill; do
             cmp "$f" "/tmp/skills-b/$(basename "$f")" \
               || { echo "pack-skills is not reproducible: $f" >&2; exit 1; }
@@ -277,8 +277,8 @@ jobs:
           # awk drops only a `requires_scripts:` key and the indented `  - `/`  #` lines under it, and only while inside
           # the opening frontmatter. A malformed fence can at worst drop such a list again, never an ordinary prose line,
           # so the count cannot fail open by more than a list (the old sed range could swallow the whole body).
-          test "$(awk 'NR==1 && /^---$/ {fm=1; print; next} fm && /^---$/ {fm=0} fm && /^requires_scripts:/ {skip=1; next} fm && skip && /^  [-#]/ {next} {skip=0; print}' plugins/golden-frijoles/skills/groom/SKILL.md | sed '/kit:start/,/kit:end/d' | wc -l)" -le 210 \
-            || { echo "groom SKILL.md is over its 210-line prose budget — move reference material to references/" >&2; exit 1; }
+          test "$(awk 'NR==1 && /^---$/ {fm=1; print; next} fm && /^---$/ {fm=0} fm && /^requires_scripts:/ {skip=1; next} fm && skip && /^  [-#]/ {next} {skip=0; print}' plugins/golden-frijoles/skills/refine/SKILL.md | sed '/kit:start/,/kit:end/d' | wc -l)" -le 210 \
+            || { echo "refine SKILL.md is over its 210-line prose budget — move reference material to references/" >&2; exit 1; }
 
       - name: foundation board generator is the template's, and the board is fresh
         run: |
@@ -313,7 +313,7 @@ jobs:
         run: |
           work="$(mktemp -d)"
           mkdir -p "$work/Roadmap"
-          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/scaffold-epic.mjs" \
+          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/refine/scaffold-epic.mjs" \
               --slug ci-smoke --area 09 --macro 09-platform-infra \
               --title "CI smoke" --risk low --type chore --sprints "S1 one;S2 two" )
           out="$work/Roadmap/09-platform-infra/ci-smoke"
@@ -333,11 +333,11 @@ jobs:
           echo "scaffolder smoke: 4 files rendered into the active repo, no unsubstituted placeholders."
 
           # Both kickoff generators must render against that freshly-scaffolded epic. A generator
-          # that dies on its own scaffolder's output is the failure this catches. These are groom's
+          # that dies on its own scaffolder's output is the failure this catches. These are refine's
           # VENDORED copies, run from the repo with no --repo-root: the plugin's own root rung (C2).
-          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/vendor/emit-epic-kickoff.mjs" \
+          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/refine/vendor/emit-epic-kickoff.mjs" \
               --epic ci-smoke > epic-kickoff.txt )
-          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/groom/vendor/emit-kickoff.mjs" \
+          ( cd "$work" && node "$GITHUB_WORKSPACE/plugins/golden-frijoles/skills/refine/vendor/emit-kickoff.mjs" \
               --epic ci-smoke --sprint 1 > sprint-kickoff.txt )
           for f in "$work/epic-kickoff.txt" "$work/sprint-kickoff.txt"; do
             test -s "$f" || { echo "empty kickoff: $f" >&2; exit 1; }
