@@ -58,6 +58,22 @@ compare measures nothing.
 4. **Offer the coaches next:** "The cold read is sealed. Want to start the strategy coaches? The first is
    `pmf-narrative`." Offer; don't start unasked.
 
+## Part 2: after coaching (the compare)
+
+Run this once the last coach has finished, before the Strategy gate (groom's `references/gates.md`).
+
+1. `node scripts/cold-read.mjs compare <the sealed read>`
+   It verifies the seal and writes `<date>-compare.md` beside the read. **If it refuses, stop**: tell the maker the
+   two hashes it names and that the read was changed after sealing, so this compare cannot run on it. Never reseal it.
+2. **Now read the cold read**, then the coached files, and fill each section of the compare:
+   - **Converged** and **Diverged**: one row per topic; in Diverged, say which side is stronger and why.
+   - **Only the cold read saw** and **Only the coached run saw**: numbered, one finding each.
+   - The facilitator-authored sections the script listed are coach vs cold read, not maker vs cold read: weigh them so.
+   - **Decisions for the maker**: numbered. A change to a strategy file the maker has already approved is a decision,
+     never a silent edit.
+   - **Did it earn its place**: what it changed, what it cost.
+3. Show the maker the Decisions, then follow *When a coach finishes* in groom's `references/gates.md`.
+
 ## Rules
 
 - Nothing in the cold read is invented: "couldn't find" is an answer, and every figure has a source.
