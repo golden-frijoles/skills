@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-10-08
+
+### Changed
+- **The CLI's command is `frijoles`, and the kit's is `frijoles-kit`** (plugin-1-0 S1). oh-my-zsh's git plugin defines
+  `alias gf='git fetch'` and its starter `.zshrc` enables it, so `gf login` ran `git fetch` on those machines. Every
+  skill, template file and printed command now says `frijoles` / `frijoles-kit`. `gf` and `gf-kit` keep working with a
+  one-line notice on stderr until **2026-12-31 or version 1.1.0**, whichever comes first; scripts that run the CLI try
+  `frijoles` first and fall back to `gf`. Tokens (`gf_pat_…`), `GF_*` variables and the credentials path are unchanged.
+
 ## [0.43.0] - 2026-10-08
 
 ### Added
