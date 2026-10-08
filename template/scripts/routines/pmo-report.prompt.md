@@ -5,10 +5,10 @@
   It posts the PMO headline metrics plus the story-deck link to Telegram, using the same
   Telegram/load-bearing-output rail as standup-post and weekly-recap.
 
-  Reuse, don't rebuild (the `pmo-report` skill comes from the `golden-frijoles` plugin, golden-frijoles
+  Reuse, don't rebuild (the `report` skill's PMO chapter comes from the `golden-frijoles` plugin, golden-frijoles
   marketplace — invoke by name, not a repo-local
   `skills/<name>/SKILL.md` path, which no longer exists in this repo):
-    - `pmo-report` skill -> scripts/pmo-report.mjs --weekly
+    - `report` skill's PMO chapter -> scripts/pmo-report.mjs --weekly
     - scripts/lib/gh-rest.mjs, scripts/lib/log-branch.mjs, scripts/lib/telegram-format.mjs
     - scripts/lib/pmo-delivery.mjs for message formatting and sendMessage.
 
@@ -33,7 +33,7 @@ code, open a PR, or change a required status check. The Telegram post plus the P
 the entire output.
 
 ## The one step - `pmo-report`
-Use the `pmo-report` skill exactly. It handles the config check (the committed `reporting.config.json`
+Use the `report` skill's PMO chapter exactly. It handles the config check (the committed `reporting.config.json`
 for repos and deck hosting; the chat id from the `TELEGRAM_CHAT_ID` env var in this unattended session), the `TELEGRAM_BOT_TOKEN` check, running
 `node scripts/pmo-report.mjs --weekly`, and reporting the headline metrics plus generated deck link.
 

@@ -289,7 +289,7 @@ routine (cap-safe) — see the budget table below.
 Shipped by `ops-routines-reporting` (the origin project's `ops-routines-reporting` epic)
 S3 — a dedicated **weekly** routine (mirroring Routine C's precedent of a standalone weekly schedule,
 rather than a day-of-week-gated step folded into the nightly `ops-nightly` routine). One step: the
-`weekly-recap` skill (`scripts/weekly-recap.mjs`) gathers the week's merged PRs (every configured repo),
+`report` skill's weekly chapter (`scripts/weekly-recap.mjs`) gathers the week's merged PRs (every configured repo),
 shipped/closed epics (README frontmatter `status:` flips), a merges-to-main deploy count per app repo,
 and a short retro digest per shipped epic — then posts one Telegram message.
 
@@ -324,7 +324,7 @@ and a short retro digest per shipped epic — then posts one Telegram message.
 (reads `gh` + `git log` across every configured repo; posts to Telegram; writes `claude/pmo-reports-log`).
 
 Shipped by `pmo-operational-reports` (the origin project's `pmo-operational-reports` epic)
-S3. One step: the `pmo-report` skill (`scripts/pmo-report.mjs --weekly`) gathers scrum/DORA/doc-ops
+S3. One step: the `report` skill's PMO chapter (`scripts/pmo-report.mjs --weekly`) gathers scrum/DORA/doc-ops
 metrics, renders a story-deck URL, posts headline numbers plus the deck link to Telegram, and
 then advances the PMO window log.
 

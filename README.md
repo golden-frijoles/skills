@@ -37,13 +37,11 @@ list anywhere in this repo.
 | `doc-hygiene` | Measures the always-read session-start docs and writes a dated report of bloat and duplication. |
 | `golden-frijoles` | The umbrella skill: detects what's here, sets up a bare repo, and routes to the right named skill. |
 | `live-smoke` | Verifies rendered behavior in a real headless browser, with a screenshot and a JSON report. |
-| `pmo-report` | Posts the weekly PMO report (throughput, DORA-style delivery, doc-ops) with optional deck links. |
 | `prose-draft` | Drafts internal close-out prose (retros, poster entries) with a foreign model, for human review. |
 | `refine` | The planning front door: shapes a raw ask into a seed, an appetite, and a scaffolded epic. |
-| `standup-post` | Posts a delta-only daily standup of overnight PR, CI, smoke and board signals across the project's repos. |
+| `report` | Posts a project report to your chat destination: a daily standup, a weekly recap, or the weekly PMO report and its monthly packet. |
 | `strategy` | The strategy coach: a sealed cold read, the PMF narrative, the North Star and risk validation, in Roadmap/00-strategy/. |
 | `vercel-prune` | Reports stale Vercel preview deployments for a frontend project; dry-run by default. |
-| `weekly-recap` | Posts the weekly executive recap: merged PRs, deploys, shipped epics and their retro digests. |
 
 <!-- skills:end -->
 

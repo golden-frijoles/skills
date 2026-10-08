@@ -23,7 +23,7 @@
     - `build-order-sync` skill → scripts/build-order-sync.mjs (check/regen/branch/PR on drift)
     - `vercel-prune` skill → scripts/vercel-prune-previews.mjs (dry-run report only, never --apply)
     - `babysit-pr` skill → scripts/babysit-pr.mjs (one open PR at a time; silent when clean)
-    - `standup-post` skill → scripts/standup.mjs (the aggregation, diffing, and actual Telegram
+    - `report` skill's daily chapter → scripts/standup.mjs (the aggregation, diffing, and actual Telegram
       send — including its own independent CI-red / merge-conflict read, taken AFTER steps 1–3 have run)
     - gh CLI (every repo in reporting.config.json's `repos`), scripts/build-order.mjs --check,
       scripts/vercel-prune-previews.mjs (dry-run, --project <vercelProject> --age <stalePreviewAgeDays>), the configured `smoke` workflow.

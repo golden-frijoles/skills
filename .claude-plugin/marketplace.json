@@ -3,12 +3,12 @@
   "owner": {
     "name": "Daniel"
   },
-  "description": "Golden Frijoles: the planning, build and operate skills (12): babysit-pr, build-order-sync, doc-hygiene, golden-frijoles, live-smoke, pmo-report, prose-draft, refine, standup-post, strategy, vercel-prune, weekly-recap — distributed from one versioned place.",
+  "description": "Golden Frijoles: the planning, build and operate skills (10): babysit-pr, build-order-sync, doc-hygiene, golden-frijoles, live-smoke, prose-draft, refine, report, strategy, vercel-prune — distributed from one versioned place.",
   "plugins": [
     {
       "name": "golden-frijoles",
       "source": "./plugins/golden-frijoles",
-      "description": "Golden Frijoles: the planning, build and operate skills (12): babysit-pr, build-order-sync, doc-hygiene, golden-frijoles, live-smoke, pmo-report, prose-draft, refine, standup-post, strategy, vercel-prune, weekly-recap."
+      "description": "Golden Frijoles: the planning, build and operate skills (10): babysit-pr, build-order-sync, doc-hygiene, golden-frijoles, live-smoke, prose-draft, refine, report, strategy, vercel-prune."
     }
   ]
 }
