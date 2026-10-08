@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-10-08
+
+### Changed
+- **Setup also runs on a fresh skeleton** (first-run-setup D4 follow-up). After `gf setup` and `gf-kit init`, the
+  config and an empty `Roadmap/` both exist; the umbrella skill's Stage 2 now still runs there (no epic and no idea
+  yet), so the repo read or the new idea's sentence is reached. A Q1 that `gf setup` already answered is not asked
+  again: setup says what it found and takes that route.
+
 ## [0.38.0] - 2026-10-08
 
 ### Changed
