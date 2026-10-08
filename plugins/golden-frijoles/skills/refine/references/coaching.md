@@ -1,7 +1,7 @@
 # How every strategy coach behaves
 
 The three strategy coaches (the `strategy` skill's chapters `pmf-narrative`, `north-star`, `risk-validation`) read this before their first message and
-follow it on every step. Each coach's own SKILL.md says *what* to ask; this says *how*, once, for all three. When the
+follow it on every step. Each coach's own chapter (`strategy/references/<coach>.md`) says *what* to ask; this says *how*, once, for all three. When the
 two disagree, the coach's own step wins on content and this file wins on behaviour.
 
 ## 1. Open by playing back what is already agreed
@@ -23,7 +23,7 @@ don't offer it again this session.
 
 ## 2. Show where they are, on every message
 
-Every coach message starts with `Step N of X · <step name>`, where X is fixed per coach and stated in its SKILL.md
+Every coach message starts with `Step N of X · <step name>`, where X is fixed per coach and stated in its chapter
 (`pmf-narrative` 8 · `north-star` 7 · `risk-validation` 6). A sub-step never adds a step; a revisited step keeps its
 number.
 
@@ -32,7 +32,7 @@ number.
 The maker should never lose work to a dropped session.
 
 - **Before the first write**, keep strategy private: `node scripts/strategy-private.mjs ensure` (run it exactly as
-  the coach's SKILL.md says: its kit rule covers a project with no `scripts/` copy). On a public repo (or
+  the `strategy` skill's SKILL.md says: its kit rule covers a project with no `scripts/` copy). On a public repo (or
   one whose visibility can't be read) it adds `Roadmap/00-strategy/` to `.gitignore`, unless something there is already
   committed. Pass on its one line to the maker as written: it says how to opt in to committing.
 - **After every step**, write the coach's file from its template with what is decided so far, `status: draft`. Headings
@@ -47,7 +47,7 @@ At each step, after the question, offer **2–4 numbered options** the maker can
 own". Build them from the repo, the files already written and what the maker has said.
 
 - **When the step leans on the present** (competitors, prices, channels, analogs, current examples): look it up first
-  and cite each fact inline as a link. Prefer cases from the last two years; the classic cases in the coach's SKILL.md
+  and cite each fact inline as a link. Prefer cases from the last two years; the classic cases in the coach's chapter
   are the fallback.
 - **When you can't look** (no web access), say so in one line ("I couldn't look this up here, so these are classic
   cases") and use the classic cases.

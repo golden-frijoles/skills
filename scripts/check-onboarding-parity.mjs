@@ -274,16 +274,16 @@ function installPromptExecChecks() {
         `::warning::check-onboarding-parity --exec: \`npx skills --list\` SKIPPED — could not look: ` +
           `${(list.error?.message ?? output).slice(0, 200)}`
       );
-    } else if (!/^[│|\s]*golden-frijoles\s*$/m.test(withoutRepoArg)) {
-      // A whole list ENTRY, not a token: `\b` treats a hyphen as a boundary, so `golden-frijoles-renamed`, a path
+    } else if (!/^[│|\s]*setup\s*$/m.test(withoutRepoArg)) {
+      // A whole list ENTRY, not a token: `\b` treats a hyphen as a boundary, so `setup-renamed`, a path
       // or a description passed the looser test (caught by mutation in review, the builder's own class of bug).
       console.error(
-        `  ❌ npx skills add ${label} --list  →  "golden-frijoles" is not in the listed skills:\n` +
+        `  ❌ npx skills add ${label} --list  →  "setup" is not in the listed skills:\n` +
           `     ${output.trim().split('\n').slice(0, 8).join('\n     ')}`
       );
       failed = true;
     } else {
-      console.log(`  ✅ npx skills add ${label} --list  →  golden-frijoles listed`);
+      console.log(`  ✅ npx skills add ${label} --list  →  setup listed`);
     }
   }
 
@@ -353,7 +353,7 @@ function installPromptExecChecks() {
     );
     failed = true;
   } else {
-    console.log('  ✅ claude plugin marketplace add + install  →  golden-frijoles listed in the isolated config');
+    console.log('  ✅ claude plugin marketplace add + install  →  setup listed in the isolated config');
   }
 
   return failed ? 1 : 0;
@@ -416,7 +416,7 @@ function installPromptCodexInstallCheck() {
   // Named even though they're already covered by `missing` above — the failure message should say
   // outright whether the two surfaces a stranger's FIRST prompt depends on made it, not just "3 of
   // 11 missing" and leave the reader to go check which three.
-  const criticalMissing = ['golden-frijoles', 'refine'].filter((name) => missing.includes(name));
+  const criticalMissing = ['setup', 'refine'].filter((name) => missing.includes(name));
   if (missing.length) {
     console.error(
       `  ❌ npx skills add ${label} --skill '*' -a codex -y  →  missing under .agents/skills/: ${missing.join(', ')}` +
@@ -427,7 +427,7 @@ function installPromptCodexInstallCheck() {
   }
   console.log(
     `  ✅ npx skills add ${label} --skill '*' -a codex -y  →  all ${expected.length} skill(s) installed under ` +
-      '.agents/skills/, including golden-frijoles and refine'
+      '.agents/skills/, including setup and refine'
   );
   return 0;
 }

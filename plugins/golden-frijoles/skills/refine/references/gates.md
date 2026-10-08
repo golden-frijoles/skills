@@ -81,7 +81,7 @@ Answer them here, or:
 - **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter and removes the proposed line
   from every section the gate listed (approving accepts those proposals), and changes nothing else. Then render the
   one-pagers from the approved files (`node scripts/one-pagers.mjs`, run as the coaches' kit rule says), tell the
-  person where they are in one line, and offer refining (`refine`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
+  person where they are in one line, and offer refining (`refine`). The North Star's sync to the engine stays the person's own step (the North Star chapter of `strategy`).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs the `strategy` skill's chapters `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate

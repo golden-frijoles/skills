@@ -46,7 +46,8 @@ You run one of two lenses; the ask names it ("use the verifier on PR #N, securit
   and session handling, tenancy (AGENTS' tenancy invariant: no request path crosses workspaces), secrets in the diff,
   logs or error bodies, injection and unsafe input reaching a query, a shell or a redirect, permission and CI-workflow
   changes (`.github/workflows`, tokens, `pull_request_target`), and anything that widens a public or connector surface.
-  `securityPaths` in `scripts/review-config.json` says which paths count.
+  `securityPaths` in `scripts/review-config.json` says which paths count, and `review-route.mjs` also asks for the
+  security pass when the PR body declares risk HIGH.
 
 **What the security lens is not:** you are the same model family as a Claude builder, so you add *context*
 independence, never *family* independence. The cross-family security pass (`scripts/cross-review.mjs --lens security`)

@@ -9,7 +9,7 @@ description: >
   dimension, the highest domino, and one targeted test). Use when the product owner asks for a product strategy, a
   PMF narrative, why the product should exist, a North Star, a north star metric, input metrics, leading indicators,
   what single metric to grow, what to validate first, which assumption is riskiest, how to de-risk an idea, a cold
-  read, a blind run or a second opinion on the strategy. Leaves its files in Roadmap/00-strategy/.
+  read, a blind run, an independent read or a second opinion on the strategy. Leaves its files in Roadmap/00-strategy/.
 # Repo-local scripts this skill wraps — its FULL closure (scripts/check-skill-scripts.mjs walks it).
 requires_scripts:
   - strategy-private.mjs

@@ -211,12 +211,12 @@ function buildReport() {
   const date = new Date().toISOString().slice(0, 10);
   const lines = [];
   lines.push(
-    `<!-- Advisory artifact from the doc-hygiene skill (scripts/doc-hygiene.mjs). Findings are proposals`,
+    `<!-- Advisory artifact from the doc-hygiene pass (the roadmap-hygiene routine, step 4) (scripts/doc-hygiene.mjs). Findings are proposals`,
     `     only — no LEARNINGS.md/README.md content was changed by this script. -->`,
     '',
     `# Doc hygiene report — ${date}`,
     '',
-    '🧹 **doc-hygiene skill.** Advisory only — review by hand; nothing here gates or auto-edits.',
+    '🧹 **doc-hygiene pass (the roadmap-hygiene routine, step 4).** Advisory only — review by hand; nothing here gates or auto-edits.',
     '',
     '## Always-read set size',
     ''
