@@ -958,7 +958,8 @@ export function shortDay(day, now = new Date()) {
   return `${d} ${MONTHS[m - 1]}${y !== now.getUTCFullYear() ? ` ${y}` : ''}`;
 }
 
-const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
+// Four significant digits, so a small target (0.004 → 0.006) never rounds to 0 (#312 review).
+const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Number(n.toPrecision(4))));
 
 /** The Why line and, with a target, its continuation — each clipped to fit 80 columns. */
 export function whyLines(target, pad, cont, now = new Date()) {
@@ -985,7 +986,8 @@ export function sprintBars(bySprint) {
     .filter((sp) => sp.total > 0)
     .map((sp) => {
       const width = Math.min(sp.total, SPRINT_CELLS_MAX);
-      const filled = Math.max(0, Math.min(width, Math.round((sp.done / sp.total) * width)));
+      // Rounded down, so a scaled sprint is never drawn full before every story has a commit (#312 review).
+      const filled = sp.done >= sp.total ? width : Math.max(0, Math.min(width - 1, Math.floor((sp.done / sp.total) * width)));
       return '▰'.repeat(filled) + '▱'.repeat(width - filled);
     })
     .join('│');

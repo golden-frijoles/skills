@@ -990,6 +990,8 @@ test('build-view-upgrade D1: the Why line reads the README target, and says so w
     assert.deepEqual(why(), ['  Why      activation rate 0.4 ━━▸ 0.55 · read 30 days after shipping']);
     withTarget('hypothesis: "a sentence on its own"\ntarget_metric: null');
     assert.deepEqual(why(), ['  Why      a sentence on its own', '           no target set']);
+    withTarget('target_metric: tiny\ntarget_from: 0.004\ntarget_to: 0.006');
+    assert.deepEqual(why(), ['  Why      tiny 0.004 ━━▸ 0.006 · read 30 days after shipping'], 'small numbers keep their digits');
     withTarget('target_metric: half_a_target\ntarget_from: 1');
     assert.deepEqual(why(), ['  Why      no target set'], 'a metric without both numbers is not a target');
   } finally {
@@ -999,7 +1001,9 @@ test('build-view-upgrade D1: the Why line reads the README target, and says so w
 
 test('build-view-upgrade D2/D3: bars per sprint, the track per stage', () => {
   assert.equal(sprintBars([{ done: 2, total: 3 }, { done: 0, total: 4 }]), '▰▰▱│▱▱▱▱');
-  assert.equal(sprintBars([{ done: 6, total: 16 }]), '▰▰▰▱▱▱▱▱', 'a wide sprint is scaled to 8 cells');
+  assert.equal(sprintBars([{ done: 5, total: 16 }]), '▰▰▱▱▱▱▱▱', 'a wide sprint is scaled to 8 cells, rounded down');
+  assert.equal(sprintBars([{ done: 19, total: 20 }]), '▰▰▰▰▰▰▰▱', 'never drawn full before every story has a commit');
+  assert.equal(sprintBars([{ done: 20, total: 20 }]), '▰▰▰▰▰▰▰▰');
   assert.equal(sprintBars([{ done: 0, total: 0 }, { done: 1, total: 1 }]), '▰', 'an empty sprint draws nothing');
   assert.equal(sprintBars([]), '');
   assert.equal(stageTrack('Grooming'), '◉ Grooming ─ Ready ─ Building ─ QA ─ Shipped');
