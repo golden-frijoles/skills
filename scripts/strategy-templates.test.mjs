@@ -102,7 +102,7 @@ test('risk-validation: every dimension row uses the narrative\'s own heading nam
 // The chain (D4): each coach offers the next; nothing auto-invokes.
 test('the chain: pmf-narrative offers north-star, north-star offers risk-validation, risk-validation offers groom', () => {
   assert.match(read('pmf-narrative', 'SKILL.md'), /offering the North Star workshop \(the `north-star` skill\)/);
-  assert.match(read('north-star', 'SKILL.md'), /offering Deliberate Risk Validation \(the `risk-validation` skill\)/);
+  assert.match(read('north-star', 'SKILL.md'), /offering risk validation \(the `risk-validation` skill\)/);
   assert.match(read('risk-validation', 'SKILL.md'), /\(the `groom` skill\)/);
 });
 
@@ -144,7 +144,9 @@ test('every coach credits its sources by name and URL', () => {
 // that has it, and leaves running it to the user (the skill never writes to an engine itself).
 test('north-star names `gf north-star set`, pinned, as the user\'s step', () => {
   const skill = read('north-star', 'SKILL.md');
-  assert.ok(skill.includes('`npx -y @golden-frijoles/cli@0.3.0 north-star set Roadmap/00-strategy/north-star.md`'));
+  // The version is derived from packages/cli by the monorepo's render-plugin-release.mjs (coaches-v2 D12), which this
+  // mirror cannot see; here only the command's shape is pinned.
+  assert.match(skill, /`npx -y @golden-frijoles\/cli@\d+\.\d+\.\d+ north-star set Roadmap\/00-strategy\/north-star\.md`/);
   assert.match(skill, /Do not run the command yourself\./);
 });
 
@@ -186,4 +188,45 @@ test('the shared reference carries the exact marker, labels and commands the scr
     assert.ok(coaching.includes(s), s);
   for (const [name, steps] of Object.entries(COACH_STEPS)) assert.ok(coaching.includes(`\`${name}\` ${steps}`), `${name} ${steps}`);
   assert.ok(read('groom', 'references', 'gates.md').includes(PROPOSED_LINE), 'the Strategy gate asks about proposed sections');
+});
+
+// coaches-v2 S3: the per-coach fixes, the one-pagers, and the voice.
+test('pmf-narrative: distil and test, one person before the problem, ladder up, and the persona block', () => {
+  const skill = read('pmf-narrative', 'SKILL.md');
+  for (const s of ['**Distil and test**', '**One person first:**', '**Ladder up every example**', '`### Persona` block'])
+    assert.ok(skill.includes(s), s);
+  assert.ok(skill.indexOf('**One person first:**') < skill.indexOf('**Question:** Ask: "What is the ultimate **outcome**'), 'the person is picked before the problem is asked');
+});
+
+test('north-star: the scenario table comes before the pick; risk-validation reads the North Star and carries risks forward', () => {
+  const ns = read('north-star', 'SKILL.md');
+  const table = ns.indexOf('**Run the candidates against customer scenarios, before anyone picks.**');
+  assert.ok(table > ns.indexOf('### Step 4') && table < ns.indexOf('### Step 5'), 'inside Step 4');
+  const risk = read('risk-validation', 'SKILL.md');
+  assert.ok(risk.includes('**Read the narrative and the North Star first:**') && risk.includes('`north-star.md`'));
+  assert.ok(risk.includes('**Carry the earlier risks forward:**'));
+});
+
+test('every coach renders the one-pagers at its last write, and so does the Strategy gate\'s Approve', () => {
+  for (const name of ['pmf-narrative', 'north-star', 'risk-validation']) {
+    const skill = read(name, 'SKILL.md');
+    assert.ok(skill.includes('`node scripts/one-pagers.mjs`'), name);
+    assert.match(skill, /requires_scripts:\n(?: {2}- .+\n)*? {2}- one-pagers\.mjs\n/, `${name} declares it`);
+  }
+  assert.ok(read('groom', 'references', 'gates.md').includes('`node scripts/one-pagers.mjs`'));
+});
+
+test('voice: no outside method or brand in coach text, except the one Sources line that credits it (D11)', () => {
+  const BRANDS = /Reforge|Amplitude|Strategyzer|Deliberate Startup|Deliberate Risk|7 Powers|Helmer|Finding PMF Loop|North Star Framework facilitator/;
+  const files = [
+    ...['pmf-narrative', 'north-star', 'risk-validation'].flatMap((n) => [[n, 'SKILL.md'], [n, 'templates', `${n}.md`]]),
+    ['groom', 'references', 'coaching.md'],
+    ['cold-read', 'SKILL.md'],
+  ];
+  for (const parts of files) {
+    const offending = read(...parts)
+      .split('\n')
+      .filter((line) => BRANDS.test(line) && !line.startsWith('> **Sources.**'));
+    assert.deepEqual(offending, [], parts.join('/'));
+  }
 });
