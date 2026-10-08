@@ -74,8 +74,13 @@ Answer them here, or:
 - **Decided from the repo** comes from what the files say; a line the repo cannot answer becomes a decision instead
   (never more than three) or is left out. Never invent a fact about the business.
 - **Answers to the decisions** are written into the files before anything else, then the gate is shown again.
-- **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter, and changes nothing else. Then
-  offer grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
+- **A section the coach proposed** (its first line is `_Proposed by the coach, not decided yet._`, groom's
+  `references/coaching.md` §5) is a decision only the person can make: list it under *Decisions only you can make*
+  as "<file> · <heading>: the coach's proposal. Keep it?", ahead of the others. Past three decisions, name how many
+  more there are in one line.
+- **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter and removes the proposed line
+  from every section that still has one (approving accepts the proposals), and changes nothing else. Then offer
+  grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
