@@ -2,10 +2,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { IGNORE_LINE, OPT_IN_LINE, appendIgnore, decide, hasOptIn, readFacts } from './strategy-private.mjs';
+import { fileURLToPath } from 'node:url';
 
 const base = { isRepo: true, visibility: 'public', tracked: 0, ignored: false, optedIn: false };
 
@@ -15,7 +16,7 @@ test('a public repo, or one whose visibility cannot be read, gets the folder ign
   const unknown = decide({ ...base, visibility: 'unknown' });
   assert.equal(unknown.write, true);
   assert.match(unknown.line, /visibility couldn't be read/);
-  assert.ok(unknown.line.includes(`change that line to \`${OPT_IN_LINE}\``));
+  assert.ok(unknown.line.includes(`delete that line or change it to \`${OPT_IN_LINE}\``));
 });
 
 test('a choice the maker already made is never undone: opted in, already committed, already ignored, private', () => {
@@ -93,6 +94,67 @@ test('readFacts counts files already committed under the folder', () => {
     writeFileSync(join(root, 'Roadmap', '00-strategy', 'north-star.md'), 'x\n');
     spawnSync('git', ['-C', root, 'add', 'Roadmap/00-strategy/north-star.md'], { env: sealedEnv() });
     assert.equal(readFacts(root, { run: gh('PUBLIC'), env: sealedEnv() }).tracked, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('every spelling of the opt-in git honours is an opt-in; so is deleting the line under our comment (review of #315)', () => {
+  for (const l of [
+    '!Roadmap/00-strategy',
+    '!Roadmap/00-strategy/',
+    '!/Roadmap/00-strategy/',
+    '!Roadmap/00-strategy/**',
+    '!Roadmap/00-strategy/*',
+  ])
+    assert.ok(hasOptIn(`${l}\n`), l);
+  const ours = appendIgnore('');
+  assert.ok(!hasOptIn(ours), 'our own block is not an opt-in');
+  assert.ok(hasOptIn(ours.replace(`${IGNORE_LINE}\n`, '')), 'the line deleted under our comment');
+  assert.ok(!hasOptIn('!Roadmap/00-strategy-old/\n'), 'a different folder is not this one');
+});
+
+test("on a real repo: an opt-in in a nested .gitignore counts, and a hook's GIT_DIR cannot retarget the checks", () => {
+  const root = repo();
+  const outer = repo();
+  try {
+    mkdirSync(join(root, 'Roadmap'), { recursive: true });
+    writeFileSync(join(root, '.gitignore'), `${IGNORE_LINE}\n`);
+    writeFileSync(join(root, 'Roadmap', '.gitignore'), '!00-strategy/\n');
+    assert.equal(
+      readFacts(root, { run: gh('PUBLIC'), env: sealedEnv() }).optedIn,
+      true,
+      'git itself names the negation'
+    );
+
+    const plain = repo();
+    const leaky = { ...sealedEnv(), GIT_DIR: join(outer, '.git'), GIT_WORK_TREE: outer };
+    writeFileSync(join(outer, '.gitignore'), `${IGNORE_LINE}\n`);
+    assert.equal(
+      readFacts(plain, { run: gh('PUBLIC'), env: leaky }).ignored,
+      false,
+      'checked the repo it was given'
+    );
+    rmSync(plain, { recursive: true, force: true });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outer, { recursive: true, force: true });
+  }
+});
+
+test('the CLI: check never writes; ensure writes once and says how to opt in', () => {
+  const root = repo();
+  const script = join(dirname(fileURLToPath(import.meta.url)), 'strategy-private.mjs');
+  // A PATH with no gh: visibility reads as unknown, which keeps strategy private.
+  const env = { ...sealedEnv(), GF_PROJECT_ROOT: root, PATH: '/usr/bin:/bin' };
+  try {
+    const check = spawnSync(process.execPath, [script, 'check'], { encoding: 'utf8', env });
+    assert.match(check.stdout, /would be kept out of git .*would add/);
+    assert.ok(!existsSync(join(root, '.gitignore')), 'check wrote nothing');
+    const ensure = spawnSync(process.execPath, [script, 'ensure'], { encoding: 'utf8', env });
+    assert.match(ensure.stdout, /visibility couldn't be read .*delete that line or change it to/);
+    assert.ok(readFileSync(join(root, '.gitignore'), 'utf8').includes(IGNORE_LINE));
+    assert.equal(spawnSync(process.execPath, [script, 'bogus'], { encoding: 'utf8', env }).status, 2);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

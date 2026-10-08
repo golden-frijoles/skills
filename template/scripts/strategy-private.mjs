@@ -27,11 +27,23 @@ import { STRATEGY_DIR } from './lib/strategy-files.mjs';
 export const IGNORE_LINE = `${STRATEGY_DIR.split('\\').join('/')}/`;
 export const OPT_IN_LINE = `!${IGNORE_LINE}`;
 
-/** True when `.gitignore` text carries the explicit opt-in, with or without a leading slash. */
+export const COMMENT_LINE = `# Strategy files are the maker's own. To commit them, change the next line to ${OPT_IN_LINE}`;
+
+/**
+ * True when `.gitignore` text carries an opt-in in any spelling git honours (`!Roadmap/00-strategy`, `!/…/`, `!…/**`),
+ * or when our own comment is there but the line under it was deleted: both are a maker saying "commit it", and a later
+ * coach must never undo either (review of #315). A negation in a NESTED .gitignore is caught by git itself in
+ * readFacts (`negatedBy`), not here.
+ */
 export function hasOptIn(gitignore) {
-  return String(gitignore ?? '')
+  const lines = String(gitignore ?? '')
     .split(/\r?\n/)
-    .some((line) => line.trim().replace(/^!\//, '!') === OPT_IN_LINE);
+    .map((l) => l.trim());
+  const folder = IGNORE_LINE.replace(/\/$/, '');
+  const norm = (l) => l.replace(/^!\/?/, '').replace(/\/(\*\*?)?$/, '');
+  if (lines.some((l) => l.startsWith('!') && norm(l) === folder)) return true;
+  const at = lines.indexOf(COMMENT_LINE);
+  return at !== -1 && !lines.slice(at + 1).some((l) => !l.startsWith('!') && norm(l) === folder);
 }
 
 /**
@@ -63,7 +75,7 @@ export function decide({ isRepo, visibility, tracked, ignored, optedIn }) {
   const why = visibility === 'public' ? 'this repo is public' : "this repo's visibility couldn't be read";
   return {
     write: true,
-    line: `Strategy files: kept out of git because ${why} (added \`${IGNORE_LINE}\` to .gitignore). To commit them instead, change that line to \`${OPT_IN_LINE}\`.`,
+    line: `Strategy files: kept out of git because ${why} (added \`${IGNORE_LINE}\` to .gitignore). To commit them instead, delete that line or change it to \`${OPT_IN_LINE}\`.`,
   };
 }
 
@@ -71,11 +83,20 @@ export function decide({ isRepo, visibility, tracked, ignored, optedIn }) {
 export function appendIgnore(text) {
   const base = String(text ?? '');
   const sep = base === '' || base.endsWith('\n') ? '' : '\n';
-  return `${base}${sep}# Strategy files are the maker's own. To commit them, change the next line to ${OPT_IN_LINE}\n${IGNORE_LINE}\n`;
+  return `${base}${sep}${COMMENT_LINE}\n${IGNORE_LINE}\n`;
 }
 
+/**
+ * Run git against `root` only. A hook exports GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE, and git obeys them over `-C`:
+ * left in, a coach run from a hook would check the OUTER repo and could leave a public one unprotected (review of
+ * #315; LEARNINGS 2026-10-06 on hooks retargeting git).
+ */
 function git(root, args, env) {
-  return spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', env });
+  const clean = { ...env };
+  delete clean.GIT_DIR;
+  delete clean.GIT_WORK_TREE;
+  delete clean.GIT_INDEX_FILE;
+  return spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', env: clean });
 }
 
 /** The facts `decide` needs, read from the repo. `gh` failing for any reason reads as 'unknown'. */
@@ -85,14 +106,37 @@ export function readFacts(root, { run = spawnSync, env = process.env } = {}) {
   const gitignorePath = join(root, '.gitignore');
   const gitignore = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   const tracked = git(root, ['ls-files', '--', IGNORE_LINE], env).stdout.split('\n').filter(Boolean).length;
-  const ignored = git(root, ['check-ignore', '-q', '--no-index', `${IGNORE_LINE}probe.md`], env).status === 0;
+  const probe = `${IGNORE_LINE}probe.md`;
+  const ignored = git(root, ['check-ignore', '-q', '--no-index', probe], env).status === 0;
+  // `-v -n` names the rule that decides the probe even when it is a negation: a `!` rule anywhere, in any
+  // .gitignore, is the maker un-ignoring the folder on purpose.
+  const negatedBy = git(root, ['check-ignore', '-v', '-n', '--no-index', probe], env).stdout.split('\t')[0];
+  // A nested `!` that re-includes the folder can leave git naming no rule at all; the root .gitignore listing the
+  // folder while git says it is NOT ignored means the same thing: something un-ignores it on purpose.
+  const folder = IGNORE_LINE.replace(/\/$/, '');
+  const listed = gitignore.split(/\r?\n/).some(
+    (l) =>
+      l
+        .trim()
+        .replace(/^\//, '')
+        .replace(/\/(\*\*?)?$/, '') === folder
+  );
+  const negated = /^[^:]+:\d+:!/.test(negatedBy) || (listed && !ignored);
   const gh = run('gh', ['repo', 'view', '--json', 'visibility', '-q', '.visibility'], {
     cwd: root,
     encoding: 'utf8',
   });
   const raw = gh.status === 0 ? String(gh.stdout).trim().toLowerCase() : '';
   const visibility = ['public', 'private', 'internal'].includes(raw) ? raw : 'unknown';
-  return { isRepo, visibility, tracked, ignored, optedIn: hasOptIn(gitignore), gitignorePath, gitignore };
+  return {
+    isRepo,
+    visibility,
+    tracked,
+    ignored,
+    optedIn: negated || hasOptIn(gitignore),
+    gitignorePath,
+    gitignore,
+  };
 }
 
 function main(argv) {

@@ -34,7 +34,8 @@ requires_scripts:
 > **How this coach runs.** Before your first message, read groom's `references/coaching.md` and follow it on every
 > step: play back what is already written, start every message with `Step N of 8 · <step name>` (this coach has
 > 8 steps), save the file after every step, offer options, write an options brief when a step is handed over,
-> check claims against the product, ladder examples up to needs, and keep strategy private on a public repo.
+> check claims against the product, ladder examples up to needs, and keep strategy private on a public repo:
+> before your first write, run `node scripts/strategy-private.mjs ensure` and pass on the one line it prints.
 
 > **Sources.** The coaching is the author's own synthesis, drawing in part on Reforge's product courses (https://www.reforge.com). The long-term moats are Hamilton Helmer's *7 Powers* (https://www.7powers.com). The case studies are public company stories, retold rather than quoted.
 

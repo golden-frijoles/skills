@@ -10,14 +10,14 @@ Before the first message, read every file in `Roadmap/00-strategy/` that this co
 any `brand-platform.md` or scenario files, but **never** `cold-read/` (a sealed read stays unopened until its compare).
 The first message (`Step 1 of X`) opens with one line per file, its status in brackets:
 
-> Here's what's already written: **Narrative** (approved): founders of 2–10 person studios lose a day a week to status
+> Here's what's already written: **Narrative** (agreed): founders of 2–10 person studios lose a day a week to status
 > chasing. **North Star** (draft): weekly proven bets. Still true?
 
 Start from what they say; never ask again for something a file already answers, only whether it is still true. With
 no files at all, say so in one line and start.
 
 **Offer the cold read once.** When `Roadmap/00-strategy/cold-read/` holds no sealed read (no `.sha256` file) and no
-strategy file is approved yet, offer it before Step 1: "Before we start: want an independent read of the product
+strategy file is `agreed` yet, offer it in the first message, after the play-back and before Step 1's question: "Before we start: want an independent read of the product
 first, written without your answers? It takes one agent run and none of your time (`cold-read`)." If they decline,
 don't offer it again this session.
 
@@ -31,7 +31,8 @@ number.
 
 The maker should never lose work to a dropped session.
 
-- **Before the first write**, keep strategy private: `node scripts/strategy-private.mjs ensure`. On a public repo (or
+- **Before the first write**, keep strategy private: `node scripts/strategy-private.mjs ensure` (run it exactly as
+  the coach's SKILL.md says: its kit rule covers a project with no `scripts/` copy). On a public repo (or
   one whose visibility can't be read) it adds `Roadmap/00-strategy/` to `.gitignore`, unless something there is already
   committed. Pass on its one line to the maker as written: it says how to opt in to committing.
 - **After every step**, write the coach's file from its template with what is decided so far, `status: draft`. Headings
