@@ -61,7 +61,7 @@ import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journa
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
-import { STAGES, groupByStage } from './lib/stage.mjs';
+import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -927,14 +927,13 @@ function stageParts(state) {
 }
 
 // build-view-upgrade D3 — the stage as a track, in lib/stage.mjs's words. `To groom` shows only when it is the stage.
-const TRACK_WORDS = { 'To groom': 'Backlog', 'Ready to build': 'Ready' };
 export const TRACK_MARK = '◉';
 
 /** `Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped` for a stage; `◉ Locking` in Building's place while locking. */
 export function stageTrack(stage, locking = false) {
   return STAGES.filter((s) => s !== 'To groom' || stage === 'To groom')
     .map((s) => {
-      const word = s === 'Building' && locking ? 'Locking' : (TRACK_WORDS[s] ?? s);
+      const word = s === 'Building' && locking ? 'Locking' : stageWord(s);
       return s === stage ? `${TRACK_MARK} ${word}` : word;
     })
     .join(' ─ ');

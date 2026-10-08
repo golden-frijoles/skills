@@ -817,7 +817,7 @@ test('S3.1: the stage comes from the resolver, said with its source; ONE facts g
     const lines = renderLines(s);
     const at = lines.findIndex((l) => l.startsWith('  Status'));
     assert.deepEqual(lines.slice(at, at + 2), [
-      '  Status   Grooming ─ Ready ─ Building ─ ◉ QA ─ Shipped',
+      '  Status   Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped',
       '           from github: PR #7 ready (live) · phase Building',
     ]);
   } finally {
@@ -847,7 +847,7 @@ test('S3.1: offline, the stage is read from the snapshot and says how old it is;
     assert.equal(s.stage, 'Building');
     assert.match(
       statusOf(renderLines(s)),
-      /^Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, 3h ago\)/
+      /^Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, 3h ago\)/
     );
 
     rmSync(join(f.root, '.golden-frijoles'), { recursive: true, force: true });
@@ -875,7 +875,7 @@ test('S2.3: a live epic branch with no locked_at reads Locking architecture; the
       );
     snapshot([]);
     const status = () => statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
-    assert.match(status(), /^Grooming ─ Ready ─ ◉ Locking ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, /);
+    assert.match(status(), /^Refining ─ Ready ─ ◉ Locking ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, /);
     // A draft PR is still the lock in progress; a READY one is QA whatever the docs say (the stage resolver decides).
     snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: true, url: 'u' }]);
     assert.match(status(), /◉ Locking .*\| from github: PR #9 draft/);
@@ -1006,13 +1006,13 @@ test('build-view-upgrade D2/D3: bars per sprint, the track per stage', () => {
   assert.equal(sprintBars([{ done: 20, total: 20 }]), '▰▰▰▰▰▰▰▰');
   assert.equal(sprintBars([{ done: 0, total: 0 }, { done: 1, total: 1 }]), '▰', 'an empty sprint draws nothing');
   assert.equal(sprintBars([]), '');
-  assert.equal(stageTrack('Grooming'), '◉ Grooming ─ Ready ─ Building ─ QA ─ Shipped');
-  assert.equal(stageTrack('Ready to build'), 'Grooming ─ ◉ Ready ─ Building ─ QA ─ Shipped');
-  assert.equal(stageTrack('Building'), 'Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped');
-  assert.equal(stageTrack('Building', true), 'Grooming ─ Ready ─ ◉ Locking ─ QA ─ Shipped');
-  assert.equal(stageTrack('QA'), 'Grooming ─ Ready ─ Building ─ ◉ QA ─ Shipped');
-  assert.equal(stageTrack('Shipped'), 'Grooming ─ Ready ─ Building ─ QA ─ ◉ Shipped');
-  assert.equal(stageTrack('To groom'), '◉ Backlog ─ Grooming ─ Ready ─ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Grooming'), '◉ Refining ─ Ready ─ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Ready to build'), 'Refining ─ ◉ Ready ─ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Building'), 'Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Building', true), 'Refining ─ Ready ─ ◉ Locking ─ QA ─ Shipped');
+  assert.equal(stageTrack('QA'), 'Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped');
+  assert.equal(stageTrack('Shipped'), 'Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped');
+  assert.equal(stageTrack('To groom'), '◉ Backlog ─ Refining ─ Ready ─ Building ─ QA ─ Shipped');
   for (const s of ['To groom', 'Grooming', 'Ready to build', 'Building', 'QA', 'Shipped'])
     assert.ok(`  Status   ${stageTrack(s)}`.length <= 80, s);
 });

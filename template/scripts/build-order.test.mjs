@@ -93,9 +93,9 @@ test('the committed file has the six stages in order, Building and QA as "live o
   assert.equal(run(root).status, 0);
   const md = readFileSync(OUT(root), 'utf8');
   assert.deepEqual(headings(md), [
-    'To groom (1)',
-    'Grooming (1)',
-    'Ready to build (3)',
+    'Backlog (1)',
+    'Refining (1)',
+    'Ready (3)',
     'Building — live only',
     'QA — live only',
     'Shipped (1)',
@@ -107,7 +107,7 @@ test('Ready to build runs in build order', () => {
   const root = fixture();
   run(root);
   const md = readFileSync(OUT(root), 'utf8');
-  const ready = md.slice(md.indexOf('## Ready to build'), md.indexOf('## Building'));
+  const ready = md.slice(md.indexOf('## Ready ('), md.indexOf('## Building'));
   const order = [...ready.matchAll(/^- \[([a-z-]+)\]/gm)].map((m) => m[1]);
   assert.deepEqual(order, ['early-epic', 'live-epic', 'late-epic']);
 });
@@ -137,7 +137,7 @@ test('--check passes on a fresh file and fails on a stale one', () => {
   const root = fixture();
   run(root);
   assert.equal(run(root, '--check').status, 0);
-  writeFileSync(OUT(root), readFileSync(OUT(root), 'utf8').replace('## Grooming', '## Groomed'));
+  writeFileSync(OUT(root), readFileSync(OUT(root), 'utf8').replace('## Refining', '## Refined'));
   assert.equal(run(root, '--check').status, 1);
 });
 

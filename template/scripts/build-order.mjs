@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { STAGES, groupByStage } from './lib/stage.mjs';
+import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -78,7 +78,7 @@ function render(rows) {
   out.push('# Build order — the six stages');
   out.push('');
   out.push(`> **Generated ${now} — do not hand-edit.** One stage per initiative, decided in one place`);
-  out.push('> (`scripts/lib/stage.mjs`): To groom · Grooming · Ready to build · Building · QA · Shipped.');
+  out.push(`> (\`scripts/lib/stage.mjs\`): ${STAGES.map(stageWord).join(' · ')}.`);
   if (LIVE) {
     out.push('> **Live:** Building and QA come from git and GitHub as of this run. Printed, never written.');
   } else {
@@ -89,7 +89,7 @@ function render(rows) {
   for (const stage of STAGES) {
     const list = columns[stage];
     if (LIVE_ONLY.has(stage) && !LIVE) {
-      out.push(`## ${stage} — live only`);
+      out.push(`## ${stageWord(stage)} — live only`);
       out.push('');
       out.push(
         `_${STAGE_NOTE[stage]}. Not in this committed file: \`node scripts/build-order.mjs --live\` or the Hub board._`
@@ -97,7 +97,7 @@ function render(rows) {
       out.push('');
       continue;
     }
-    out.push(`## ${stage} (${list.length})`);
+    out.push(`## ${stageWord(stage)} (${list.length})`);
     out.push('');
     out.push(`_${STAGE_NOTE[stage]}._`);
     out.push('');

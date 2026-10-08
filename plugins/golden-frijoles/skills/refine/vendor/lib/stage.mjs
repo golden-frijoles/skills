@@ -25,6 +25,14 @@ import { branchCandidates } from './work-branch.mjs';
 /** The six stages, in board order (D1 — locked by the product owner, 2026-10-01). */
 export const STAGES = Object.freeze(['To groom', 'Grooming', 'Ready to build', 'Building', 'QA', 'Shipped']);
 
+/**
+ * What each stage is CALLED where a person reads it (plugin-1-0 D6): plain agile, Backlog → Refining → Ready. The keys
+ * above are stored data and never change; every printed stage goes through `stageWord`. The console's twin is
+ * `apps/web/lib/screen-words.ts → stageLabel`, and a test keeps the two equal.
+ */
+export const STAGE_WORDS = Object.freeze({ 'To groom': 'Backlog', Grooming: 'Refining', 'Ready to build': 'Ready' });
+export const stageWord = (stage) => STAGE_WORDS[stage] ?? stage;
+
 const DOCS_STAGE = {
   raw: 'To groom',
   ready: 'Grooming',
