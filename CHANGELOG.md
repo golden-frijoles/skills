@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-10-08
+
+### Changed
+- **Five skills and one agent** (plugin-1-0 S3), down from fifteen and one:
+  | Now | Was |
+  |---|---|
+  | `setup` | `golden-frijoles` |
+  | `refine` | `groom` (0.45.0) |
+  | `strategy` (chapters: cold read · PMF narrative · North Star · risk validation) | `cold-read`, `pmf-narrative`, `north-star`, `risk-validation` |
+  | `report` (daily · weekly · pmo) | `standup-post`, `weekly-recap`, `pmo-report` |
+  | `smoke` | `live-smoke` |
+  | agent `verifier` (general or security lens) | agent `pr-reviewer` |
+  Asking for an old name by its words still reaches the right chapter: each router's description keeps the old
+  trigger phrases.
+- **The install prompt's last step** reads "Run the setup skill from the golden-frijoles plugin."
+
+### Removed
+- `build-order-sync`, `doc-hygiene`, `vercel-prune`, `babysit-pr` and `prose-draft` are no longer installed: they were
+  our own operations. Their scripts stay in the kit (`frijoles-kit build-order-sync`, …), and the template's routines
+  run them directly, with what each skill added written into the routine's steps.
+
 ## [0.45.0] - 2026-10-08
 
 ### Changed
