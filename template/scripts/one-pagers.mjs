@@ -56,7 +56,8 @@ export const BMC_CREDIT = 'The Business Model Canvas by Strategyzer.com, license
 export function splitLabel(raw) {
   const text = String(raw ?? '').trim();
   const m = text.match(
-    /\s*\(\s*(true today|aspirational|agreed|hypothesis|sourced)(?:\s*:\s*([^)]*))?\s*\)\s*$/i
+    // The source may hold a markdown link or a URL with its own parentheses; a trailing full stop is allowed.
+    /\s*\(\s*(true today|aspirational|agreed|hypothesis|sourced)(?:\s*:\s*((?:[^()]|\([^()]*\))*))?\s*\)\s*\.?\s*$/i
   );
   if (!m) return { text, label: null, source: null };
   return { text: text.slice(0, m.index).trim(), label: m[1].toLowerCase(), source: m[2]?.trim() || null };
@@ -64,13 +65,35 @@ export function splitLabel(raw) {
 
 /** A value the coach has not written: missing, or still the template's `<…>` placeholder. */
 const unwritten = (v) => !v || /^<[^>]*>(?:\s*\([^)]*\))?$/.test(v.trim()); // a placeholder, maybe with its label hint
+/** A value with any `<…>` placeholder fragment removed: half-filled template text never reaches a sheet. */
+const fill = (v) =>
+  String(v ?? '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 
 /** `**Label:** value` lines inside `body`, by label. */
 export function labelledLines(body) {
   const out = {};
-  for (const line of String(body ?? '').split('\n')) {
-    const m = line.match(/^\s*(?:[-*]\s+)?\*\*([^*]+?):\*\*\s*(.*)$/);
-    if (m && !unwritten(m[2])) out[m[1].trim()] = m[2].trim();
+  const lines = String(body ?? '').split('\n');
+  const LABEL = /^\s*(?:[-*]\s+)?\*\*([^*]+?):\*\*\s*(.*)$/;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(LABEL);
+    if (!m) continue;
+    const parts = [m[2].trim()];
+    const items = [];
+    // A value may wrap onto following lines, or be a list of sub-bullets under an empty label: both are written
+    // content, and dropping them would print "Not written yet" over something the maker wrote (review of #316).
+    for (let k = i + 1; k < lines.length; k++) {
+      const next = lines[k];
+      if (!next.trim() || LABEL.test(next) || /^#{1,6} /.test(next)) break;
+      const bullet = next.match(/^\s*(?:[-*]|\d+\.)\s+(.+)$/);
+      if (bullet && (!parts[0] || /^\s/.test(next))) items.push(bullet[1].trim());
+      else if (!bullet && !items.length) parts.push(next.trim());
+      else break;
+    }
+    const value = fill([parts.join(' ').trim(), ...items].filter(Boolean).join(' · '));
+    if (!unwritten(value)) out[m[1].trim()] = value;
   }
   return out;
 }
@@ -87,8 +110,10 @@ export function bullets(body, after = null) {
   const out = [];
   for (const line of lines.slice(start)) {
     if (after && /^\s*\*\*[^*]+:\*\*/.test(line)) break;
-    const m = line.match(/^[-*]\s+(?!\*\*[^*]+:\*\*)(.+)$/);
-    if (m && !unwritten(m[1])) out.push(m[1].trim());
+    const m = line.match(/^\s*(?:[-*]|\d+\.)\s+(.+)$/);
+    // `- **Fast:** drafts next week` is a benefit too: keep it, as "Fast: drafts next week".
+    const item = m ? fill(m[1].replace(/^\*\*([^*]+?):\*\*\s*/, '$1: ')) : '';
+    if (item && !unwritten(item)) out.push(item);
   }
   return out;
 }
@@ -136,7 +161,10 @@ export function readStrategy({ narrative = null, northStar = null, risk = null }
   const r = risk ?? '';
   const domino = labelledLines(section(r, 'Highest domino'));
 
-  const benefits = bullets(vp).map((x) => claim(x));
+  // A claim the coach left unlabelled still shows what it is (review of #316): the maker approved it at the Strategy
+  // gate when the file is agreed; until then it is unchecked. Persona lines stay hypothesis either way (F34).
+  const N = { defaultLabel: fm.status === 'agreed' ? 'agreed' : 'hypothesis' };
+  const benefits = bullets(vp).map((x) => claim(x, N));
   return {
     product: (n.match(/^# .*?—\s*(.+)$/m)?.[1] ?? '').replace(/^<.*>$/, '').trim() || null,
     status: {
@@ -153,26 +181,28 @@ export function readStrategy({ narrative = null, northStar = null, risk = null }
               ? claim(personaLines[f], { defaultLabel: 'hypothesis' })
               : { text: null, label: null }),
           })),
-    outcome: p.Outcome ? claim(p.Outcome) : null,
-    motivation: p.Motivation ? claim(p.Motivation) : null,
-    gaps: bullets(problem, 'Gaps').map((x) => claim(x)),
-    segmentsNow: a.Now ? claim(a.Now) : null,
-    segmentsFuture: a.Future ? claim(a.Future) : null,
-    tagline: v.Tagline ? claim(v.Tagline) : null,
+    outcome: p.Outcome ? claim(p.Outcome, N) : null,
+    motivation: p.Motivation ? claim(p.Motivation, N) : null,
+    gaps: bullets(problem, 'Gaps').map((x) => claim(x, N)),
+    segmentsNow: a.Now ? claim(a.Now, N) : null,
+    segmentsFuture: a.Future ? claim(a.Future, N) : null,
+    tagline: v.Tagline ? claim(v.Tagline, N) : null,
     benefits,
-    shortTerm: c['Short term'] ? claim(c['Short term']) : null,
-    longTerm: c['Long term'] ? claim(c['Long term']) : null,
-    channelsNow: g.Now ? claim(g.Now) : null,
-    channelsLater: g.Later ? claim(g.Later) : null,
-    revenue: b.Revenue ? claim(b.Revenue) : null,
-    pricing: b.Pricing ? claim(b.Pricing) : null,
-    costs: b.Costs ? claim(b.Costs) : null,
-    partners: b['Key partners'] ? claim(b['Key partners']) : null,
-    activities: b['Key activities'] ? claim(b['Key activities']) : null,
-    resources: b['Key resources'] ? claim(b['Key resources']) : null,
-    relationships: b['Customer relationships'] ? claim(b['Customer relationships']) : null,
+    shortTerm: c['Short term'] ? claim(c['Short term'], N) : null,
+    longTerm: c['Long term'] ? claim(c['Long term'], N) : null,
+    channelsNow: g.Now ? claim(g.Now, N) : null,
+    channelsLater: g.Later ? claim(g.Later, N) : null,
+    revenue: b.Revenue ? claim(b.Revenue, N) : null,
+    pricing: b.Pricing ? claim(b.Pricing, N) : null,
+    costs: b.Costs ? claim(b.Costs, N) : null,
+    partners: b['Key partners'] ? claim(b['Key partners'], N) : null,
+    activities: b['Key activities'] ? claim(b['Key activities'], N) : null,
+    resources: b['Key resources'] ? claim(b['Key resources'], N) : null,
+    relationships: b['Customer relationships'] ? claim(b['Customer relationships'], N) : null,
     northStar:
-      metric && !unwritten(metric[1]) ? { name: metric[1].trim(), definition: metric[2].trim() } : null,
+      metric && !unwritten(metric[1])
+        ? { name: metric[1].replace(/:\s*$/, '').trim(), definition: metric[2].trim() }
+        : null,
     notClaimedYet: [
       ...(domino.Hypothesis
         ? [
@@ -236,10 +266,10 @@ ul{margin:0;padding-left:16px}li{margin:0 0 5px}p{margin:0 0 6px}.muted{color:va
 .bmc .ka{grid-column:2}.bmc .kr{grid-column:2;grid-row:2}.bmc .cr{grid-column:4}.bmc .ch{grid-column:4;grid-row:2}
 .bmc .co{grid-column:1/3;grid-row:3}.bmc .rs{grid-column:3/6;grid-row:3}
 .two{grid-template-columns:1fr 1fr}.persona{grid-template-columns:repeat(3,1fr)}
-.ns{border:2px solid var(--gold);background:var(--gold-bg)}.ns b{color:var(--gold);font-size:18px;display:block}
+.lead{font-size:18px;margin:0 0 12px}.ns{border:2px solid var(--gold);background:var(--gold-bg)}.ns b{color:var(--gold);font-size:18px;display:block}
 footer{margin-top:16px;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 18px}
 .draft{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font:900 140px system-ui;color:var(--hyp);opacity:.09;transform:rotate(-18deg)}
-@media (max-width:820px){.bmc,.two,.persona{grid-template-columns:1fr}.bmc>*{grid-column:auto!important;grid-row:auto!important}}
+@media screen and (max-width:820px){.bmc,.two,.persona{grid-template-columns:1fr}.bmc>*{grid-column:auto!important;grid-row:auto!important}}
 @media print{body{background:#fff;padding:0}.sheet{border:0;max-width:none;padding:8mm}@page{size:A4 landscape;margin:8mm}}`;
 
 function page({ title, kicker, body, draft, sources, footer = '' }) {
@@ -300,7 +330,7 @@ export function renderCanvas(s) {
 
 /** Pure — the value proposition sheet (our own layout, never the reserved canvas), as { html, md }. */
 export function renderValueSheet(s) {
-  const draft = isDraft(s.status.narrative, s.status.northStar);
+  const draft = isDraft(s.status.narrative, s.status.northStar, s.status.risk);
   const ns = s.northStar
     ? `<section class="box ns"><h2>North Star</h2><b>${esc(s.northStar.name)}</b><p>${esc(s.northStar.definition)}</p></section>`
     : `<section class="box"><h2>North Star</h2><p class="muted">${NOT_WRITTEN}</p></section>`;
@@ -362,7 +392,6 @@ export function renderPersona(s) {
     draft,
     sources: 'pmf-narrative.md (Target audience → Persona)',
     body: `<div class="grid persona">${rows
-      .filter((r) => r.field !== 'Role')
       .map((r) => `<section class="box"><h2>${esc(r.field)}</h2><p>${lineHtml(r)}</p></section>`)
       .join('')}</div>`,
     footer:
@@ -371,7 +400,7 @@ export function renderPersona(s) {
   const md = [
     `# ${named(s, `Persona${role?.text ? `: ${role.text}` : ''}`)}${draft ? ' (draft)' : ''}`,
     '',
-    ...rows.filter((r) => r.field !== 'Role').flatMap((r) => [`## ${r.field}`, '', lineMd(r), '']),
+    ...rows.flatMap((r) => [`## ${r.field}`, '', lineMd(r), '']),
   ].join('\n');
   return { html, md };
 }
@@ -416,7 +445,7 @@ function main(argv) {
       writeFileSync(join(out, `${name}.md`), md);
       written.push(`${name}.html`);
     }
-    const draft = isDraft(s.status.narrative, s.status.northStar);
+    const draft = isDraft(s.status.narrative, s.status.northStar, s.status.risk);
     process.stdout.write(
       `one-pagers: wrote ${written.join(', ')} (+ .md) to ${out}${draft ? ' — marked draft until the Strategy gate approves the files' : ''}.\n`
     );

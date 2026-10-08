@@ -187,12 +187,85 @@ test('the value proposition sheet is our own layout, carries the North Star, and
   assert.match(html, /class="draft"/, 'the North Star is still draft, so the sheet is watermarked');
 });
 
-test('a draft narrative watermarks every sheet it feeds; HTML in a file is escaped', () => {
-  const st = s({ narrative: NARRATIVE('draft').replace('Café owner-manager', '<script>x</script>') });
+test('a draft narrative watermarks every sheet it feeds; HTML in a file is escaped, and tag-like text dropped', () => {
+  const st = s({
+    narrative: NARRATIVE('draft').replace('Café owner-manager', 'Owner & "manager" <script>x</script> a<b'),
+  });
   for (const r of [renderCanvas, renderPersona]) assert.match(r(st).html, /<div class="draft"/);
-  assert.match(renderPersona(st).md, /^# Rota: Persona: <script>x<\/script> \(draft\)/);
-  assert.doesNotMatch(renderPersona(st).html, /<script>x<\/script>/);
-  assert.match(renderPersona(st).html, /&lt;script&gt;x&lt;\/script&gt;/);
+  assert.match(
+    renderPersona(st).md,
+    /^# Rota: Persona: Owner & "manager" x a<b \(draft\)/,
+    'a <…> fragment never reaches a sheet'
+  );
+  assert.doesNotMatch(renderPersona(st).html, /<script>/);
+  assert.match(renderPersona(st).html, /Owner &amp; &quot;manager&quot; x a&lt;b/);
+});
+
+test("review of #316: link sources, wrapped values, sub-bullets, labelled benefits, Role's chip, file-status defaults", () => {
+  const n = NARRATIVE()
+    .replace(
+      '**Outcome:** Every shift covered before the day starts (agreed)',
+      '**Outcome:** Every shift covered,\nbefore the day starts (agreed).'
+    )
+    .replace(
+      '- **Goals:** A rota done in ten minutes (sourced: https://example.org/interviews)',
+      '- **Goals:** A rota done in ten minutes (sourced: [interviews](https://example.org/i))'
+    )
+    .replace(
+      '- **Words to use:** shifts, cover, swaps',
+      '- **Frustrations:**\n  - Chasing swaps (hypothesis)\n  - No-shows\n- **Words to use:** shifts, cover, swaps'
+    )
+    .replace('- **Frustrations:** <role-play anecdote never confirmed>\n', '')
+    .replace(
+      '- Next week drafted from last week (true today)',
+      '- **Fast:** next week drafted from last week (true today)'
+    )
+    .replace(
+      '**Revenue:** Monthly subscription per site (agreed)',
+      '**Revenue:**\n- Per-site plan\n- SMS add-on'
+    );
+  const st = readStrategy({ narrative: n, northStar: NORTH_STAR, risk: RISK });
+  assert.deepEqual(
+    [st.outcome.text, st.outcome.label],
+    ['Every shift covered, before the day starts', 'agreed']
+  );
+  const goals = st.persona.find((r) => r.field === 'Goals');
+  assert.deepEqual(
+    [goals.text, goals.label, goals.source],
+    ['A rota done in ten minutes', 'sourced', '[interviews](https://example.org/i)']
+  );
+  assert.match(
+    st.persona.find((r) => r.field === 'Frustrations').text,
+    /^Chasing swaps \(hypothesis\) · No-shows/
+  );
+  assert.equal(st.benefits[0].text, 'Fast: next week drafted from last week');
+  assert.equal(st.revenue.text, 'Per-site plan · SMS add-on');
+  assert.equal(st.tagline.label, 'agreed', 'an unlabelled claim in an agreed file reads agreed');
+  assert.equal(
+    readStrategy({ narrative: NARRATIVE('draft') }).tagline.label,
+    'hypothesis',
+    '…and in a draft, hypothesis'
+  );
+  assert.match(
+    renderPersona(st).html,
+    /<h2>Role<\/h2><p>Café owner-manager <span class="chip hyp">hypothesis<\/span>/
+  );
+});
+
+test('print: the phone layout never applies on paper, so each sheet keeps its shape on one page', () => {
+  const { html } = renderCanvas(s());
+  assert.match(html, /@media screen and \(max-width:820px\)/);
+  assert.doesNotMatch(html, /@media \(max-width/);
+  assert.match(html, /@page\{size:A4 landscape/);
+});
+
+test('the value sheet is watermarked while the risk file it quotes is a draft', () => {
+  const agreedNs = NORTH_STAR.replace('status: draft', 'status: agreed');
+  assert.doesNotMatch(renderValueSheet(s({ northStar: agreedNs })).html, /class="draft"/);
+  assert.match(
+    renderValueSheet(s({ northStar: agreedNs, risk: RISK.replace('status: agreed', 'status: draft') })).html,
+    /class="draft"/
+  );
 });
 
 test('the CLI writes six files from a project, and says so plainly when there is no narrative yet', () => {
