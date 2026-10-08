@@ -8,6 +8,10 @@ import {
   coworkLine,
   figuresFromMeasure,
   sessionLine,
+  sessionParts,
+  resetIn,
+  toneOf,
+  TONES,
   sessionVerdict,
 } from './session-budget.mjs';
 
@@ -68,15 +72,27 @@ test('figuresFromMeasure reads the event payload and leaves absent figures null'
       ],
       changed: ['context'],
     }),
-    { contextPct: 48, fiveHourPct: 23.5, sevenDayPct: 9 },
+    { contextPct: 48, fiveHourPct: 23.5, sevenDayPct: 9, fiveHourResetsAt: null, sevenDayResetsAt: null },
+  );
+  assert.deepEqual(
+    figuresFromMeasure({
+      rateLimits: [
+        { kind: 'five_hour', percentUsed: 78, resetsAt: '2026-10-08T03:00:00Z' },
+        { kind: 'seven_day', percentUsed: 46, resetsAt: 'not a date' },
+      ],
+    }),
+    {
+      contextPct: null,
+      fiveHourPct: 78,
+      sevenDayPct: 46,
+      fiveHourResetsAt: Date.UTC(2026, 9, 8, 3),
+      sevenDayResetsAt: null,
+    },
   );
   // Early in a session / after /compact, and off a subscription: nothing is invented.
-  assert.deepEqual(figuresFromMeasure({ context: { window: 200000 }, rateLimits: [] }), {
-    contextPct: null,
-    fiveHourPct: null,
-    sevenDayPct: null,
-  });
-  assert.deepEqual(figuresFromMeasure(undefined), { contextPct: null, fiveHourPct: null, sevenDayPct: null });
+  const none = { contextPct: null, fiveHourPct: null, sevenDayPct: null, fiveHourResetsAt: null, sevenDayResetsAt: null };
+  assert.deepEqual(figuresFromMeasure({ context: { window: 200000 }, rateLimits: [] }), none);
+  assert.deepEqual(figuresFromMeasure(undefined), none);
 });
 
 test('the Claude Code line drops unknown figures instead of showing 0%', () => {
@@ -86,6 +102,43 @@ test('the Claude Code line drops unknown figures instead of showing 0%', () => {
   assert.equal(sessionLine({ contextPct: 40, questionsWaiting: 0 }), 'Session 40% → keep going');
   assert.equal(sessionLine({ contextPct: null, fiveHourPct: null, sevenDayPct: null }), null, 'no figure, no line');
   assert.equal(sessionLine(null), null);
+});
+
+test('build-view-upgrade D5: each figure is coloured by its own table, with the time to its reset', () => {
+  const now = Date.UTC(2026, 9, 8, 1, 0);
+  const H = 3_600_000;
+  assert.deepEqual(
+    sessionParts(
+      { contextPct: 48, fiveHourPct: 78, sevenDayPct: 46, fiveHourResetsAt: now + 2.5 * H, sevenDayResetsAt: now + 75 * H },
+      undefined,
+      now,
+    ),
+    [
+      { text: 'Session 48%', tone: 'good' },
+      { text: '5h 78% (-2h)', tone: 'warn' },
+      { text: '7d 46% (-3d)', tone: 'good' },
+      { text: 'keep going', tone: null, verdict: true },
+    ],
+  );
+  assert.equal(
+    sessionLine({ fiveHourPct: 91, sevenDayPct: 62, fiveHourResetsAt: now + 40 * 60_000, sevenDayResetsAt: now + 24 * H }, undefined, now),
+    '5h 91% (-40m) · 7d 62% (-24h) → hand off',
+  );
+  for (const [key, cases] of Object.entries({
+    contextPct: [[59, 'good'], [60, 'warn'], [79, 'warn'], [80, 'bad']],
+    fiveHourPct: [[59.9, 'good'], [60, 'warn'], [89, 'warn'], [90, 'bad']],
+    sevenDayPct: [[0, 'good'], [60, 'warn'], [90, 'bad'], [100, 'bad']],
+  }))
+    for (const [value, tone] of cases) assert.equal(toneOf(key, value), tone, `${key} ${value}`);
+  assert.equal(TONES.contextPct.bad, THRESHOLDS.handOff.contextPct, 'red is the hand-off line, not a second number');
+  assert.equal(TONES.fiveHourPct.bad, THRESHOLDS.handOff.fiveHourPct);
+  assert.equal(resetIn(now + 30_000, now), '-1m', 'never -0');
+  assert.equal(resetIn(now + 59 * 60_000, now), '-59m');
+  assert.equal(resetIn(now + H, now), '-1h');
+  assert.equal(resetIn(now + 25 * H, now), '-1d');
+  assert.equal(resetIn(now - 1, now), null, 'a past reset shows nothing');
+  assert.equal(resetIn(null, now), null);
+  assert.equal(sessionLine({ fiveHourPct: 20, fiveHourResetsAt: null }, undefined, now), '5h 20% → keep going');
 });
 
 test('the Cowork line says context is not measured and uses the same verdict', () => {
@@ -105,7 +158,7 @@ test('a log row keeps known figures only, with the verdict and its reasons', () 
     budgetRow({
       at: Date.UTC(2026, 8, 30, 12),
       surface: 'claude-code',
-      figures: { contextPct: 81, fiveHourPct: null, sevenDayPct: 9 },
+      figures: { contextPct: 81, fiveHourPct: null, sevenDayPct: 9, sevenDayResetsAt: Date.UTC(2026, 9, 1) },
       verdict: sessionVerdict({ contextPct: 81 }),
     }),
   );

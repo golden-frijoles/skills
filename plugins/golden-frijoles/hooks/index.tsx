@@ -18,9 +18,12 @@
 //
 // THE SESSION LINE (session-budget D2/D8): `session.measure` pushes the engine's own figures after each turn;
 // `sessionVerdict()` — the SAME function groom's Cowork line uses, imported from the groom skill — turns them
-// into keep going / checkpoint / hand off, drawn on `$.ui.status` (one row under the prompt, free since the
-// band moved off it). It advises and never acts: nothing here compacts, clears or ends a session (D5). Each
-// verdict CHANGE appends a row to `.golden-frijoles/session-budget.jsonl`, ignored by its own `.gitignore` (D7).
+// into keep going / checkpoint / hand off. It advises and never acts: nothing here compacts, clears or ends a session
+// (D5). Each verdict CHANGE appends a row to `.golden-frijoles/session-budget.jsonl`, ignored by its own `.gitignore`
+// (D7). WHERE IT DRAWS (build-view-upgrade D5/D6): each figure in its own colour, with the time to its window's reset,
+// on a row under the engine's hint line (`PromptHint`, which this hook wraps — `$.ui.status` takes plain text only).
+// The figures live in `$.state`; the parts are computed while drawing, and a one-minute clock redraws the countdown.
+// An engine without `$.state` gets today's plain `$.ui.status` line instead — never both.
 //
 // THE SPEND ROW (finops S1.3, D5/D24): the resolver prints it from `.golden-frijoles/usage-summary.json`; this module
 // only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
@@ -55,19 +58,22 @@ import {
   budgetRow,
   figuresFromMeasure,
   sessionLine,
+  sessionParts,
   sessionVerdict,
 } from '../skills/groom/session-budget.mjs';
 
 const STORE_KEY = 'golden-frijoles/build-view';
 const VIEW = { plugin: 'golden-frijoles', key: 'buildView' } as const;
+const SESSION = { plugin: 'golden-frijoles', key: 'sessionFigures' } as const;
+const COUNTDOWN_MS = 60_000; // the reset countdown's redraw (D5): its smallest unit is a minute
 
-const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', bad: 'red', plain: undefined } as const;
+const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', warn: 'yellow', bad: 'red', plain: undefined } as const;
 const RISK_COLORS = { LOW: 'green', MEDIUM: 'yellow', HIGH: 'red' } as const;
 const LABEL_WIDTH = 12; // glyph + space + the longest label (`Progress`) + gap
 
 // The session line's inputs. Module variables on purpose: a hot reload starts them over, which at worst
 // logs one repeated verdict row and hides the line until the next measurement — never a wrong figure.
-let measured: { contextPct: number | null; fiveHourPct: number | null; sevenDayPct: number | null } | null = null;
+let measured: ReturnType<typeof figuresFromMeasure> | null = null;
 let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not observable here (D8)
 let loggedVerdict: string | null = null;
 // The live view (D1). Built in session.start, whose `$` its io closes over — the same way a `$.clock` timer's callback
@@ -77,10 +83,22 @@ let viewer: ReturnType<typeof createViewer> | null = null;
 let warnedNoState = false; // log an engine without `$.state` once per load, not on every draw
 let usageRefreshedAt: number | null = null; // finops D24 — the last usage refresh attempt, ok or not
 
-const lineNow = () => {
+// D6 — the figures go to `$.state`, where the hint row reads them; on an engine without it, the plain status line.
+// Resolves true when the state write landed. Never throws.
+async function showSession($: EngineInterface) {
   const figures = { ...(measured ?? {}), questionsWaiting };
-  return sessionLine(figures, sessionVerdict(figures)) ?? undefined;
-};
+  const stored = await attempt(
+    async () => {
+      await $.state.set(SESSION, measured ? (figures as never) : null);
+      return true;
+    },
+    () => {},
+    false,
+  );
+  // Never both: the row under the hint replaces the plain line (a hot reload from an older copy may have left one).
+  $.ui.status(stored ? undefined : (sessionLine(figures, sessionVerdict(figures)) ?? undefined));
+  return stored;
+}
 
 // What reaches the transcript. A mod's `$.ui.log` is a row in the person's main window, so it is spent only on something
 // they should act on, and each distinct line ONCE per load; repeats and routine bookkeeping (check timings, "usage:
@@ -137,6 +155,10 @@ export const register: Register = (on) => {
     }
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
+    // build-view-upgrade D5 — the reset countdown moves with the clock, not only when a figure does.
+    $.clock.every(COUNTDOWN_MS, () => {
+      if (measured) $.ui.invalidate('ui.render');
+    });
     $.clock.after(ONLINE_FIRST_MS, () => {
       void live.refreshOnline('timer');
       $.clock.every(ONLINE_EVERY_MS, () => void live.refreshOnline('timer'));
@@ -194,7 +216,7 @@ export const register: Register = (on) => {
       measured = figuresFromMeasure(e);
       const figures = { ...measured, questionsWaiting };
       const verdict = sessionVerdict(figures);
-      $.ui.status(sessionLine(figures, verdict) ?? undefined);
+      await showSession($);
       // Only at a known repo root (D7): with no git root — a session outside a repo, or a hot reload before the
       // next turn.start — the line still draws but nothing is written into whatever directory the session is in.
       if (repoRoot && verdict.verdict !== loggedVerdict && sessionLine(figures, verdict)) {
@@ -234,11 +256,11 @@ export const register: Register = (on) => {
     // Everything inside the try, so the count always comes back down even if drawing the line fails.
     try {
       questionsWaiting += 1;
-      $.ui.status(lineNow());
+      await showSession($);
       return await next(e);
     } finally {
       questionsWaiting = Math.max(0, questionsWaiting - 1);
-      $.ui.status(lineNow());
+      await showSession($);
     }
   });
 
@@ -331,6 +353,36 @@ export const register: Register = (on) => {
             </Box>
           );
         })}
+      </Box>
+    );
+  });
+  // build-view-upgrade D5/D6 — the session line, coloured, on its own row under the engine's hint line. The engine's
+  // drawing is kept as it is (`next(e)`); with no figures, or no `$.state`, the hint is left alone.
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    const base = await next(e);
+    const read = await attempt(() => $.state.get(SESSION));
+    const figures = read?.value ?? null;
+    if (!figures) return base;
+    const now = (await attempt(() => $.clock.now())) ?? Date.now();
+    const parts = sessionParts(figures, sessionVerdict(figures), now);
+    if (!parts.length) return base;
+    const { Box, Text } = $.ui.resolve(e);
+    const figuresOnly = parts.filter((p) => !p.verdict);
+    const verdict = parts.find((p) => p.verdict);
+    return (
+      <Box flexDirection="column">
+        {base}
+        <Text wrap="truncate">
+          {figuresOnly.map((p, i) => (
+            <Text key={`s${i}`}>
+              {i ? <Text dimColor>{' · '}</Text> : null}
+              <Text color={p.tone ? TONE_COLORS[p.tone as keyof typeof TONE_COLORS] : undefined} dimColor={!p.tone}>
+                {p.text}
+              </Text>
+            </Text>
+          ))}
+          {verdict ? <Text dimColor>{` → ${verdict.text}`}</Text> : null}
+        </Text>
       </Box>
     );
   });
