@@ -79,8 +79,9 @@ Answer them here, or:
   as "<file> · <heading>: the coach's proposal. Keep it?", ahead of the others. **List every one**, however many: the
   three-decision limit counts the other decisions, never these, because Approve accepts each proposal it removes.
 - **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter and removes the proposed line
-  from every section the gate listed (approving accepts those proposals), and changes nothing else. Then offer
-  grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
+  from every section the gate listed (approving accepts those proposals), and changes nothing else. Then render the
+  one-pagers from the approved files (`node scripts/one-pagers.mjs`, run as the coaches' kit rule says), tell the
+  person where they are in one line, and offer grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
