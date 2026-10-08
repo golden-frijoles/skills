@@ -92,7 +92,10 @@ export function labelledLines(body) {
       else if (!bullet && !items.length) parts.push(next.trim());
       else break;
     }
-    const value = fill([parts.join(' ').trim(), ...items].filter(Boolean).join(' · '));
+    const raw = [parts.join(' ').trim(), ...items.filter((x) => !unwritten(x))].filter(
+      (x) => x && !unwritten(x)
+    );
+    const value = fill(raw.join(' · '));
     if (!unwritten(value)) out[m[1].trim()] = value;
   }
   return out;
@@ -112,7 +115,10 @@ export function bullets(body, after = null) {
     if (after && /^\s*\*\*[^*]+:\*\*/.test(line)) break;
     const m = line.match(/^\s*(?:[-*]|\d+\.)\s+(.+)$/);
     // `- **Fast:** drafts next week` is a benefit too: keep it, as "Fast: drafts next week".
-    const item = m ? fill(m[1].replace(/^\*\*([^*]+?):\*\*\s*/, '$1: ')) : '';
+    // Placeholder check on the RAW text, before fill(): `<benefit> (true today | aspirational)` must not survive as
+    // a benefit called "(true today | aspirational)" (review of #316, round 2).
+    if (!m || unwritten(m[1])) continue;
+    const item = fill(m[1].replace(/^\*\*([^*]+?):\*\*\s*/, '$1: '));
     if (item && !unwritten(item)) out.push(item);
   }
   return out;

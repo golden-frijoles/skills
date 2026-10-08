@@ -310,11 +310,13 @@ test('the narrative template itself renders nothing but "Not written yet": no pl
   assert.ok(path, 'the narrative template is reachable');
   const template = readFileSync(path, 'utf8');
   const st = readStrategy({ narrative: template });
+  assert.deepEqual(st.benefits, [], 'the template has no benefits yet');
   const block = template.slice(template.indexOf('### Persona'), template.indexOf('## Value proposition'));
   const listed = [...block.matchAll(/^- \*\*([^*]+):\*\*/gm)].map((m) => m[1]);
   assert.deepEqual(listed, PERSONA_FIELDS, 'the template lists exactly the fields the renderer reads');
   for (const r of [renderCanvas, renderValueSheet, renderPersona]) {
     const { md } = r(st);
     assert.doesNotMatch(md, /<[a-z][^>]*>/i, `${r.name}: a placeholder leaked`);
+    assert.doesNotMatch(md, /true today \| aspirational|\| aspirational/, `${r.name}: a label hint leaked`);
   }
 });
