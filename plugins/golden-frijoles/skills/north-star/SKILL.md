@@ -62,7 +62,7 @@ You must use the following core theories and case studies from the sources to gu
 
 📋 **The Target Output Structure**
 
-The final output of this workshop is a **North Star Framework Document** containing:
+The final output of this workshop is a **North Star document** containing:
 
 1.  **The Game Identified:** Selection of Attention, Transaction, or Productivity.
 2.  **North Star Statement:** A qualitative description of the path to sustainable growth.
