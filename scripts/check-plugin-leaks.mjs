@@ -77,7 +77,7 @@ export const RULES = [
     pattern: /\blib\/flags\.(ts|tsx|js|mjs|cjs)\b|DEFAULT_FLAGS|platform_flags/,
     why: 'Names a flag store that is not the one this template ships. Feature flags are Golden '
        + 'Frijoles for every project spawned from here (template/AGENTS.md rule 1): flags are '
-       + 'created with `gf flags create`, read through the seam in apps/*/flags.mjs, and a read\'s '
+       + 'created with `frijoles flags create`, read through the seam in apps/*/flags.mjs, and a read\'s '
        + 'fallback argument is NOT a parallel store. If you need to name a flag, name its KEY '
        + '(`<domain>.<feature>_enabled`), never a file or a table that holds defaults.',
   },

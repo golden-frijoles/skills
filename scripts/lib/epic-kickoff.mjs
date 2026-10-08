@@ -158,7 +158,7 @@ export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }
     );
   if (FLAG_RE.test(all))
     rules.push(
-      '- **Flag:** create it in Golden Frijoles in every env and ACTIVATE it; `gf flags get <key>` must show production.'
+      '- **Flag:** create it in Golden Frijoles in every env and ACTIVATE it; `frijoles flags get <key>` must show production.'
     );
   // fund-at-approval D7 — an L bet is funded one wave at a time; the re-bet is one line, asked where the builder stops.
   if (String(appetite).toUpperCase() === 'L')

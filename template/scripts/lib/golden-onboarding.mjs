@@ -2,7 +2,7 @@
 //
 // ── Why this is a module and not a sentence in three READMEs ───────────────────────────────────
 // golden-flags-by-default S1.4's acceptance is that the text the agent prints, the install page's
-// CLI block and `gf init`'s own next-step line are **one surface**: "the three must say the same
+// CLI block and `frijoles init`'s own next-step line are **one surface**: "the three must say the same
 // thing". Two hand-written copies of `npx @golden-frijoles/cli init` agree right up until one of
 // them is edited, and the one that drifts is always the one nobody runs.
 //
@@ -12,7 +12,7 @@
 //
 // ── The cross-repo half, stated honestly ──────────────────────────────────────────────────────
 // The other two surfaces live in the Golden Frijoles product repo — its `/install` page reads
-// `apps/web/lib/cli-install.ts`, and `gf init` prints from `packages/cli/src/commands/init.ts`.
+// `apps/web/lib/cli-install.ts`, and `frijoles init` prints from `packages/cli/src/commands/init.ts`.
 // This file cannot import either: they are a different repo, and a template that npm-installs a
 // product's web app to read a string would be absurd. The weld there is the same discipline in the
 // other direction (`cli-install.test.ts` reads `packages/cli/package.json` off disk). Here the
@@ -22,10 +22,10 @@
 // reading it.
 //
 // ── The env var names are D6 of the CLI epic, and D3 of this one ──────────────────────────────
-// `gf init` writes exactly three names, and deliberately does NOT write `flag_sync` or an ingest
+// `frijoles init` writes exactly three names, and deliberately does NOT write `flag_sync` or an ingest
 // key: a verb whose job is "let this app READ its flags" must not put wider credentials on disk as
 // a side effect. `flag_sync` is an operator/deploy credential and belongs in CI secrets — minted on
-// purpose with `gf keys create --type flag_sync`. Never both in one place.
+// purpose with `frijoles keys create --type flag_sync`. Never both in one place.
 //
 // Zero deps — Node 18+.
 
@@ -34,21 +34,23 @@ export const CLI_PACKAGE = '@golden-frijoles/cli';
 export const SDK_PACKAGE = '@golden-frijoles/sdk';
 
 /** The binary `npm i -g` puts on PATH. */
-export const CLI_BIN = 'gf';
+export const CLI_BIN = 'frijoles';
+/** The CLI's name before 1.0 (plugin-1-0 D2). Still found, so an older install keeps working until it upgrades. */
+export const LEGACY_CLI_BIN = 'gf';
 
 /**
  * The minimum CLI this template's contract is written against.
  *
  * It is the version that shipped the write path — `flags create --kill-switch --all-envs`, the verb
- * every kill-switch story in this operating system now names. A project on an older `gf` can read
+ * every kill-switch story in this operating system now names. A project on an older `frijoles` can read
  * flags and cannot complete a kill-switch story, which is a failure worth naming at preflight
  * rather than discovering halfway through one.
  */
 export const MIN_CLI_VERSION = '0.1.0';
 
 /**
- * The env var names `gf init` writes and the app reads. ONE definition, on purpose (CLI epic D6):
- * the file and its reader are generated together in `gf init`, and this is that pair's address on
+ * The env var names `frijoles init` writes and the app reads. ONE definition, on purpose (CLI epic D6):
+ * the file and its reader are generated together in `frijoles init`, and this is that pair's address on
  * the template side. `preflight.mjs` and `apps/example-app/flags.mjs` both read it from here.
  */
 export const ENV_KEYS = {
@@ -57,7 +59,7 @@ export const ENV_KEYS = {
   environment: 'GOLDEN_FRIJOLES_ENVIRONMENT',
 };
 
-/** The file `gf init` writes, and refuses to write if it cannot get it into `.gitignore`. */
+/** The file `frijoles init` writes, and refuses to write if it cannot get it into `.gitignore`. */
 export const ENV_FILE = '.env.local';
 
 /** The route a `flag_read` key is exercised against — the one that actually serves it. */
@@ -95,8 +97,8 @@ export const KILL_SWITCH_STORY = [
  * How to read the activation check's answer, in the CLI's OWN vocabulary.
  *
  * ⚠️ **This line shipped wrong once, and the way it was wrong is worth keeping.** It said
- * `gf flags ls --env production` and told the reader to look for the words *"never turned on"*. Two
- * separate errors: `gf flags ls` accepts only `--project` and prints all three environments as
+ * `frijoles flags ls --env production` and told the reader to look for the words *"never turned on"*. Two
+ * separate errors: `frijoles flags ls` accepts only `--project` and prints all three environments as
  * columns, so `--env` is a hard usage error that exits 1 before it ever reaches auth; and *"never
  * turned on here"* is the **web console's** wording, while the CLI's `describeServing` prints `—`.
  * A reader following it literally would have run a command that cannot run, looking for a string
@@ -182,7 +184,7 @@ export const INSTALL_PROMPT =
  * ⚠️ **The LAST assignment wins.** `dotenv` assigns in file order, so a later line overrides an
  * earlier one — and a reader that returns the FIRST will confidently report on a value the running
  * app does not use. Two duplicate lines is not exotic: it is what a hand-edit plus a re-run of
- * `gf init` produces. Same rule, same reason, as the CLI's own `readEnvValue`.
+ * `frijoles init` produces. Same rule, same reason, as the CLI's own `readEnvValue`.
  *
  * No interpolation, deliberately: this reads a file to decide whether a credential is present, and
  * expanding `$VAR` would make that answer depend on the environment doing the reading.

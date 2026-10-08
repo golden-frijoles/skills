@@ -1,7 +1,7 @@
 // strategy-templates.test.mjs — the three strategy coaches' output contracts (think-skills D3, D4).
 //
 // Each coach writes `Roadmap/00-strategy/<name>.md` from its own `templates/<name>.md`, and that template IS the
-// contract: `groom` reads the headings (think-skills D5) and `gf north-star set` reads the sync block (D6). So these
+// contract: `groom` reads the headings (think-skills D5) and `frijoles north-star set` reads the sync block (D6). So these
 // tests pin the template, and the SKILL.md that points at it, rather than a copy of the contract anywhere else. The
 // payload's SHAPE is checked against the engine's real schema on the app side (apps/web/lib/north-star-template.test.ts),
 // because this mirror cannot import the app.
@@ -142,7 +142,7 @@ test('every coach credits its sources by name and URL', () => {
 
 // think-skills S3 (D10): the North Star coach names the one command that sends its file, pinned to the CLI version
 // that has it, and leaves running it to the user (the skill never writes to an engine itself).
-test('north-star names `gf north-star set`, pinned, as the user\'s step', () => {
+test('north-star names `frijoles north-star set`, pinned, as the user\'s step', () => {
   const skill = read('north-star', 'SKILL.md');
   // The version is derived from packages/cli by the monorepo's render-plugin-release.mjs (coaches-v2 D12), which this
   // mirror cannot see; here only the command's shape is pinned.

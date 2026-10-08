@@ -1,5 +1,5 @@
 // Types for lib/config.mjs, the one config core (golden-frijoles-plugin D10). Shipped in @golden-frijoles/kit as
-// `@golden-frijoles/kit/config` so the TypeScript `gf` CLI imports the same rules instead of re-implementing them.
+// `@golden-frijoles/kit/config` so the TypeScript `frijoles` CLI imports the same rules instead of re-implementing them.
 
 export declare const CONFIG_FILENAME: 'golden-frijoles.config.json';
 export declare const SECTIONS: readonly string[];

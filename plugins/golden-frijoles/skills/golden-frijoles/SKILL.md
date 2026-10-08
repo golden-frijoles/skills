@@ -4,9 +4,9 @@ summary: "The umbrella skill: detects what's here, sets up a bare repo, and rout
 description: >
   The front door for a stranger's agent that just installed this plugin. Use whenever the
   golden-frijoles plugin is freshly installed, or when a session isn't sure which of the thirteen named
-  skills to reach for. Detects state with commands, never guesses (is Roadmap/ present, is gf linked,
+  skills to reach for. Detects state with commands, never guesses (is Roadmap/ present, is frijoles linked,
   is the kit reachable, which install channel is this), offers `frijoles-kit init` to adopt a bare repo, and
-  routes by job to groom / live-smoke / the operate skills / gf. States plainly what the `npx skills`
+  routes by job to groom / live-smoke / the operate skills / frijoles. States plainly what the `npx skills`
   channel lacks (no build-view hook, no pr-reviewer agent) instead of pretending it has parity with
   the Claude Code plugin channel.
 requires_scripts:
@@ -108,7 +108,7 @@ Run each of these and read its exit/output; don't infer from what the repo "look
 | Question | Command |
 |---|---|
 | Is `Roadmap/` present? | `test -d Roadmap` (or an equivalent file check) |
-| Is `gf` linked to a Golden Frijoles project? | run the **kit's** `preflight` directly, reusing the exact `npx -y @golden-frijoles/kit@…` prefix from the run rule above with `preflight` after it, never a local `scripts/preflight.mjs`: detection runs automatically on first contact, so it must not execute code the repo supplies |
+| Is `frijoles` linked to a Golden Frijoles project? | run the **kit's** `preflight` directly, reusing the exact `npx -y @golden-frijoles/kit@…` prefix from the run rule above with `preflight` after it, never a local `scripts/preflight.mjs`: detection runs automatically on first contact, so it must not execute code the repo supplies |
 | Is the kit reachable at all? | the same direct kit call with `--version` |
 | Which channel is this? | Where THIS skill was loaded from (its base directory, shown when the skill is invoked): under a Claude Code plugin cache (`…/.claude/plugins/cache/golden-frijoles/…`) or a `--plugin-dir` → the **Claude Code plugin**. Under `.agents/skills/`, `~/.claude/skills/` or a project's own `./.claude/skills/` (measured: `npx skills add … -a claude-code -y` installs there, project-scoped, distinct from the global `-g` form) → **`npx skills`** (no hooks, no agents). Read from a URL → a raw read (no execution: say so and stop before claiming to run anything). Don't use `$CLAUDE_PLUGIN_ROOT`: it is **not** set in a skill's shell (measured 2026-09-23) |
 
@@ -118,7 +118,7 @@ is broken because a network probe failed.
 
 ## Stage 2 — No `Roadmap/`, no `golden-frijoles.config.json`, or a `Roadmap/` with no epic and no idea yet? Setup: say what happened, then one question at a time
 
-A fresh skeleton counts as not set up: `gf setup` and `frijoles-kit init` leave the config and an empty `Roadmap/`, and the
+A fresh skeleton counts as not set up: `frijoles setup` and `frijoles-kit init` leave the config and an empty `Roadmap/`, and the
 route below (the read of an existing repo, a new idea's sentence) has still not run. `read-repo.mjs --look` prints the
 epic and idea counts.
 
@@ -130,13 +130,13 @@ Never hand-edit `golden-frijoles.config.json`.
 
 ### 2.1 What happened, and what I found (before any question)
 
-1. **Signed in?** Run `npx -y @golden-frijoles/cli@0.8.0 whoami --json` (the package, never a bare `gf`: some shells
-   alias `gf` to `git fetch`). Exit 0 → print its two facts:
+1. **Signed in?** Run `npx -y @golden-frijoles/cli@0.8.0 whoami --json` (the package, never a bare `frijoles`: some shells
+   alias `frijoles` to `git fetch`). Exit 0 → print its two facts:
    ```
    Signed in as <account.email>
-   gf signed in on this machine, for the product <activeProject>
+   frijoles signed in on this machine, for the product <activeProject>
    ```
-   No `activeProject` → the second line says "no product picked yet (`gf projects use <slug>`)". Exit 2 (no credential
+   No `activeProject` → the second line says "no product picked yet (`frijoles projects use <slug>`)". Exit 2 (no credential
    on this machine) → leave this block out and say nothing about it. Any other failure → one line: "Sign-in: could not
    look (<why>)". Never say "new account": `whoami` does not report it.
 2. **I looked first.** Find groom's generators (`$GROOM`, with the block in groom's SKILL.md → *Locate the
@@ -161,8 +161,8 @@ reads it. Q3 "board" and Q5 "proof depth" are in the registry as `askWhen: 'neve
 > **1 This repo:** it already has a product · **2 A new idea:** nothing built yet · **3 Just planning:** don't change my repo
 
 1 → `existing`, 2 → `new`, 3 → `planning-only`, written with `config set project.mode <value>` exactly as before.
-**Already answered** (the kit's `config get project.mode` prints a value, for example after `gf setup`): don't ask Q1
-again; say which answer you found ("You told `gf setup`: this repo") and take its route below.
+**Already answered** (the kit's `config get project.mode` prints a value, for example after `frijoles setup`): don't ask Q1
+again; say which answer you found ("You told `frijoles setup`: this repo") and take its route below.
 
 **Q4, in these words** (four short lines, then the two choices — say what an account adds before asking for one):
 
@@ -175,8 +175,8 @@ again; say which answer you found ("You told `gf setup`: this repo") and take it
 >
 > **Sign in now (recommended)** · **Later**
 
-"Sign in now" (`now`) does **not** write the config file: run `gf login` (it opens the browser and
-waits for the code to be confirmed), then `gf init`, which writes `.env.local`. "Later" (`later`, the
+"Sign in now" (`now`) does **not** write the config file: run `frijoles login` (it opens the browser and
+waits for the code to be confirmed), then `frijoles init`, which writes `.env.local`. "Later" (`later`, the
 default when skipped) finishes setup with no account and no error; ask again the first time a bet
 needs a flag. Ask Q4 last, after the route below has finished.
 
@@ -224,7 +224,7 @@ Keep this stage to the steps above — don't re-explain the registry or restate 
 | verifying rendered behavior, "does this look right", a build-time check | `live-smoke` (the cross-review rails also ship in the kit) |
 | daily/weekly ops: standups, recaps, PMO reporting, watching a PR, doc bloat, stale previews | `standup-post` / `weekly-recap` / `pmo-report` / `babysit-pr` / `doc-hygiene` / `vercel-prune` |
 | standing up a reviewed Claude Code routine | `node scripts/routine-bootstrap.mjs <name>`, then paste it into `/schedule` |
-| shipping, flags, kill switches | `gf` (the hosted CLI — see the repo README's flags section) |
+| shipping, flags, kill switches | `frijoles` (the hosted CLI — see the repo README's flags section) |
 | turning on Jev (semantic review/prose guards), "set up Jev", a TypeSafe key | **Jev setup** below |
 | Telegram/Slack notifications, "find my chat id", "send a test message" | **Notify setup** below |
 
@@ -246,7 +246,7 @@ API, and **nothing leaves this machine until the user says yes**. Do these in or
 5. Only after that succeeds, offer the rail modes for `review` and `prose` in `jev.config.json`: `off`, `shadow` (Jev
    runs beside the regex and only logs; needs a `shadowExpires` date no more than 21 days out) or `jev`.
 
-`gf doctor` then shows `jev.egress` as configured.
+`frijoles doctor` then shows `jev.egress` as configured.
 
 ## Notify setup
 

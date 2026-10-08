@@ -134,19 +134,19 @@ function fixture(extra) {
   return { root, readme, done: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-// A spawn that answers like gf would, from a table of `args joined` → { status, body } (or `enoent`).
+// A spawn that answers like frijoles would, from a table of `args joined` → { status, body } (or `enoent`).
 function gfStub(table, seen = []) {
   return (bin, args) => {
     seen.push([bin, ...args]);
     const key = args.filter((a) => a !== '--json').join(' ');
     const hit = Object.entries(table).find(([k]) => key.startsWith(k));
-    if (!hit) return { error: Object.assign(new Error('spawn gf ENOENT'), { code: 'ENOENT' }) };
+    if (!hit) return { error: Object.assign(new Error('spawn frijoles ENOENT'), { code: 'ENOENT' }) };
     const [, answer] = hit;
     return { status: answer.status ?? 0, stdout: JSON.stringify(answer.body), stderr: '' };
   };
 }
 
-const NO_GF = () => ({ error: Object.assign(new Error('spawn gf ENOENT'), { code: 'ENOENT' }) });
+const NO_GF = () => ({ error: Object.assign(new Error('spawn frijoles ENOENT'), { code: 'ENOENT' }) });
 
 async function run(root, args, { env = {}, spawnFn = NO_GF } = {}) {
   let out = '';
@@ -212,7 +212,7 @@ const READINGS = (latest) => ({
   latest,
 });
 
-test('S3.3: with gf signed in, the read arrives with the number and its pointer; --write approves it', async () => {
+test('S3.3: with frijoles signed in, the read arrives with the number and its pointer; --write approves it', async () => {
   const f = fixture([]);
   try {
     const seen = [];
@@ -306,14 +306,14 @@ test('S3.3: every failure falls back to asking, with its reason', async () => {
   const f = fixture([]);
   try {
     const missing = await run(f.root, ['--today', '2026-11-05']);
-    assert.match(missing.out, /could not fetch the number: gf is not installed/);
+    assert.match(missing.out, /could not fetch the number: frijoles is not installed/);
     assert.match(missing.out, /needs: Ask the owner/);
     const signedOut = await run(f.root, ['--today', '2026-11-05'], {
       spawnFn: gfStub({
         'north-star readings': { status: 2, body: { ok: false, code: 'unauthorized', error: 'x' } },
       }),
     });
-    assert.match(signedOut.out, /could not fetch the number: gf is not signed in \(run gf login\)/);
+    assert.match(signedOut.out, /could not fetch the number: frijoles is not signed in \(run frijoles login\)/);
     const unknown = await run(f.root, ['--today', '2026-11-05'], {
       spawnFn: gfStub({
         'north-star readings': {
@@ -362,4 +362,23 @@ test('S3.3: a reading from before the epic shipped is not evidence for it; a rec
     [withAb.actual, withAb.evidence, withAb.decision.outcome],
     [60, 'ab:smart-defaults', 'ship_treatment']
   );
+});
+
+test('runGf: tries frijoles, then the pre-1.0 name gf, and only falls through on "not installed"', () => {
+  const calls = [];
+  const spawnFn = (bin) => {
+    calls.push(bin);
+    if (bin === 'frijoles') return { error: Object.assign(new Error('spawn frijoles ENOENT'), { code: 'ENOENT' }) };
+    return { status: 0, stdout: JSON.stringify({ ok: true, data: 1 }) };
+  };
+  assert.deepEqual(runGf(['whoami'], { env: {}, spawnFn }), { ok: true, body: { ok: true, data: 1 } });
+  assert.deepEqual(calls, ['frijoles', 'gf']);
+
+  const tried = [];
+  const notSignedIn = (bin) => (tried.push(bin), { status: 2, stdout: '' });
+  assert.equal(runGf(['whoami'], { env: {}, spawnFn: notSignedIn }).code, 'unauthorized');
+  assert.deepEqual(tried, ['frijoles'], 'a CLI that ran and refused is an answer, not a reason to try gf');
+
+  const neither = () => ({ error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) });
+  assert.match(runGf(['whoami'], { env: {}, spawnFn: neither }).why, /frijoles is not installed/);
 });

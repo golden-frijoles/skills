@@ -49,7 +49,7 @@ test('`flagsmith` fails the guard — via the decommissioned-tooling rule, and o
 
 test('the flag-mechanism rule does NOT fire on the mechanism this template actually ships', () => {
   const legitimate = [
-    'gf flags create checkout.demo_enabled --kill-switch --all-envs',
+    'frijoles flags create checkout.demo_enabled --kill-switch --all-envs',
     "flags.isEnabled('checkout.demo_enabled', false)",
     'The seam lives in apps/example-app/flags.mjs.',
     'See references/flags-runtime.md for the Edge answer.',

@@ -17,9 +17,9 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { flags } from './flags.mjs';
 
-// `.env.local` is what `gf init` writes, and a framework app loads it for you. This one has no
+// `.env.local` is what `frijoles init` writes, and a framework app loads it for you. This one has no
 // framework, so it loads it here — from the app directory first, then the repo root, because either
-// is a reasonable place to have run `gf init`. Guarded on both sides: `process.loadEnvFile` needs
+// is a reasonable place to have run `frijoles init`. Guarded on both sides: `process.loadEnvFile` needs
 // Node >= 20.12, and a missing file is the ORDINARY case on a fresh clone. Nothing about a flag
 // provider may stop this server starting.
 for (const candidate of ['./.env.local', '../../.env.local']) {

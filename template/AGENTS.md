@@ -54,11 +54,11 @@ answer the kill-switch question, and the answer names a flag mechanism — so th
 
 | Concern | Where it lives |
 |---|---|
-| Creating a flag, in every environment | `gf flags create <domain>.<feature>_enabled --kill-switch --all-envs` |
+| Creating a flag, in every environment | `frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs` |
 | Reading a flag at runtime | the one seam — `apps/*/flags.mjs`, wrapping `createFlagProvider` |
-| Turning a flag on or off | `gf flags rollout` / `gf flags kill`, or the Golden console |
-| The credential | `GOLDEN_FRIJOLES_FLAG_READ_KEY` in `.env.local`, written by `gf init`, **server-side only** |
-| Reading them at all | `npm install @golden-frijoles/sdk` in the app that reads flags — `gf` writes, the SDK reads |
+| Turning a flag on or off | `frijoles flags rollout` / `frijoles flags kill`, or the Golden console |
+| The credential | `GOLDEN_FRIJOLES_FLAG_READ_KEY` in `.env.local`, written by `frijoles init`, **server-side only** |
+| Reading them at all | `npm install @golden-frijoles/sdk` in the app that reads flags — `frijoles` writes, the SDK reads |
 | Is it linked at all? | `node scripts/preflight.mjs` — it fails loudly and prints the one command |
 
 What this forbids, concretely: a checked-in map of default flag values, a `flags` table in your own
@@ -74,7 +74,7 @@ Three things that are easy to get wrong, each answered in
   property that makes a flag provider safe to depend on.
 - **Middleware / Edge is a decision, not a default.** The SDK runs there; its background-snapshot
   design does not. Move the seam to a Node runtime, or say in the epic that you did not.
-- **Activating a flag is its own step.** `gf flags sync` pushes *definitions* and activates nothing.
+- **Activating a flag is its own step.** `frijoles flags sync` pushes *definitions* and activates nothing.
   A kill-switch story that stops at "created" can serve compile defaults in production while the
   console reads "never turned on here".
 
@@ -157,12 +157,12 @@ npm run build
 
 | Variable | What it is | Where it lives |
 |---|---|---|
-| `GOLDEN_FRIJOLES_URL` | the Golden Frijoles deployment | `.env.local` (written by `gf init`) |
+| `GOLDEN_FRIJOLES_URL` | the Golden Frijoles deployment | `.env.local` (written by `frijoles init`) |
 | `GOLDEN_FRIJOLES_FLAG_READ_KEY` | reads this environment's flag snapshot — **server-side only** | `.env.local`, gitignored, mode 0600 |
 | `GOLDEN_FRIJOLES_ENVIRONMENT` | `development` \| `preview` \| `production` | `.env.local` |
 
 A `flag_sync` key (writing flag *definitions*) is an operator/deploy credential and belongs in **CI
-secrets**, never in `.env.local`. `gf init` deliberately does not write one.
+secrets**, never in `.env.local`. `frijoles init` deliberately does not write one.
 
 <!-- TEMPLATE FILL-IN: add the env vars YOUR app needs below, grouped by app if a monorepo. -->
 

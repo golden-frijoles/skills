@@ -3,7 +3,7 @@
 //
 // Every rail now asks lib/config.mjs for its section, which lays golden-frijoles.config.json over the legacy file
 // (D9). A rail that goes back to `JSON.parse(readFileSync('review-config.json'))` would silently ignore the new file,
-// so a user's `gf config set` would stop reaching it. This guard fails on that, in template/scripts/ (X16: consumer
+// so a user's `frijoles config set` would stop reaching it. This guard fails on that, in template/scripts/ (X16: consumer
 // forks keep their own reads, by design, and are not scanned).
 //
 // What counts as a direct read: a read (readFileSync / read) whose argument names one of the seven legacy config

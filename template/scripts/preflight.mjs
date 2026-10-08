@@ -20,7 +20,7 @@
 //     true until someone acts, and re-running changes nothing. Saying so loudly is the whole job.
 //
 //   • A REJECTED CREDENTIAL is a hard failure too (exit 1). A 401 is not an outage: the key is
-//     revoked, expired or for another project, and the remedy is another `gf init`.
+//     revoked, expired or for another project, and the remedy is another `frijoles init`.
 //
 //   • AN UNREACHABLE DEPLOYMENT IS A WARNING (exit 0). A transient outage, a captive-portal proxy,
 //     a 404 from a deployment with flag serving switched off, an offline laptop on a plane — none
@@ -39,13 +39,13 @@
 // ── Where this runs: at init and at session start, NOT as a CI gate ───────────────────────────
 // `.env.local` is gitignored — deliberately, it holds a live credential — so a CI checkout does not
 // have one and this check would fail there for a reason that is not a defect. Run it on a fresh
-// spawn, at session start, and after `gf init`. If you DO want it in CI, inject the same variables
+// spawn, at session start, and after `frijoles init`. If you DO want it in CI, inject the same variables
 // from CI secrets (the reader below falls back to the process environment for exactly that) and
 // pass `--offline` if your runner has no egress.
 //
 // ── What it does NOT prove ─────────────────────────────────────────────────────────────────────
 // That any particular flag exists, or that it is ACTIVATED. Definitions are catalog-as-code and
-// activations are not (D4) — `gf flags get <key>` is the verb that answers that, per flag and per
+// activations are not (D4) — `frijoles flags get <key>` is the verb that answers that, per flag and per
 // environment, and a kill-switch story names it as its own step. `—` in its SERVING column means
 // never activated here.
 //
@@ -63,6 +63,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CLI_BIN,
+  LEGACY_CLI_BIN,
   CLI_NPX_INIT,
   CLI_GLOBAL_INSTALL,
   DEFAULT_API_URL,
@@ -87,7 +88,7 @@ const ORDER = ['cli', 'cli-version', 'sdk', 'project', 'flag-read-key', 'snapsho
 /**
  * The whole decision, as a pure function of what was found.
  *
- * Every impure act — spawning `gf`, reading `.env.local`, the HTTP probe — happens in `main()` and
+ * Every impure act — spawning `frijoles`, reading `.env.local`, the HTTP probe — happens in `main()` and
  * arrives here as data, so all six states the sprint names (no project · no key · CLI absent · CLI
  * outdated · all good · unreachable) are unit-testable without a network, a CLI or a filesystem.
  *
@@ -136,7 +137,7 @@ export function evaluatePreflight({ cli, sdk = { found: false, source: null }, e
   }
 
   // ── 3. can the APP actually read a flag — is the SDK installed ────────────────────────────
-  // ⚠️ **Added after review.** The CLI and the SDK are different halves: `gf` creates and kills
+  // ⚠️ **Added after review.** The CLI and the SDK are different halves: `frijoles` creates and kills
   // flags, the SDK reads them. Without this check a project reached FIVE GREEN CHECKS, including a
   // live snapshot, while every flag resolved to its call-site default forever — because nothing had
   // ever installed `@golden-frijoles/sdk`. The seam imports it dynamically (deliberately: that is
@@ -226,18 +227,21 @@ export function evaluatePreflight({ cli, sdk = { found: false, source: null }, e
     warnings: warned.length,
     exitCode: failed.length === 0 ? 0 : 1,
     // The remedy is printed whenever the project is not wired — which is exactly the set of
-    // failures `gf init` fixes. A stale CLI is not one of them, so it does not drag the install
+    // failures `frijoles init` fixes. A stale CLI is not one of them, so it does not drag the install
     // block in behind it.
     showOnboarding: failed.some((c) => c.id === 'project' || c.id === 'flag-read-key' || c.id === 'snapshot'),
     checks,
   };
 }
 
-/** Is `gf` runnable, and what does it say its version is? */
+/** Is `frijoles` runnable, and what does it say its version is? */
 export function findCli({ cwd = REPO, spawn = spawnSync } = {}) {
   const candidates = [
     { source: `${CLI_BIN} (PATH)`, command: CLI_BIN },
     { source: `node_modules/.bin/${CLI_BIN}`, command: join(cwd, 'node_modules', '.bin', CLI_BIN) },
+    // An install from before 1.0 has only the old name. Found, but said, so the version check can ask for an upgrade.
+    { source: `${LEGACY_CLI_BIN} (PATH, the old name)`, command: LEGACY_CLI_BIN },
+    { source: `node_modules/.bin/${LEGACY_CLI_BIN} (the old name)`, command: join(cwd, 'node_modules', '.bin', LEGACY_CLI_BIN) },
   ];
   for (const candidate of candidates) {
     const result = spawn(candidate.command, ['--version'], { encoding: 'utf8', timeout: 20_000 });
@@ -325,7 +329,7 @@ export function readEnvFile(path, processEnv = process.env) {
  *
  * Four answers, and the fourth is the one D1 turns on:
  *   live               — a snapshot came back, for the environment this project says it is.
- *   dead               — 401. Unknown, revoked, expired. Configuration: re-run `gf init`.
+ *   dead               — 401. Unknown, revoked, expired. Configuration: re-run `frijoles init`.
  *   wrong-environment  — it resolves, for a DIFFERENT environment. A `flag_read` key is scoped to
  *                        one, so this is a production config holding a development credential with
  *                        nothing anywhere saying so — the worst shape a flag bug has.

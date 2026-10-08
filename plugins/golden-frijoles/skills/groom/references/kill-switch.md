@@ -19,7 +19,7 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      *never build a parallel flag store*). The taxonomy lives in the provider, not in docs and not in
      a checked-in default map.
      ```
-     gf flags create <domain>.<feature>_enabled --kill-switch --all-envs
+     frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs
      ```
   2. **Polarity** (pick the fail-open default to match intent):
      - **Kill-switch** (ship live, instantly killable) → default **`true`**, **create it ENABLED in
@@ -34,16 +34,16 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      provider resolves **synchronously** against a **caller-supplied default**, so the seam's signature
      carries that default and the flag can never make the seam `async`.
   4. **Activation — its own step, not a consequence of the definition.** Definitions are
-     catalog-as-code; activations are not. `gf flags sync` pushes definitions from source control and
-     **does not activate anything**; `gf flags create --all-envs` creates *and* activates. The story
+     catalog-as-code; activations are not. `frijoles flags sync` pushes definitions from source control and
+     **does not activate anything**; `frijoles flags create --all-envs` creates *and* activates. The story
      must carry the check, per environment:
      ```
-     gf flags get <domain>.<feature>_enabled
+     frijoles flags get <domain>.<feature>_enabled
      ```
      It prints one row per environment. **PRODUCTION must not read `—`.** In the CLI's vocabulary
      `—` is *never activated here*, `off (nothing served)` is *activated then deactivated* — both
      mean the consumer is serving its call-site default — and anything else is the value a context
-     with no attributes actually gets. (`gf flags ls` is the all-flags view; it takes no `--env`.)
+     with no attributes actually gets. (`frijoles flags ls` is the all-flags view; it takes no `--env`.)
      *The cautionary tale is real: a project synced 42 flag definitions, never created the
      activations, and 39 of them read "Never turned on here" while the runtime quietly served
      compile-time defaults through the fallback chain. Every dashboard said the flags existed.*

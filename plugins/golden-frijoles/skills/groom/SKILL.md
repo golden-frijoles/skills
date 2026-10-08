@@ -158,7 +158,7 @@ rest; unsure means high. The tier selects the review scope (WAYS-OF-WORKING → 
 escalate triggers are the ONE list in WAYS-OF-WORKING → *Escalate, don't guess* — reference it, never restate it here.
 
 ### Stage 6b — Flag decision for a `risk: high` epic
-**Does the product owner want a flag? Default no.** Record the answer in the seed — when it is yes, also its key in the seed's frontmatter (`flag_key:`, which the scaffold copies and the epic page reads); if yes, follow `references/kill-switch.md` — the mechanism is **Golden Frijoles** (`gf flags create`), with polarity · seam · **activation** · runtime placement. If the project has no provider linked, `node scripts/preflight.mjs` prints the two commands that fix it.
+**Does the product owner want a flag? Default no.** Record the answer in the seed — when it is yes, also its key in the seed's frontmatter (`flag_key:`, which the scaffold copies and the epic page reads); if yes, follow `references/kill-switch.md` — the mechanism is **Golden Frijoles** (`frijoles flags create`), with polarity · seam · **activation** · runtime placement. If the project has no provider linked, `node scripts/preflight.mjs` prints the two commands that fix it.
 
 ## Locate the generators — do this once, before Stage 7
 

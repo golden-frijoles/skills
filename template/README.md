@@ -69,10 +69,10 @@ plugin is pull-based/versioned; see the repo root README for the distinction.
    npx @golden-frijoles/cli login
    npx @golden-frijoles/cli init
    ```
-   `npm i -g @golden-frijoles/cli` puts `gf` on your PATH; every command takes `--json`. `gf init`
+   `npm i -g @golden-frijoles/cli` puts `frijoles` on your PATH; every command takes `--json`. `frijoles init`
    creates the project if there isn't one, mints a `flag_read` key, writes `.env.local` at mode 0600
    (refusing if git does not actually ignore it) and prints the snippet that reads it. Re-run the
-   preflight: it passes. **Then install the reader** — `gf` creates and kills flags, the SDK reads
+   preflight: it passes. **Then install the reader** — `frijoles` creates and kills flags, the SDK reads
    them, and they are different halves:
    ```
    cd apps/example-app && npm install          # @golden-frijoles/sdk is already a dependency

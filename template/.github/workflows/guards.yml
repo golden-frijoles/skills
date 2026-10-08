@@ -83,7 +83,7 @@ jobs:
       #
       # `scripts/preflight.mjs` is deliberately NOT run here: `.env.local` is gitignored, so a CI
       # checkout has no credential and the check would fail for a reason that is not a defect. It is
-      # a session-start and post-`gf init` check. To run it here anyway, inject the same three
+      # a session-start and post-`frijoles init` check. To run it here anyway, inject the same three
       # variables from CI secrets.
       - name: flags — the seam falls back rather than failing
         if: steps.areas.outputs.flags == 'true'

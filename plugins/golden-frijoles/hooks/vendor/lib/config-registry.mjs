@@ -1,7 +1,7 @@
 // config-registry.mjs — every setting Golden Frijoles can ask for, in one table (golden-frijoles-plugin S4.3, D11).
 //
 // This is the audit §4.3 table as data. Setup reads it for its questions, a script reads it before asking
-// just-in-time (lib/config.mjs `needSetting`), and `gf doctor` reads it to say which modules are configured. A new
+// just-in-time (lib/config.mjs `needSetting`), and `frijoles doctor` reads it to say which modules are configured. A new
 // setting is a new row here, never a question hard-coded in a skill.
 //
 //   key       dotted, `<section>.<name>`: the path in golden-frijoles.config.json
@@ -10,7 +10,7 @@
 //             | 'first-high-risk-groom' | 'never-yet' (declared so the schema is ready; nothing reads it this wave)
 //   default   what a skipped question means. `null` = "unanswered", which a rail must treat as its safest choice
 //   question  the plain words an agent asks, once
-//   choices   optional allowed values; `store: 'env'` means the answer lives in .env.local (gf init), never here
+//   choices   optional allowed values; `store: 'env'` means the answer lives in .env.local (frijoles init), never here
 //
 // Zero deps, no imports: config.mjs imports THIS, so it must not import back.
 
@@ -42,7 +42,7 @@ export const REGISTRY = Object.freeze([
     choices: ['later', 'now'],
     store: 'env',
     question:
-      'An account adds flags you can roll out and turn off, each bet measured on its read date, every product in one place and an outcome report you can send. Sign in now (recommended: gf login, then gf init), or later?',
+      'An account adds flags you can roll out and turn off, each bet measured on its read date, every product in one place and an outcome report you can send. Sign in now (recommended: frijoles login, then frijoles init), or later?',
   },
   {
     key: 'board.sink',
@@ -140,7 +140,7 @@ export const REGISTRY = Object.freeze([
   {
     key: 'routines',
     module: 'Operate',
-    // never-yet: declares the section so readSection accepts it, while `gf doctor` (which skips never-yet
+    // never-yet: declares the section so readSection accepts it, while `frijoles doctor` (which skips never-yet
     // rows) never reports Operate unconfigured for it — its values are per-routine fill-ins that
     // routine-bootstrap.mjs names itself when one is missing (#191 review).
     askWhen: 'never-yet',
@@ -173,7 +173,7 @@ export const REGISTRY = Object.freeze([
   },
   {
     // semantic-lint D4: the rules the lint rail's selectors run (id, globs, allowlist, patterns, question). never-yet,
-    // like `routines`: it declares the section so `config get/set` accept it, and `gf doctor` (which skips never-yet
+    // like `routines`: it declares the section so `config get/set` accept it, and `frijoles doctor` (which skips never-yet
     // rows and prints one line per MODULE) never reports Build unconfigured because a project has no lint rules.
     key: 'lint.rules',
     module: 'Build',

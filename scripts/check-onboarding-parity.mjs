@@ -3,7 +3,7 @@
 //
 // ── Why this exists ────────────────────────────────────────────────────────────────────────────
 // golden-flags-by-default S1.4's acceptance: the text the agent prints, the install page's CLI
-// block and `gf init`'s own next-step line must say the same thing. The commands live once, in
+// block and `frijoles init`'s own next-step line must say the same thing. The commands live once, in
 // `template/scripts/lib/golden-onboarding.mjs`, and `scripts/preflight.mjs` prints them from there
 // — but a README is prose, and prose drifts silently. Three copies of
 // `npx @golden-frijoles/cli init` agree right up until one of them is edited, and the one that
@@ -14,8 +14,8 @@
 //
 // ── `--exec`: presence is not execution, and that distinction cost a real defect ───────────────
 // The first version of this file only checked that strings were PRESENT, and the string it was
-// welding into five surfaces was `gf flags ls --env production` — a command that does not exist.
-// `gf flags ls` accepts only `--project`, so it exits 1 with a usage error before it ever reaches
+// welding into five surfaces was `frijoles flags ls --env production` — a command that does not exist.
+// `frijoles flags ls` accepts only `--project`, so it exits 1 with a usage error before it ever reaches
 // auth. Every surface agreed with every other surface, perfectly, about something untrue.
 //
 // `--exec` closes that: it RUNS each command the surfaces tell a reader to run and asserts the CLI
@@ -23,19 +23,19 @@
 // then asked for a credential, which is exactly as far as a check like this should get. `invalid`
 // (exit 1) is the failure: that is the CLI saying the command does not exist.
 //
-// It SKIPS, loudly, when no `gf` is resolvable — "could not look" is its own outcome and never the
+// It SKIPS, loudly, when no `frijoles` is resolvable — "could not look" is its own outcome and never the
 // failure one (LEARNINGS), because a check that goes red when npm is having a bad day is the same
 // mistake `preflight.mjs` refuses to make. The skip prints a `::warning::` so a skipped run cannot
 // read as a green one on the surface people actually look at.
 //
 // ⚠️ **AND IT RUNS UNAUTHENTICATED, DELIBERATELY AND BY CONSTRUCTION. Read this before touching
 // `probeCommand`.** Two of the three advertised commands are WRITE verbs:
-// `gf flags create … --all-envs` creates a definition **and activates it in production**, and
-// `gf flags kill … --env production` kills it there. The first version of this mode spawned the CLI
+// `frijoles flags create … --all-envs` creates a definition **and activates it in production**, and
+// `frijoles flags kill … --env production` kills it there. The first version of this mode spawned the CLI
 // with no `env` option, so the child inherited `process.env` and `$HOME` — and the CLI resolves a
 // credential from `GOLDEN_FRIJOLES_TOKEN` or from `~/.config/golden-frijoles/credentials.json`.
-// On any machine that had run `gf login` — including, precisely, the one this epic still owes a
-// live `gf init` on — a documentation parity check would have written to the product owner's real
+// On any machine that had run `frijoles login` — including, precisely, the one this epic still owes a
+// live `frijoles init` on — a documentation parity check would have written to the product owner's real
 // flag catalog. Caught in re-review before it ever ran that way.
 //
 // So the child gets a scrubbed environment (blank token, `XDG_CONFIG_HOME` and `HOME` pointed at an
@@ -45,7 +45,7 @@
 //
 // ── The half this cannot check, stated rather than implied ─────────────────────────────────────
 // Two of the surfaces are in the Golden Frijoles product repo — its `/install` page
-// (`apps/web/lib/cli-install.ts`) and `gf init`'s printed next-steps
+// (`apps/web/lib/cli-install.ts`) and `frijoles init`'s printed next-steps
 // (`packages/cli/src/commands/init.ts`). A template cannot import a product's web app to read a
 // string, so those are transcribed into the module with their origin named, and re-checked by hand
 // at each CLI release. What is NOT left to prose: `preflight.mjs` exercises the real deployment
@@ -152,7 +152,7 @@ function probeCommand(cliPath, command, scrubbedEnv) {
     .replace(/<domain>\.<feature>_enabled/g, 'preflight.parity_probe')
     .trim()
     .split(/\s+/)
-    .slice(1); // drop the `gf`
+    .slice(1); // drop the `frijoles`
   const run = spawnSync(cliPath, [...argv, '--json'], {
     encoding: 'utf8',
     timeout: 30_000,
@@ -230,7 +230,7 @@ function stripAnsi(text) {
  * WRITE verbs against local config state, so they run with `HOME`, `XDG_CONFIG_HOME` and
  * `CLAUDE_CONFIG_DIR` all pointed at one empty temp dir (D8's addition to the onboarding-parity
  * shape), and the negative control — the REAL `~/.claude/plugins/installed_plugins.json`'s hash
- * unchanged — is asserted, not assumed, exactly as `check-onboarding-parity.mjs`'s original `gf`
+ * unchanged — is asserted, not assumed, exactly as `check-onboarding-parity.mjs`'s original `frijoles`
  * probe asserts `unauthorized` rather than merely accepting it.
  *
  * Each binary that cannot be resolved, and each command whose output looks like a network/registry
@@ -431,18 +431,18 @@ function installPromptCodexInstallCheck() {
   return 0;
 }
 
-/** The CLI version that first carries `gf config` (golden-frijoles-plugin S5.2, D10). */
+/** The CLI version that first carries `frijoles config` (golden-frijoles-plugin S5.2, D10). */
 export const LOCAL_CONFIG_SINCE = '0.2.0';
-const LOCAL_CONFIG_COMMAND = 'gf config list --json';
+const LOCAL_CONFIG_COMMAND = 'frijoles config list --json';
 
 /**
- * The local-command probe (S5.2): `gf config` reads and writes only the project's
+ * The local-command probe (S5.2): `frijoles config` reads and writes only the project's
  * golden-frijoles.config.json, so unlike the kill-switch story it must SUCCEED without a credential —
  * exit 0 and parseable JSON, in an empty temp project under the same scrubbed HOME. It SKIPS (a
- * `::warning::`, returns null) when the resolved `gf` predates the command: the docs and the CLI ship
+ * `::warning::`, returns null) when the resolved `frijoles` predates the command: the docs and the CLI ship
  * separately (D14), and an older CLI on PATH is "could not look", not a defect.
  */
-/** Pure — does the resolved `gf` carry `gf config`? An unknown or unparseable version is "could not tell": skip. */
+/** Pure — does the resolved `frijoles` carry `frijoles config`? An unknown or unparseable version is "could not tell": skip. */
 export function carriesLocalConfig(version) {
   const cmp = version ? compareVersions(version, LOCAL_CONFIG_SINCE) : null;
   return cmp !== null && cmp >= 0;

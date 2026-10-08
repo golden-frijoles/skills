@@ -91,19 +91,19 @@ middleware" has not made this decision — it has skipped it.
 
 | Key | What it authorizes | Where it lives |
 |---|---|---|
-| `flag_read` | reading one environment's snapshot | `GOLDEN_FRIJOLES_FLAG_READ_KEY` in `.env.local`, written by `gf init`, **server-side only** |
+| `flag_read` | reading one environment's snapshot | `GOLDEN_FRIJOLES_FLAG_READ_KEY` in `.env.local`, written by `frijoles init`, **server-side only** |
 | `flag_sync` | writing flag *definitions* (catalog-as-code) | **CI secrets.** Never in `.env.local` |
 | `ingest` | sending telemetry events | wherever your telemetry is configured |
 
-- **`gf init` writes only `flag_read`,** on purpose: a verb whose job is "let this app read its
+- **`frijoles init` writes only `flag_read`,** on purpose: a verb whose job is "let this app read its
   flags" must not put wider credentials on disk as a side effect. Mint the others deliberately with
-  `gf keys create --type flag_sync|ingest`.
+  `frijoles keys create --type flag_sync|ingest`.
 - **`flagReadKey` must never reach a browser bundle.** It is a revocable credential: anything that
   holds it can read every flag in that environment. Keep the provider in server-only code, never
   prefix the variable with your framework's public prefix (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`), and
   send *resolved values* to the client, never the key. Where a client genuinely needs a flag, resolve
   it on the server and pass the boolean down.
-- **`.env.local` is gitignored in this template,** and `gf init` refuses to run if git does not
+- **`.env.local` is gitignored in this template,** and `frijoles init` refuses to run if git does not
   actually ignore it — it asks `git check-ignore` rather than trusting a line it just appended.
 - A `flag_read` key is **scoped to one environment**. A production config holding a development key
   resolves development's flags and says nothing about it, which is the worst shape a flag bug has —

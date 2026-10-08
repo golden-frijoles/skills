@@ -15,7 +15,7 @@
 // Secrets never go in this file, only the NAMES of the env vars that hold them. `setKey` refuses a value that looks
 // like a credential.
 //
-// Zero deps. Imported by the kit's `frijoles-kit config` and, via `@golden-frijoles/kit/config`, by the `gf` CLI (D10).
+// Zero deps. Imported by the kit's `frijoles-kit config` and, via `@golden-frijoles/kit/config`, by the `frijoles` CLI (D10).
 
 import { existsSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
@@ -24,7 +24,7 @@ import { REGISTRY } from './config-registry.mjs';
 
 // One import for every front end (D10): the CLI's doctor and setup read the registry through this module too.
 export { REGISTRY, MODULES } from './config-registry.mjs';
-// The project root this core reads and writes under, exported so the `gf` CLI resolves the SAME directory (D10).
+// The project root this core reads and writes under, exported so the `frijoles` CLI resolves the SAME directory (D10).
 export { projectRoot } from './project-root.mjs';
 
 export const CONFIG_FILENAME = 'golden-frijoles.config.json';
@@ -271,7 +271,7 @@ export const REDACTED = '<redacted: looks like a secret; keep it in .env.local>'
 
 /**
  * Pure — `value` with every secret-looking string replaced by REDACTED. `loadConfig` and `getKey` are what
- * `config list/get` and `gf doctor` PRINT, and a legacy file may still hold a literal token the write guard never saw
+ * `config list/get` and `frijoles doctor` PRINT, and a legacy file may still hold a literal token the write guard never saw
  * (copy-in review). Rails read through `readSection`, which is never redacted.
  */
 export function redactSecrets(key, value) {

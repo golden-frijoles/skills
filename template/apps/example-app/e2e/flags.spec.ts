@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 // ⚠️ **It asserts the SHAPE, never the VALUE, and that distinction is the whole point** (found in
 // review). The first version hard-asserted `demo.hello_enabled === false`, which is the answer only
 // while the flag provider is NOT working: this template's own walkthrough has the project run
-// `gf flags create demo.hello_enabled --kill-switch --all-envs`, and `--kill-switch` means born
+// `frijoles flags create demo.hello_enabled --kill-switch --all-envs`, and `--kill-switch` means born
 // serving `true`. So a project that followed the instructions turned its own shipped gate red, and
 // the gate was green precisely while flags were broken — an assertion pointing exactly backwards.
 //

@@ -7,7 +7,7 @@
 //   frijoles-kit config migrate [--dry-run]      fold the legacy files into golden-frijoles.config.json (never edits them)
 //
 // A thin front end: every rule (precedence, the secret guard, what migrate folds) lives in lib/config.mjs, which the
-// `gf` CLI imports too. Exit 0 ok · 1 usage · 2 configuration error (a malformed file, a secret, an unknown section).
+// `frijoles` CLI imports too. Exit 0 ok · 1 usage · 2 configuration error (a malformed file, a secret, an unknown section).
 
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

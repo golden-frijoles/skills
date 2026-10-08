@@ -4,7 +4,7 @@
 // kill-switch story in this project gates on, and the whole point of shipping it in the template is
 // that your first high-risk epic starts at "create the flag" rather than at "integrate an SDK".
 // If you move it, fix the one relative import below — the env var NAMES are defined once, in
-// `scripts/lib/golden-onboarding.mjs`, because `gf init` writes that same set into `.env.local`.
+// `scripts/lib/golden-onboarding.mjs`, because `frijoles init` writes that same set into `.env.local`.
 //
 // ── The three rules this file exists to enforce ────────────────────────────────────────────────
 //
@@ -59,7 +59,7 @@ export function flagConfigFromEnv(env = process.env) {
   // flag served its compile-time default **permanently** — indistinguishable from an outage, and
   // silent.
   //
-  // Omitting the field lets the first snapshot establish the truth. `gf init` writes all three
+  // Omitting the field lets the first snapshot establish the truth. `frijoles init` writes all three
   // names, so this branch means a hand-edited file or a partial CI injection; `preflight.mjs` warns
   // on exactly that, because "nobody said which environment this is" is still worth knowing.
   //
@@ -88,7 +88,7 @@ export function createFlags({ env = process.env, loadSdk = () => import(SDK_PACK
   async function initialize() {
     const resolved = flagConfigFromEnv(env);
     if (!resolved.ok) {
-      // NOT an error. A project that has not run `gf init` yet still has to boot, build and test.
+      // NOT an error. A project that has not run `frijoles init` yet still has to boot, build and test.
       // `node scripts/preflight.mjs` is the place that says this loudly; here it is one line.
       degraded = `no flag provider configured (missing ${resolved.missing.join(', ')}) — every flag resolves to its call-site default`;
       log(`[flags] ${degraded}`);

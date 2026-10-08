@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { compareVersions, readEnvValue, ENV_KEYS, MIN_CLI_VERSION } from './lib/golden-onboarding.mjs';
 
-const CLI_OK = { found: true, version: MIN_CLI_VERSION, source: 'gf (PATH)' };
+const CLI_OK = { found: true, version: MIN_CLI_VERSION, source: 'frijoles (PATH)' };
 const SDK_OK = { found: true, source: 'apps/example-app/package.json' };
 const ENV_OK = {
   exists: true,
@@ -58,7 +58,7 @@ test('no project: an absent .env.local fails hard and prints the install remedy'
   assert.equal(result.showOnboarding, true);
 });
 
-test('no project: a .env.local written by something other than `gf init` also fails', () => {
+test('no project: a .env.local written by something other than `frijoles init` also fails', () => {
   const env = { ...ENV_OK, url: null };
   const result = evaluatePreflight({ cli: CLI_OK, sdk: SDK_OK, env, probe: PROBE_OK });
   assert.equal(result.exitCode, 1);
@@ -86,12 +86,12 @@ test('CLI absent: fails hard, and the version check is skipped rather than guess
   assert.equal(result.exitCode, 1);
   assert.equal(status(result, 'cli'), 'fail');
   assert.equal(status(result, 'cli-version'), 'skipped');
-  // A missing CLI is not something `gf init` fixes, so the onboarding block does not ride along.
+  // A missing CLI is not something `frijoles init` fixes, so the onboarding block does not ride along.
   assert.equal(result.showOnboarding, false);
 });
 
-test('CLI outdated: an older gf cannot complete a kill-switch story, so it fails', () => {
-  const cli = { found: true, version: '0.0.9', source: 'gf (PATH)' };
+test('CLI outdated: an older frijoles cannot complete a kill-switch story, so it fails', () => {
+  const cli = { found: true, version: '0.0.9', source: 'frijoles (PATH)' };
   const result = evaluatePreflight({ cli, sdk: SDK_OK, env: ENV_OK, probe: PROBE_OK });
   assert.equal(result.exitCode, 1);
   assert.equal(status(result, 'cli-version'), 'fail');

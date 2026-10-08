@@ -84,7 +84,7 @@ test('importing this module runs nothing — SURFACES is just data, no side effe
   }
 });
 
-test('the gf config probe runs only on a gf that carries it (S5.2): older or unknown is a skip, never a fail', () => {
+test('the frijoles config probe runs only on a frijoles that carries it (S5.2): older or unknown is a skip, never a fail', () => {
   assert.equal(carriesLocalConfig('0.1.0'), false);
   assert.equal(carriesLocalConfig('0.2.0-rc.1'), false);
   assert.equal(carriesLocalConfig(null), false);

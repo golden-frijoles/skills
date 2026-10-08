@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // epic-read.mjs — read an epic's result on its read date: draft the verdict with its evidence; write it on approval.
 //
-//   node scripts/epic-read.mjs --epic <slug>                               # fetches the number through gf, drafts
+//   node scripts/epic-read.mjs --epic <slug>                               # fetches the number through frijoles, drafts
 //   node scripts/epic-read.mjs --epic <slug> --experiment smart-defaults   # … and cites the A/B decision record
 //   node scripts/epic-read.mjs --epic <slug> --actual 72 --evidence north-star:invoices_paid_on_time@2026-11-04
 //   node scripts/epic-read.mjs --epic <slug> --evidence "traffic too low (n = 18)"          # no number: unclear
 //   node scripts/epic-read.mjs --epic <slug> --verdict proven --evidence https://…           # an owner verdict
 //   … --write                                                              # the approval: stamp verdict_* into the README
-//   options: --project <slug> (gf's; default: the remembered one) · --today YYYY-MM-DD (default: today, UTC)
-//            · --repo-root <dir> · --json · GF_BIN=<path to gf> (default: gf on PATH)
+//   options: --project <slug> (frijoles's; default: the remembered one) · --today YYYY-MM-DD (default: today, UTC)
+//            · --repo-root <dir> · --json · GF_BIN=<path to frijoles> (default: frijoles on PATH)
 //
 // ── The shape (result-record D8) ─────────────────────────────────────────────────────────────────────────────────
 // The agent does the legwork, the owner decides. Without `--write` this prints a draft and the exact command that
@@ -25,11 +25,11 @@
 //   • An epic shipped with no target can be read too — an owner verdict and its evidence, one epic per run.
 //
 // ── The agent fetches the number (result-record S3, D17) ─────────────────────────────────────────────────────────
-// With a target and no `--actual`, this runs `gf north-star readings <target_metric> --to <today> --json` and takes
+// With a target and no `--actual`, this runs `frijoles north-star readings <target_metric> --to <today> --json` and takes
 // `latest`: the actual is its value, the evidence `north-star:<input>@<its day>`. A reading dated before the epic shipped
-// is no evidence for it. `--experiment <key>` also runs `gf experiments decision <key> --json`; a recorded decision
-// becomes the evidence, `ab:<key>`. gf is spawned without a shell (`$GF_BIN`, else `gf` on PATH), so a shell alias of
-// the same name never applies. `--actual` / `--evidence` still win: they are the owner's word. No gf, not signed in, no
+// is no evidence for it. `--experiment <key>` also runs `frijoles experiments decision <key> --json`; a recorded decision
+// becomes the evidence, `ab:<key>`. frijoles is spawned without a shell (`$GF_BIN`, else `frijoles` on PATH), so a shell alias of
+// the same name never applies. `--actual` / `--evidence` still win: they are the owner's word. No frijoles, not signed in, no
 // project chosen, or any failure is one "could not fetch (why)" line, and the read asks the owner as before — it never
 // fails because the platform is not linked. Grounded is now "the readings route knows this input".
 
@@ -138,17 +138,22 @@ export function planRead({ fm, shippedAt, shipped, today, actual = null, evidenc
   return { state: 'ready', target, drafted, owner, fields, late, readDate, derived };
 }
 
-/** Run one `gf … --json` and read its single JSON document. Never throws; `why` says what went wrong in words. */
+/** Run one `frijoles … --json` and read its single JSON document. Never throws; `why` says what went wrong in words. */
 export function runGf(args, { env = process.env, spawnFn = spawnSync } = {}) {
-  const bin = env.GF_BIN || 'gf';
-  const res = spawnFn(bin, [...args, '--json'], { encoding: 'utf8', timeout: 30_000, env, shell: false });
+  // `frijoles` since CLI 1.0; `gf` is the name an older install still has (plugin-1-0 D2). GF_BIN pins one.
+  const bins = env.GF_BIN ? [env.GF_BIN] : ['frijoles', 'gf'];
+  let res = null;
+  for (const bin of bins) {
+    res = spawnFn(bin, [...args, '--json'], { encoding: 'utf8', timeout: 30_000, env, shell: false });
+    if (res.error?.code !== 'ENOENT') break; // only "not installed under this name" tries the next name
+  }
   if (res.error)
     return {
       ok: false,
       why:
         res.error.code === 'ENOENT'
-          ? 'gf is not installed (npm i -g @golden-frijoles/cli, then gf login)'
-          : `gf did not run: ${res.error.message}`,
+          ? 'frijoles is not installed (npm i -g @golden-frijoles/cli, then frijoles login)'
+          : `frijoles did not run: ${res.error.message}`,
     };
   let body = null;
   try {
@@ -157,13 +162,13 @@ export function runGf(args, { env = process.env, spawnFn = spawnSync } = {}) {
     body = null;
   }
   if (body && body.ok === true) return { ok: true, body };
-  if (res.status === 2) return { ok: false, code: 'unauthorized', why: 'gf is not signed in (run gf login)' };
+  if (res.status === 2) return { ok: false, code: 'unauthorized', why: 'frijoles is not signed in (run frijoles login)' };
   const code = body?.code ?? null;
-  return { ok: false, code, why: body?.error ?? `gf exited ${res.status}` };
+  return { ok: false, code, why: body?.error ?? `frijoles exited ${res.status}` };
 }
 
 /**
- * The number and its evidence, fetched through gf (D17). Pure apart from the injected `run`.
+ * The number and its evidence, fetched through frijoles (D17). Pure apart from the injected `run`.
  * Returns `{ fetched, actual?, evidence?, reading?, decision?, grounded, why? }`.
  */
 export function fetchEvidence({ metric, experiment = null, today, shippedAt, project = null, run }) {
@@ -214,12 +219,12 @@ export function renderPlan(plan, { slug, fetched, write, written }) {
       out.push(`  not grounded: ${t.metric} is not one of the project's North Star inputs`);
     if (fetched.fetched)
       out.push(
-        `  fetched:  ${fig(fetched.reading.value)} on ${longDay(fetched.reading.date)} (gf north-star readings)`
+        `  fetched:  ${fig(fetched.reading.value)} on ${longDay(fetched.reading.date)} (frijoles north-star readings)`
       );
     else if (fetched.why) out.push(`  could not fetch the number: ${fetched.why}`);
     if (fetched.decision)
       out.push(
-        `  decision: ${fetched.decision.outcome ?? 'recorded'}${fetched.decision.chosenVariantKey ? ` (${fetched.decision.chosenVariantKey})` : ''} (gf experiments decision)`
+        `  decision: ${fetched.decision.outcome ?? 'recorded'}${fetched.decision.chosenVariantKey ? ` (${fetched.decision.chosenVariantKey})` : ''} (frijoles experiments decision)`
       );
     else if (fetched.decisionWhy) out.push(`  decision: ${fetched.decisionWhy}`);
   }

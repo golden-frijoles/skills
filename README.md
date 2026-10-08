@@ -176,15 +176,15 @@ npx @golden-frijoles/cli login
 npx @golden-frijoles/cli init
 ```
 
-`npm i -g @golden-frijoles/cli` puts `gf` on your PATH; every command takes `--json`. `gf init`
+`npm i -g @golden-frijoles/cli` puts `frijoles` on your PATH; every command takes `--json`. `frijoles init`
 creates the project if there isn't one, mints a `flag_read` key, writes `.env.local` at mode 0600
 (refusing if git does not actually ignore it), and prints the snippet that reads exactly the
 variables it just wrote. The whole kill-switch story is then three commands:
 
 ```
-gf flags create <domain>.<feature>_enabled --kill-switch --all-envs
-gf flags get <domain>.<feature>_enabled    # ← the ACTIVATION check: PRODUCTION must not read "—"
-gf flags kill <domain>.<feature>_enabled --env production
+frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs
+frijoles flags get <domain>.<feature>_enabled    # ← the ACTIVATION check: PRODUCTION must not read "—"
+frijoles flags kill <domain>.<feature>_enabled --env production
 ```
 
 **One provider, no parallel flag store.** `groom`'s Stage 6b plans every `risk: high` kill-switch
