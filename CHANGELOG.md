@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-08
+
+**Golden Frijoles 1.0: five plain skills, the `frijoles` CLI, and Refining.** One breaking release, so a renamed
+command is found in one place. Everything below landed in 0.44.0–0.46.0 and ships together; nothing here is new
+behaviour.
+
+| You typed | Now |
+|---|---|
+| `gf …` | `frijoles …` (`gf` keeps working with a notice until 2026-12-31 or CLI 1.1.0) |
+| `gf-kit …` | `frijoles-kit …` (same window) |
+| `/golden-frijoles:golden-frijoles` | `/golden-frijoles:setup` |
+| `/golden-frijoles:groom` | `/golden-frijoles:refine` |
+| `/golden-frijoles:pmf-narrative`, `north-star`, `risk-validation`, `cold-read` | `/golden-frijoles:strategy` (it routes to the chapter) |
+| `/golden-frijoles:standup-post`, `weekly-recap`, `pmo-report` | `/golden-frijoles:report` (daily · weekly · pmo) |
+| `/golden-frijoles:live-smoke` | `/golden-frijoles:smoke` |
+| "use the pr-reviewer subagent" | "use the verifier" (add "security lens" for that pass) |
+| `build-order-sync`, `doc-hygiene`, `vercel-prune`, `babysit-pr`, `prose-draft` | the routines run their scripts; `frijoles-kit <name>` anywhere |
+| Board: To groom · Grooming · Ready to build | Backlog · Refining · Ready (stored stage keys unchanged) |
+
+Pin the previous release with `claude plugin marketplace add golden-frijoles/skills@v0.43.0`, and the CLI with
+`npm i -g @golden-frijoles/cli@0.8.0`.
+
 ## [0.46.0] - 2026-10-08
 
 ### Changed
