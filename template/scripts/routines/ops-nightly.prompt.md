@@ -45,9 +45,9 @@ stale, it opens a `claude/` docs PR with the regenerated `Roadmap/00-ideas/BUILD
 else to do. If it was already current, no PR — move on.
 
 ## Step 2 — stale Vercel previews (dry-run report only)
-List the open PRs' branches (`gh pr list --repo <PR_REPO> --state open --json headRefName --jq '.[].headRefName'`,
-joined with commas; empty is fine), then run the dry run only:
-`node scripts/vercel-prune-previews.mjs --project <VERCEL_PROJECT> --age 7 --keep-branch <that list>`.
+Keep every branch with an open PR (an empty list is fine), then run the dry run only:
+`KEEP=$(gh pr list --repo <app-repo> --state open --json headRefName --jq '[.[].headRefName] | join(",")')` and
+`node scripts/vercel-prune-previews.mjs --project <vercelProject> --age <stalePreviewAgeDays> --keep-branch "$KEEP"`.
 **Never pass `--apply`** from this routine, under any circumstance; that is a separate, human-initiated
 action gated on the product owner explicitly asking for it in a live conversation, which this unattended nightly
 run structurally cannot be. Note the stale-preview count/list in your own reasoning — no PR, no
