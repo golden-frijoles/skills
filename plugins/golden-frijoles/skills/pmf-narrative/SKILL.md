@@ -6,7 +6,7 @@ description: >
   Fit (PMF) Narrative framework (problem, target audience, value proposition, competitive advantage,
   growth strategy, business model) to create a cohesive product strategy. Use when the product owner
   wants to write or revisit a PMF narrative, a product strategy, or why the product should exist,
-  before grooming work. Leaves Roadmap/00-strategy/pmf-narrative.md and offers the North Star
+  before refining work. Leaves Roadmap/00-strategy/pmf-narrative.md and offers the North Star
   workshop next.
 # Repo-local scripts this skill wraps — its FULL closure (scripts/check-skill-scripts.mjs walks it).
 requires_scripts:

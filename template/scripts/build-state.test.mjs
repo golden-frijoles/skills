@@ -1172,7 +1172,7 @@ test('finops 1.3: a lower bound reads ≥, and cents show only under $1', async 
   );
 });
 
-// ── finops S2.4 — the four states, pinned to the mockup approved at grooming (seed → Visuals) ────────────────────────
+// ── finops S2.4 — the four states, pinned to the mockup approved at refining (seed → Visuals) ────────────────────────
 test('finops 2.4: the four Spend lines are the approved mockup’s, word for word', async () => {
   const { spendValue } = await import('./build-state.mjs');
   const q = { low: 30, high: 55, basis: 'M, n=6, p25–p75', appetite: 'M' };

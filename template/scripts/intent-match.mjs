@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// intent-match.mjs — how well a groomed pitch captured the ask it was written from (intent-match S1, D9–D15).
+// intent-match.mjs — how well a refined pitch captured the ask it was written from (intent-match S1, D9–D15).
 //
 //   node scripts/intent-match.mjs <seed.md>             print the score, the band and a route for each gap
 //   node scripts/intent-match.mjs <seed.md> --json      the same, as JSON on stdout (the report goes to stderr)

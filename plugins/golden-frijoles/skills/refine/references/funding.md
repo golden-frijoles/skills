@@ -1,7 +1,7 @@
 # Funding at the gate — what `fund.mjs` and `scaffold-epic.mjs` write (Stage 7)
 
 The approval gate is the betting table (WAYS-OF-WORKING → *Betting & appetite*). One answer approves the pitch and
-funds it, so nothing leaves grooming scaffolded but unfunded, and nobody has a follow-up step.
+funds it, so nothing leaves refining scaffolded but unfunded, and nobody has a follow-up step.
 
 ## What the product owner sees
 

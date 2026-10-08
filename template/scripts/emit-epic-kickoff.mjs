@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// emit-epic-kickoff.mjs — print the finished, paste-ready EPIC-MODE kickoff for a groomed epic.
+// emit-epic-kickoff.mjs — print the finished, paste-ready EPIC-MODE kickoff for a refined epic.
 //
 // ── Why this exists ──────────────────────────────────────────────────────────────────────────────────
 // Epic mode — one orchestrated run across a whole epic, sprint files as internal integration boundaries

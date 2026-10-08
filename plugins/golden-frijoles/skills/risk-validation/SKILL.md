@@ -99,10 +99,10 @@ The user must produce a **Risk Validation Plan** containing:
 *   **Instruction:** Review the plan. Ask the user how they will know if the test is a success (e.g., LSN's 40% conversion goal for pre-sales).
 *   **Outcome:** Confirm the user has a clear riskiest dimension and a specific technique to execute next.
 
-### Step 6: Write the file, then hand off to grooming
+### Step 6: Write the file, then hand off to refining
 *   **Template:** Read `templates/risk-validation.md` from this skill's base directory (the host shows it when the skill loads). Its frontmatter and headings are the contract `refine` reads, so keep every heading exactly as written, and name the six dimensions exactly as the template does.
 *   **Write:** Save the plan to `Roadmap/00-strategy/risk-validation.md` in the project, creating the folder if it is missing. Set `updated:` to today's date.
 *   **Status:** Write `status: draft`. Never ask the user to mark the file agreed: the **Strategy gate** (refine's `references/gates.md`) is where they approve the strategy, and its Approve sets `status: agreed`. If the file already has `status: agreed`, show what would change and ask before overwriting it. A `draft` file is revised in place.
 *   **The one-pagers:** Render them from the files: `node scripts/one-pagers.mjs`. They land in `Roadmap/00-strategy/one-pagers/`, marked draft until the Strategy gate approves the files; tell the maker in one line where they are.
 *   **The Strategy gate:** Once this file is written, follow *When a coach finishes* in refine's `references/gates.md` before offering anything else.
-*   **Offer the next:** Close by offering to shape the selected test as work (the `refine` skill): "Want to refine this test as the next thing to build? Grooming will tie it to this dimension." Offer it; don't start it unasked.
+*   **Offer the next:** Close by offering to shape the selected test as work (the `refine` skill): "Want to refine this test as the next thing to build? Refining will tie it to this dimension." Offer it; don't start it unasked.

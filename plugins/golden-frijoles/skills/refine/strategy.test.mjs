@@ -31,7 +31,7 @@ const filledNorthStar = () =>
     .replace('"<metric_key>"', '"weekly_planned_seeds"')
     .replace('"name": "<Pithy name>"', '"name": "Weekly planned seeds"')
     .replace('"<input_key>", "name": "<Input name>"', '"activated_projects", "name": "Activated projects"')
-    .replace('"<other_input_key>", "name": "<Input name>"', '"seeds_groomed", "name": "Seeds groomed"');
+    .replace('"<other_input_key>", "name": "<Input name>"', '"seeds_groomed", "name": "Seeds refined"');
 
 const filledRisk = () =>
   template('risk-validation')
@@ -106,7 +106,7 @@ test('an input counted by an event carries it, so the Plan gate can say what mea
   );
   assert.match(
     run(root).stdout,
-    /inputs a seed can move: activated_projects \("Activated projects"\) · seeds_groomed \("Seeds groomed", event seed_groomed\)/
+    /inputs a seed can move: activated_projects \("Activated projects"\) · seeds_groomed \("Seeds refined", event seed_groomed\)/
   );
   // The template's placeholder event is not an event: the gate must never show `<event_the_product_sends>`.
   const placeholder = readStrategy(project({ 'north-star.md': filledNorthStar() })).files[0];

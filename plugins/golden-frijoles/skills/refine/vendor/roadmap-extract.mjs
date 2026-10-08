@@ -613,7 +613,7 @@ export function buildRows({
       area,
       type: TYPE_LABEL[epicFm.type || seed.type] || 'Epic',
       risk,
-      // finops D20 — the README's own appetite first (an epic groomed after FinOps carries it), else the seed's.
+      // finops D20 — the README's own appetite first (an epic refined after FinOps carries it), else the seed's.
       appetite: epicFm.appetite || seed.appetite || null,
       // fund-at-approval D8 — the README's own first (an epic with no seed carries it there), else the seed's.
       underwritten_by: epicFm.underwritten_by || seed.underwritten_by || null,

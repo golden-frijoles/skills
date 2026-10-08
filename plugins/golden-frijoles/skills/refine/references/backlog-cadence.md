@@ -31,8 +31,8 @@ The cadence:
 2. **One deep ask per approval gate, plus a portfolio pass over the rest.** Deep-refine the front-of-queue
    item to full Definition of Ready and its gate; take the next one in the same session while the budget
    line says keep going. For items not near the front, set sequence, appetite, lane and enough scope to be
-   bettable — then stop. A seed that is deep-groomed months before it is built is a seed that will be
-   re-groomed anyway.
+   bettable — then stop. A seed that is deep-refined months before it is built is a seed that will be
+   refined again anyway.
 3. **Let a seed's own words reclassify it.** A raw seed that says "a spike is the honest first move"
    or "worth a discovery pass before it is bet" is telling you it is not a build epic. Scaffolding it
    as one is inventing scope the seed itself flagged as unvalidated — reclassify to `type: spike` and
@@ -42,8 +42,8 @@ The cadence:
    board shows it under *scaffolded, not started*, which is the truthful bucket. Only `status: queued`
    hard-requires an `appetite:`.
 5. **When the budget line says hand off (or the queue is done), do BOTH:**
-   - Emit the **Claude Code build/investigation handoff** for each item groomed to scaffold (Stage 8).
-   - **Regenerate the board** (`node scripts/build-order.mjs`) so the groomed items move bucket from the
+   - Emit the **Claude Code build/investigation handoff** for each item refined to scaffold (Stage 8).
+   - **Regenerate the board** (`node scripts/build-order.mjs`) so the refined items move bucket from the
      frontmatter change — never hand-tick it — and emit a **next-session Cowork handoff prompt** for the
      **next ⬜ item** in the order. The handoff prompt references the docs that
      already exist (`BUILD-ORDER.md` as a generated read-only view, the relevant `seeds/` seed, the orientation
@@ -51,7 +51,7 @@ The cadence:
 
    ```
    We're working the agreed build order in Roadmap/00-ideas/BUILD-ORDER.md.
-   The last groomed item was <#X · name> — <status>.
+   The last refined item was <#X · name> — <status>.
 
    Refine the next ⬜ item: <#Y · name>.
    Read first, in order: Roadmap/00-ideas/BUILD-ORDER.md, then Stage 0 orientation

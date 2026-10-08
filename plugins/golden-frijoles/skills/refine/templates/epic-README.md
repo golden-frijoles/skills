@@ -35,7 +35,7 @@ build_order: null    # integer position in the ONE global build sequence — the
      Stage 2 table; sourced from scaffold-epic.mjs's --type flag (a fixed 4-value enum, not free
      text — a longer description belongs in the Why section below, not here; this comment never names
      that heading literally, so an edit anchored on it cannot land inside the comment).
-     Optional: if this epic was ALSO tagged with an archetype at grooming (see spike-role-archetypes.md),
+     Optional: if this epic was ALSO tagged with an archetype at refining (see spike-role-archetypes.md),
      append " · **Archetype:** <Prototyper|Builder|Sweeper|Grower|Maintainer>" after Class. Omit entirely
      for the Builder default — untagged is fine.
      Scope-seed link: always points at seeds/ — lifecycle lives in the seed's `status:` frontmatter, not
@@ -70,10 +70,10 @@ build_order: null    # integer position in the ONE global build sequence — the
 - [ ] Product poster (`Roadmap/README.md`) updated
 - [ ] Team memory + `MEMORY.md` index updated
 - [ ] Durable learnings promoted to `Roadmap/LEARNINGS.md` (dedupe — sharpen, don't append)
-- [ ] **Kill-switch (only if one was planned at grooming — Stage 6b):** the flag slice shipped, the flag
+- [ ] **Kill-switch (only if one was planned at refining — Stage 6b):** the flag slice shipped, the flag
       exists **in Golden Frijoles, in every env**, with the stated polarity, **and is ACTIVATED there** —
       `frijoles flags get <key>` must not print `—` in its PRODUCTION row. Creating a definition is not
       turning it on, and a flag that is synced but never activated serves compile-time defaults while
       every dashboard says it exists. *Verify-only — not a new gate; whether a high-risk epic needs one
-      is decided at grooming, not here.*
+      is decided at refining, not here.*
 - [ ] Feature branch deleted; **this README's frontmatter `status: shipped`** (the SSOT — the board & Notion derive from it; run `node scripts/build-order.mjs`)

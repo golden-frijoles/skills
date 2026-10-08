@@ -91,7 +91,7 @@ stop and hammer scope instead.
 | **Fixed scope** | bug, chore, well-specified story | default `appetite: S`, the same gate → on my approval fund it and scaffold it from the seed alone (`scaffold-epic.mjs --slug <seed>`: one sprint, its acceptance criteria as stories), commit path-scoped, and emit the kickoff (§2) |
 | **Reactive / ops** | incident, launch support, can't wait | no shaping — do it, then log it against the current wave's budget so the economics stay visible |
 
-*Add when it should wait:* `"Park it — leave it in the backlog, groomed, for the next betting table."`
+*Add when it should wait:* `"Park it — leave it in the backlog, refined, for the next betting table."`
 
 ## 2 · Build a WHOLE epic — epic mode *(the default)*
 
@@ -151,7 +151,7 @@ Read <AGENTS-path> (Start here) + Roadmap/LEARNINGS.md, then <brief path>.
 Run the <name> spike: time-boxed, READ-ONLY investigation → a written DECISION appended to the brief. No
 branch, no code. Answer the brief's questions against the live codebase; sort each capability into
 already-possible / light-enhancement / genuinely-new; end with Go / No-go / Go-with-constraints.
-I sign off the decision before anything gets groomed.
+I sign off the decision before anything gets refined.
 ```
 
 ## 4 · Review a PR — one external pass (+ a security lens when triggered), routed (NOT the builder)

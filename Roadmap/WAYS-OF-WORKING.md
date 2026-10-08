@@ -103,7 +103,7 @@ build position), in the same commit as the scaffold, while **Park it** leaves it
 (the gates' words: refine `references/gates.md`); **nothing scaffolded is unfunded** — `build-order.mjs` fails a
 live bet with no `underwritten_by:`;
 and **uphill work stays on the strongest model**. An L bet is re-bet at each wave boundary with one line
-when its builder stops there ("fund the next wave of `<slug>`? what does it displace?"; yes runs `fund.mjs`
+when its builder stops there ("Start the next part of `<slug>`? What waits for it?"; yes runs `fund.mjs`
 again, position kept). Fixed scope (appetite S) and reactive/ops work go through the same gate, straight to
 a builder. Why it works this way:
 [`references/shapeup/`](https://github.com/golden-frijoles/skills/blob/main/template/references/shapeup/README.md).
@@ -250,7 +250,7 @@ derived views. **`Roadmap/bets/`** holds one file per wave; **`tasks/`** is the 
   the kit and the template live in
   [`danybgoode/golden-frijoles` → `Roadmap/`](https://github.com/danybgoode/golden-frijoles/tree/main/Roadmap)
   (`09-platform-infra/`), moved there by `one-roadmap`. Where this document says `Roadmap/LEARNINGS.md`,
-  `Roadmap/00-ideas/` or `Roadmap/bets/`, read **that** repo's. Don't refine, scaffold or promote learnings here:
+  `Roadmap/00-ideas/` or `Roadmap/bets/`, read **that** repo's. Don't groom, scaffold or promote learnings here:
   `Roadmap/` in this repo keeps only the template sources CI renders and checks.
 
 ## Portability — this repo's own rules

@@ -33,7 +33,7 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | What this pushes back | `fund.mjs --displaced` | displaced |
 | Approve the strategy | `status: agreed` in each `Roadmap/00-strategy/` file | agreed |
 | Change something | `status: draft`, revised in place | draft, drafts, drafted |
-| Backlog → Grooming → Ready → Building → QA → Shipped | `status:` and `phase:` in the epic README | — |
+| Backlog → Refining → Ready → Building → QA → Shipped | `status:` and `phase:` in the epic README | groom, grooming, groomed |
 | Proven · Disproven · Unclear | `verdict:` in the epic README | — |
 | Flag | `flag_key:`, a flag in Golden Frijoles | — |
 
@@ -81,7 +81,7 @@ Answer them here, or:
 - **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter and removes the proposed line
   from every section the gate listed (approving accepts those proposals), and changes nothing else. Then render the
   one-pagers from the approved files (`node scripts/one-pagers.mjs`, run as the coaches' kit rule says), tell the
-  person where they are in one line, and offer grooming (`refine`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
+  person where they are in one line, and offer refining (`refine`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
@@ -112,7 +112,7 @@ Decisions only you can make:
   b. <question>
 
   1 Approve the plan
-  2 Park it (it stays in the backlog, groomed)
+  2 Park it (it stays in the backlog, refined)
   3 Change something
 
 What this pushes back: <what waits>. It builds next | It builds after <title>.
@@ -135,7 +135,7 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 - **1 Approve the plan** runs refine Stage 7.3: `fund.mjs --slug <slug> --displaced "<what waits>" --next` (or
   `--after <slug>` when it builds after another), then `scaffold-epic.mjs`, then the one commit. Then show the Build gate.
 - **2 Park it** runs nothing: the seed stays `status: ready`, nothing is funded or scaffolded, exactly as the old
-  option did (Was | Now). Say "Parked: it stays in the backlog, groomed." and stop.
+  option did (Was | Now). Say "Parked: it stays in the backlog, refined." and stop.
 - **3 Change something**: revise the seed and show the gate again.
 
 ## The Build gate (refine Stage 8)

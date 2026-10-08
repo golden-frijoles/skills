@@ -13,7 +13,7 @@
 // Any failure — no reader CLI, a capped or logged-out CLI, a timeout, an empty or unstructured reply, Jev unable to
 // look — prints exactly ONE line, `reader skipped: <why>`, and exits 0. There is no retry and no second family after
 // one has been asked: free-tier CLIs can be finicky, and three reads of every pitch cost more time than they return
-// (the product owner's call at grooming). Exit 1 is kept for a usage error only.
+// (the product owner's call at refining). Exit 1 is kept for a usage error only.
 //
 // ── NEVER CLAUDE ─────────────────────────────────────────────────────────────────────────────────────────────
 // Planning and building run on Claude; a Claude reader adds no independent read. `FAMILIES` holds no Claude entry

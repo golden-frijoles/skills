@@ -5,7 +5,7 @@ Loaded on demand from `SKILL.md` Stage 6b. **This file is the ONE home of the ki
 > **Operating default:** most projects here build with **no new flag unless the product owner asks for one** — see the consuming project's WAYS-OF-WORKING. When one IS asked for, this is how it is decided.
 
 ### Stage 6b — Kill-switch decision for `risk: high` (recommend, don't auto-inject)
-A high-risk epic should ship behind a kill-switch — but that's **decided here at grooming**, sliced as
+A high-risk epic should ship behind a kill-switch — but that's **decided here at refining**, sliced as
 real work, **not** discovered as a checkbox at epic close. For any `risk: high` epic, answer one
 question and **write the answer in the scope seed** (the answer is mandatory; the flag itself is not):
 

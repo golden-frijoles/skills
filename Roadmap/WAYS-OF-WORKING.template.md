@@ -106,7 +106,7 @@ build position), in the same commit as the scaffold, while **Park it** leaves it
 (the gates' words: refine `references/gates.md`); **nothing scaffolded is unfunded** — `build-order.mjs` fails a
 live bet with no `underwritten_by:`;
 and **uphill work stays on the strongest model**. An L bet is re-bet at each wave boundary with one line
-when its builder stops there ("fund the next wave of `<slug>`? what does it displace?"; yes runs `fund.mjs`
+when its builder stops there ("Start the next part of `<slug>`? What waits for it?"; yes runs `fund.mjs`
 again, position kept). Fixed scope (appetite S) and reactive/ops work go through the same gate, straight to
 a builder. Why it works this way:
 [`references/shapeup/`](https://github.com/golden-frijoles/skills/blob/main/template/references/shapeup/README.md).

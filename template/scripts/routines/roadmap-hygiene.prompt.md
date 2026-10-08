@@ -76,7 +76,7 @@ worth acting on goes in the PR body as a proposal, same as everything else this 
   `DOC-HYGIENE-REPORT-*.md` (and only docs under `Roadmap/`). **Docs only — never touch app code,
   scripts, or infra** (running `scripts/doc-hygiene.mjs` is a read-plus-one-new-report tool invocation,
   not a script edit).
-- PR body = the **drift report**: four short sections — *Funnel grooming*, *Status drift*, *Board
+- PR body = the **drift report**: four short sections — *Funnel refining*, *Status drift*, *Board
   regenerated?*, *Doc hygiene* — each a bullet list of findings (or "nothing to flag"). Each finding is
   one line: what, where, and the proposed fix. Lead the PR body with the advisory banner:
   > 🤖 **Routine C — weekly roadmap hygiene (Claude, cloud).** Advisory docs PR — review & merge by hand; nothing here gates.

@@ -21,7 +21,7 @@
 // whose stories are the seed's `## Acceptance criteria` bullets. So a fixed-scope seed scaffolds with `--slug` alone
 // (dogfood F33: no generator took a seed, so a builder needed a hand-written prompt). The seed must be FUNDED first
 // (`underwritten_by:`, written by `fund.mjs` at the approval gate) — an unfunded seed is refused, because nothing
-// leaves grooming scaffolded but unfunded. Its `build_order` is copied into the README, and the seed gets `epic:` and
+// leaves refining scaffolded but unfunded. Its `build_order` is copied into the README, and the seed gets `epic:` and
 // `status: scaffolded`. With no seed file at all, nothing here applies and every flag is needed, as before.
 //
 // ── Why --repo-root exists (a live bug, fixed 2026-08-03) ────────────────────────────────────────────
@@ -128,7 +128,7 @@ for (const [k, re] of Object.entries(SEGMENT)) {
   }
 }
 if (seedText && !fromSeed('underwritten_by')) {
-  console.error(`scaffold-epic: the seed ${resolved.slug} is not funded (no \`underwritten_by:\`) — nothing leaves grooming scaffolded but unfunded.`);
+  console.error(`scaffold-epic: the seed ${resolved.slug} is not funded (no \`underwritten_by:\`) — nothing leaves refining scaffolded but unfunded.`);
   console.error('  Fund it first, at the approval gate (refine SKILL.md → Stage 7):');
   console.error(`    node "$REFINE/fund.mjs" --slug ${resolved.slug} --displaced "<what stays parked>" --next   # or --after <slug>`);
   console.error('  "Approve, don\'t fund" is a real answer too: the seed then stays `ready` and nothing is scaffolded.');

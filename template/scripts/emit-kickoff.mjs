@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// emit-kickoff.mjs — print the finished, paste-ready Stage-8 Claude Code kickoff for a groomed
+// emit-kickoff.mjs — print the finished, paste-ready Stage-8 Claude Code kickoff for a refined
 // sprint. Planning-only helper for the `refine` skill (Stage 8). The invariant preamble (the
 // orientation reads, plan-mode, escalate-don't-guess triggers, etc.) lives in
 // `templates/kickoff.md` — this script's whole point is that boilerplate stops being retyped by

@@ -157,7 +157,7 @@ const SEED = [
   '',
   '## Acceptance criteria',
   '- The first check holds, with `code` in it.',
-  '- The second check is long enough to wrap onto the next line of the seed, as a groomed pitch',
+  '- The second check is long enough to wrap onto the next line of the seed, as a refined pitch',
   '  usually does, and must come out as one story.',
   '',
   '## Open risks / research',
@@ -190,7 +190,7 @@ test('F33: --slug alone scaffolds a funded seed: one sprint, its acceptance crit
     assert.deepEqual(validateSprintFrontmatter(sprint, { n: 1, slug: 'tmp-seed' }), []);
     assert.deepEqual(sprint.data.stories.map((s) => s.id), ['S1.1', 'S1.2']);
     assert.equal(sprint.data.stories[0].i_want, 'The first check holds, with `code` in it.');
-    assert.match(sprint.data.stories[1].i_want, /next line of the seed, as a groomed pitch usually does, and must come out as one story\.$/);
+    assert.match(sprint.data.stories[1].i_want, /next line of the seed, as a refined pitch usually does, and must come out as one story\.$/);
     assert.match(sprint.body, /^### Story 1\.2 — The second check/m);
     assert.doesNotMatch(sprint.body, /Not a story|^### Story 1\.1 — <title>$/m);
     // The seed leaves the funnel, and the commit line carries the cycle row with the scaffold.

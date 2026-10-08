@@ -113,7 +113,7 @@ test('risk-validation reads the narrative before asking for it', () => {
   for (const dimension of DIMENSIONS) assert.ok(step1.includes(dimension), dimension);
 });
 
-// The mis-trigger this epic was groomed to fix: the account copy's description was Risk Validation's, word for word.
+// The mis-trigger this epic was refined to fix: the account copy's description was Risk Validation's, word for word.
 test('north-star describes a North Star workshop, not risk validation', () => {
   const description = (name) => read(name, 'SKILL.md').match(/^description: >\n((?: {2}.+\n)+)/m)[1];
   const northStar = description('north-star');

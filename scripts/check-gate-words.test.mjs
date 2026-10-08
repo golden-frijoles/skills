@@ -132,3 +132,13 @@ test('the real tree is clean, and --also adds a file outside it', () => {
   assert.match(err2.join('\n'), /Roadmap\/SESSION-KICKOFFS\.md:1: names the retired option/);
   assert.equal(run(['--also', 'nope.md'], { cwd: dir, log: () => {}, error: () => {} }), 2);
 });
+
+test('plugin-1-0 S2.3: the real gates table bans groom, grooming and groomed, and a gate saying one goes red', () => {
+  const refText = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', GATES_REF), 'utf8');
+  const { words } = parseGatesRef(refText);
+  for (const w of ['groom', 'grooming', 'groomed']) assert.ok(words.includes(w), w);
+  const planted = refText.replace('The plan is ready: <path to the seed>', 'The plan is ready after grooming: <path to the seed>');
+  assert.notEqual(planted, refText, 'the plan gate line moved; update this test');
+  const { findings } = checkGateWords({ files: [{ path: GATES_REF, text: planted }], refText });
+  assert.ok(findings.some((f) => /grooming/.test(f)), findings.join('\n'));
+});

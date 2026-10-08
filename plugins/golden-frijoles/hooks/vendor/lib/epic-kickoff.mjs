@@ -164,7 +164,7 @@ export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }
   if (String(appetite).toUpperCase() === 'L')
     rules.push(
       `- **L bet:** it is funded one wave at a time. When you stop at a wave boundary, ask the product owner one line — ` +
-        `"fund the next wave of \`${slug}\`? what does it displace?" — and on yes run refine's ` +
+        `"Start the next part of \`${slug}\`? What waits for it?" — and on yes run refine's ` +
         `\`fund.mjs --slug ${slug} --displaced "<…>"\` (position kept) before the next wave starts.`
     );
   return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';

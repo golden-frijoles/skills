@@ -4,7 +4,7 @@ Right after the appetite, ask **once: which number should this move, from what t
 
 - **Which number.** Offer the input keys `strategy.mjs` printed on its `Target:` line, by name. A key from that list is
   a *grounded* bet. With no North Star inputs, take free text; readers show it as "not grounded". Never check the
-  network at grooming.
+  network at refining.
 - **From → to.** Two numbers. A target may go down (`44 → 30`). From and to cannot be the same.
 - **Read when.** A day, `YYYY-MM-DD`, or leave it blank: blank means 30 days after shipping, derived by the extract and
   never written back. A written day that passes before the epic ships is read the day it ships — prefer blank unless

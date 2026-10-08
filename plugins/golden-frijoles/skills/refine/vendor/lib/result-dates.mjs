@@ -50,7 +50,7 @@ export function todayUtc(now = new Date()) {
  * shipped before the result record existed are never due (the no-backfill rule).
  */
 export function readDateOf({ readDate, targetMetric, shippedAt }) {
-  // A day written at grooming that passes before the epic ships is read on ship day (codex review, #290): there was
+  // A day written at refining that passes before the epic ships is read on ship day (codex review, #290): there was
   // nothing out there to read before then, and "overdue since before release" would be a false alarm.
   const shipped = dayOf(shippedAt);
   if (isDay(readDate))
@@ -67,7 +67,7 @@ export function isLate({ verdictAt, shippedAt }) {
 
 /**
  * Whether a read is due today: a shipped epic with a target, no verdict yet, and a read date that has arrived. An epic
- * not yet shipped is never due, even past a read date written at grooming: there is nothing out there to read.
+ * not yet shipped is never due, even past a read date written at refining: there is nothing out there to read.
  */
 export function isReadDue({ targetMetric, verdict, readDate, shipped }, today = todayUtc()) {
   if (!shipped || !targetMetric || verdict || !isDay(readDate)) return false;

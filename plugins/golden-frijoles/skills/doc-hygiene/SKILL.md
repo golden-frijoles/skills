@@ -109,7 +109,7 @@ An actual edit is a separate, explicit, human-reviewed change (same as the origi
 ## Stage 4 — Wire-in: weekly Routine C
 `scripts/routines/roadmap-hygiene.prompt.md`'s step 4 runs this skill and folds its findings into the
 same weekly `claude/` docs PR Routine C already opens — a fourth report section alongside funnel
-grooming / status drift / board regeneration, not a second PR.
+refining / status drift / board regeneration, not a second PR.
 
 ---
 

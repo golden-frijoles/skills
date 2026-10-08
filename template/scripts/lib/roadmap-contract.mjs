@@ -41,7 +41,7 @@ export const EPIC_FIELDS = ['title', 'area', 'risk', 'type', 'phase', 'sprints_t
 export const SPRINT_FIELDS = ['epic', 'sprint', 'title', 'risk', 'phase', 'stories_total', 'stories'];
 export const STORY_FIELDS = ['id', 'title', 'as_a', 'i_want', 'so_that', 'risk', 'status'];
 
-// finops D6/D17 — an epic's quote (written at grooming) and its actual (stamped at close), declared ONCE here.
+// finops D6/D17 — an epic's quote (written at refining) and its actual (stamped at close), declared ONCE here.
 // All optional: an epic scaffolded before FinOps has none, and an absent field is never a zero (D4). The numeric
 // ones are numbers >= 0 or null; a `*_basis` says where the number came from, in words.
 export const FINOPS_NUMERIC_FIELDS = ['quote_low_usd', 'quote_high_usd', 'actual_usd', 'actual_mtok'];
@@ -55,7 +55,7 @@ export const FINOPS_FIELDS = [
   'actual_basis',
 ];
 
-// result-record D1/D2 — the result record: what an epic should move (written at grooming) and its verdict (written at
+// result-record D1/D2 — the result record: what an epic should move (written at refining) and its verdict (written at
 // the read), declared ONCE here. All optional: no target is "no target", never an error. Dates are calendar days.
 export const VERDICTS = ['proven', 'disproven', 'unclear'];
 export const TARGET_FIELDS = ['hypothesis', 'target_metric', 'target_from', 'target_to', 'read_date'];
