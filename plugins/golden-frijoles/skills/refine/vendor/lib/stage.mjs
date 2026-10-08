@@ -27,7 +27,9 @@ export const STAGES = Object.freeze(['To groom', 'Grooming', 'Ready to build', '
 
 /**
  * What each stage is CALLED where a person reads it (plugin-1-0 D6): plain agile, Backlog → Refining → Ready. The keys
- * above are stored data and never change; every printed stage goes through `stageWord`. The console's twin is
+ * above are stored data and never change; the board, the build view and the terminal board print through `stageWord`.
+ * One known exception: the Notion sync writes the KEY into its `Stage` select, because a select option is data matched
+ * by name (renaming it is a migration of that database: the product owner's call). The console's twin is
  * `apps/web/lib/screen-words.ts → stageLabel`, and a test keeps the two equal.
  */
 export const STAGE_WORDS = Object.freeze({ 'To groom': 'Backlog', Grooming: 'Refining', 'Ready to build': 'Ready' });

@@ -491,7 +491,7 @@ test('with gh: --write puts shipped, Building and ideas under Roadmap/ only; the
     const board = spawnSync(process.execPath, [KIT_BIN, 'build-order'], { cwd: root, encoding: 'utf8' });
     assert.equal(board.status, 0, board.stderr);
     const order = readFileSync(join(root, 'Roadmap', '00-ideas', 'BUILD-ORDER.md'), 'utf8');
-    assert.match(order, /## To groom \(2\)/);
+    assert.match(order, /## Backlog \(2\)/);
     assert.match(order, /## Shipped \(1\)/);
 
     const again = read(root, ['--write'], bin);

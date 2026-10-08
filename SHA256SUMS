@@ -7,7 +7,7 @@ cef9b845d065877a216b091ddec8d6c9f9f6864bbd642e0b58f7cc29b8d05b4b  plugins/golden
 e2c5cd2f395d40071a676c9af71783f2eefec83a8f051e803ade5b84ecfacb47  plugins/golden-frijoles/hooks/index.tsx
 f0445e51fd5672775f596d9ebcfea2d47286d5c25c347720046a5f9faac4c2f7  plugins/golden-frijoles/hooks/vendor/build-state.mjs
 b8079259f022821d71eccdac8525a243a6d07f6dbc8c0b980324e389ddf5c1b7  plugins/golden-frijoles/hooks/vendor/epic-actuals.mjs
-785de45eaadfa56db8b0bebfa87fcd8ceec3188b024cb1aa244d2954df85b2b0  plugins/golden-frijoles/hooks/vendor/lib/board-text.mjs
+441949960a68d5bcad9ca19ea52fecf092eaf1a10b219c04391d0b66bcc95671  plugins/golden-frijoles/hooks/vendor/lib/board-text.mjs
 350f6b14c33b7ec0b4fe7e831d4196d11b84cc60b6f4e2391b08c306b8a987ec  plugins/golden-frijoles/hooks/vendor/lib/config-registry.mjs
 f8b6758724fb36c934c23efdc4989184f4ee63df5ed3c4c871ccd58683aa54a5  plugins/golden-frijoles/hooks/vendor/lib/config.mjs
 528471a250a91839c4a18484fb1dca5e96c7dc99ea4bd58727a8ce8588966c52  plugins/golden-frijoles/hooks/vendor/lib/epic-kickoff.mjs
@@ -18,7 +18,7 @@ ad47e1511f5241547d6f0e05f4aefe14ddf448290a27586c3254d805b10450a7  plugins/golden
 78c3ad82ff264c4b8a5ede212e2008c150b91e80dbf356c1b93067895185f77d  plugins/golden-frijoles/hooks/vendor/lib/roadmap-contract.mjs
 63762e8722c3ac020b5144e2ca7f6cb27dbe9919df704a8b4bfa6427b702a526  plugins/golden-frijoles/hooks/vendor/lib/session-journal.mjs
 19f97d338e185adc241dacce95d4549e6c5b0931b33ed449f4eaf5ee8f177c47  plugins/golden-frijoles/hooks/vendor/lib/stage-facts.mjs
-338254a1932b389fc6b97ee8f355eaed16f9a3677405e64785b875f248012cb9  plugins/golden-frijoles/hooks/vendor/lib/stage.mjs
+be12a3624ffa883004e38b40c86fc5c6bb97a1f298b8aee95394594ff85b4018  plugins/golden-frijoles/hooks/vendor/lib/stage.mjs
 aebb6255969935c1381ae7fa3b9ca126128734f1f6a3bdc660e1ecaa92364bcf  plugins/golden-frijoles/hooks/vendor/lib/work-branch.mjs
 fc8a7aff5a7756be9b3fb73126c2c5ad52ad78b4a5b7fce68e54be56b61af745  plugins/golden-frijoles/hooks/vendor/roadmap-extract.mjs
 8ac7fc6cc44e8fcaa4dec8c41cb9d1f1ebcbf07da0dd703d2cf99696bae7c44b  plugins/golden-frijoles/hooks/vendor/roadmap-push.mjs
@@ -38,7 +38,7 @@ c679f0f43d561686007e3d223f1619f543c24c17b7750670c8ccd4ac3f35c12a  plugins/golden
 92afbab9e3ba854f7588f1f85ec064f59a788b185730cfb3194349a83839863b  plugins/golden-frijoles/skills/refine/fund.mjs
 8df21db75d2adb171c239e5e823b5ee814273ecac27b4b8c1b859d269d6f2150  plugins/golden-frijoles/skills/refine/fund.test.mjs
 fa3b1345f85f08bc60c84c8f2d89b944fa5d622893de9cca995d67f3bd218270  plugins/golden-frijoles/skills/refine/read-repo.mjs
-93ee6c34137ae0aab8fe5df59938c337e578b39ff8e7bacbd6fb66b5b102d0c8  plugins/golden-frijoles/skills/refine/read-repo.test.mjs
+eac904820106c1c36807398d98e2af0b7548bd3937bb9f5dedc34a0fe9349789  plugins/golden-frijoles/skills/refine/read-repo.test.mjs
 7d69f79f844f4c415eba94dc5f99df5afedac65d99a3cacf2542cb8e6bb2b6a9  plugins/golden-frijoles/skills/refine/references/archetypes.md
 7c9e58e17b228643343c182ab7edb0ac6c8db9015bcd09c61b0db3854a588cb0  plugins/golden-frijoles/skills/refine/references/backlog-cadence.md
 fbdf5c3ef16714df272b3a7e08f6a7799596e456a24cabc9ab5d04bc11d52ffa  plugins/golden-frijoles/skills/refine/references/coaching.md
@@ -67,7 +67,7 @@ c8323e5d19f6bff2200a1cab1d2bb787cc4767b8ce7881a66bfac4e13048cd5a  plugins/golden
 6a64315e798347b41a1d85eb7d4224b065149e1016898d7ec52fbc73d81c4815  plugins/golden-frijoles/skills/refine/templates/sprint-N.md
 248be024566edeb6c717446d595cb2b65dec39ffb5d7ecffcd841a10a10b580c  plugins/golden-frijoles/skills/refine/vendor/emit-epic-kickoff.mjs
 5c0ded80a12a41725f4473efcdf7ad6b396bf45b8b593259ecaae46615331d54  plugins/golden-frijoles/skills/refine/vendor/emit-kickoff.mjs
-785de45eaadfa56db8b0bebfa87fcd8ceec3188b024cb1aa244d2954df85b2b0  plugins/golden-frijoles/skills/refine/vendor/lib/board-text.mjs
+441949960a68d5bcad9ca19ea52fecf092eaf1a10b219c04391d0b66bcc95671  plugins/golden-frijoles/skills/refine/vendor/lib/board-text.mjs
 350f6b14c33b7ec0b4fe7e831d4196d11b84cc60b6f4e2391b08c306b8a987ec  plugins/golden-frijoles/skills/refine/vendor/lib/config-registry.mjs
 f8b6758724fb36c934c23efdc4989184f4ee63df5ed3c4c871ccd58683aa54a5  plugins/golden-frijoles/skills/refine/vendor/lib/config.mjs
 528471a250a91839c4a18484fb1dca5e96c7dc99ea4bd58727a8ce8588966c52  plugins/golden-frijoles/skills/refine/vendor/lib/epic-kickoff.mjs
@@ -76,7 +76,7 @@ ad47e1511f5241547d6f0e05f4aefe14ddf448290a27586c3254d805b10450a7  plugins/golden
 5abfbb4c61c837ab9e08e6c9d20232eae77389e2c287e9df89fc9642f4b6fb0c  plugins/golden-frijoles/skills/refine/vendor/lib/result-dates.mjs
 78c3ad82ff264c4b8a5ede212e2008c150b91e80dbf356c1b93067895185f77d  plugins/golden-frijoles/skills/refine/vendor/lib/roadmap-contract.mjs
 19f97d338e185adc241dacce95d4549e6c5b0931b33ed449f4eaf5ee8f177c47  plugins/golden-frijoles/skills/refine/vendor/lib/stage-facts.mjs
-338254a1932b389fc6b97ee8f355eaed16f9a3677405e64785b875f248012cb9  plugins/golden-frijoles/skills/refine/vendor/lib/stage.mjs
+be12a3624ffa883004e38b40c86fc5c6bb97a1f298b8aee95394594ff85b4018  plugins/golden-frijoles/skills/refine/vendor/lib/stage.mjs
 289f8fb6ddadcb68c3d9fd17c58d72a99411cbe477c42b257c37845a0475bf10  plugins/golden-frijoles/skills/refine/vendor/lib/wip.mjs
 aebb6255969935c1381ae7fa3b9ca126128734f1f6a3bdc660e1ecaa92364bcf  plugins/golden-frijoles/skills/refine/vendor/lib/work-branch.mjs
 fc8a7aff5a7756be9b3fb73126c2c5ad52ad78b4a5b7fce68e54be56b61af745  plugins/golden-frijoles/skills/refine/vendor/roadmap-extract.mjs

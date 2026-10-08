@@ -5,7 +5,7 @@
 //
 // Pure — the caller passes the rows and how fresh their facts are.
 
-import { STAGES, groupByStage } from './stage.mjs';
+import { STAGES, groupByStage, stageWord } from './stage.mjs';
 
 const SHIPPED_SHOWN = 5;
 
@@ -36,7 +36,7 @@ export function renderBoardText(rows, facts = { mode: 'docs' }) {
   const out = [`Board — six stages, ${fresh}`, ''];
   for (const stage of STAGES) {
     const list = columns[stage];
-    out.push(`${stage} (${list.length})`);
+    out.push(`${stageWord(stage)} (${list.length})`);
     const shown = stage === 'Shipped' ? list.slice(0, SHIPPED_SHOWN) : list;
     for (const row of shown) out.push(cardLine(row));
     if (stage === 'Shipped' && list.length > shown.length)
