@@ -16,7 +16,7 @@
     - SSOT = each epic README frontmatter `status:`; seed frontmatter owns the un-scaffolded funnel.
       The extractor emits r.status (authoritative) AND r.status_derived (fallback) so drift is detectable.
     - Funnel docs: Roadmap/00-ideas/README.md (seed lifecycle: raw|ready|queued|scaffolded|in-progress|shipped|archived)
-    - `node scripts/doc-hygiene.mjs` (the `doc-hygiene` skill, `golden-frijoles` plugin) → measures the always-read set + flags
+    - `node scripts/doc-hygiene.mjs` → measures the always-read set + flags
       dedupe/staleness candidates in LEARNINGS.md/the poster; writes its own dated
       Roadmap/00-ideas/DOC-HYGIENE-REPORT-<date>.md — a DIFFERENT concern from this routine's own
       HYGIENE-REPORT-*.md (funnel/status drift). Never auto-edits either.
@@ -62,12 +62,14 @@ one-line reason.
 `Roadmap/00-ideas/BUILD-ORDER.md` from the projection. If it changes, that change goes in the PR; if
 `node scripts/build-order.mjs --check` is already clean, say so (the board was current).
 
-**4. Doc hygiene pass.** Invoke the `doc-hygiene` skill (`golden-frijoles` plugin, golden-frijoles
-marketplace — no longer a repo-local `skills/doc-hygiene/`
-path) — run
-`node scripts/doc-hygiene.mjs`, review any flagged candidates per its Stage 2 (verify before reporting;
-its heuristics are deliberately cheap and can false-positive), and note the always-read set's current
-size. It writes its own dated `Roadmap/00-ideas/DOC-HYGIENE-REPORT-<date>.md` — commit that alongside
+**4. Doc hygiene pass.** Run `node scripts/doc-hygiene.mjs` and verify every flagged candidate before
+reporting it; its heuristics are cheap word-overlap and path checks that narrow where to look, nothing more:
+- *near-duplicate bullets:* read both in context; a shared topic with a different why, date or source is not a
+  duplicate;
+- *dead path:* check every app root before calling a path gone, and a bullet that documents a swap (old → new path)
+  always flags its old path, correctly;
+- *archived-epic mention:* flag it only if the lesson itself, not the epic's name, is now wrong.
+Then note the always-read set's current size. It writes its own dated `Roadmap/00-ideas/DOC-HYGIENE-REPORT-<date>.md` — commit that alongside
 the PR if `--check` wasn't used. **It never edits `LEARNINGS.md`/`README.md`** — a genuine candidate
 worth acting on goes in the PR body as a proposal, same as everything else this routine surfaces.
 

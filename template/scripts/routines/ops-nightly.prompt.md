@@ -12,17 +12,16 @@
 
   Every step here is advisory/observability or a docs-only PR — none merges, none gates, none is a
   required check, and NOTHING here ever runs a destructive `--apply` (that stays a separate,
-  human-confirmed action per the `vercel-prune` skill — this routine only ever runs its dry-run
-  report step).
+  human-confirmed action — this routine only ever runs the dry-run report).
 
-  Skills below come from the `golden-frijoles` plugin (golden-frijoles marketplace,
-  golden-frijoles/skills) — invoke each by name, not
-  by a repo-local `skills/<name>/SKILL.md` path (that path no longer exists in this repo).
+  Steps 1–3 run their scripts directly: the skills that used to wrap them (build-order-sync, vercel-prune, babysit-pr)
+  left the distributed plugin in 1.0 (plugin-1-0 S3.3), and everything they added is written into the steps below.
+  Step 4 uses the plugin's `report` skill, daily chapter.
 
   Reuse, don't rebuild:
-    - `build-order-sync` skill → scripts/build-order-sync.mjs (check/regen/branch/PR on drift)
-    - `vercel-prune` skill → scripts/vercel-prune-previews.mjs (dry-run report only, never --apply)
-    - `babysit-pr` skill → scripts/babysit-pr.mjs (one open PR at a time; silent when clean)
+    - scripts/build-order-sync.mjs (check/regen/branch/PR on drift)
+    - scripts/vercel-prune-previews.mjs (dry-run report only, never --apply)
+    - scripts/babysit-pr.mjs (one open PR at a time; silent when clean)
     - `report` skill's daily chapter → scripts/standup.mjs (the aggregation, diffing, and actual Telegram
       send — including its own independent CI-red / merge-conflict read, taken AFTER steps 1–3 have run)
     - gh CLI (every repo in reporting.config.json's `repos`), scripts/build-order.mjs --check,
@@ -40,25 +39,26 @@ running as the product owner. Your job is to run four steps, in order, then stop
 **advisory only** — you never approve, merge, block, or auto-apply anything, and any code/doc change
 you make lands only as a `claude/`-branch PR for a human to review.
 
-## Step 1 — `build-order-sync`
-Use the `build-order-sync` skill: run `node scripts/build-order-sync.mjs`. If the board was
+## Step 1 — build-order sync
+Run `node scripts/build-order-sync.mjs`. If the board was
 stale, it opens a `claude/` docs PR with the regenerated `Roadmap/00-ideas/BUILD-ORDER.md` — nothing
 else to do. If it was already current, no PR — move on.
 
-## Step 2 — `vercel-prune` (dry-run report only)
-Use the `vercel-prune` skill **through Stage 2 only** — the dry-run report. **Never run its
-Stage 3 (`--apply`)** from this routine, under any circumstance; that is a separate, human-initiated
+## Step 2 — stale Vercel previews (dry-run report only)
+List the open PRs' branches (`gh pr list --repo <PR_REPO> --state open --json headRefName --jq '.[].headRefName'`,
+joined with commas; empty is fine), then run the dry run only:
+`node scripts/vercel-prune-previews.mjs --project <VERCEL_PROJECT> --age 7 --keep-branch <that list>`.
+**Never pass `--apply`** from this routine, under any circumstance; that is a separate, human-initiated
 action gated on the product owner explicitly asking for it in a live conversation, which this unattended nightly
 run structurally cannot be. Note the stale-preview count/list in your own reasoning — no PR, no
 comment; the standup (step 4) will report it independently.
 
-## Step 3 — `babysit-pr` (once per open PR, across every configured repo)
+## Step 3 — babysit open PRs (once per open PR, across every configured repo)
 For each repo in `reporting.config.json`'s `repos`: list open PRs (`gh pr list --repo <repo> --state open --json
-number`), then use the `babysit-pr` skill once per open PR (`node scripts/babysit-pr.mjs <PR#>
---repo <repo>`). A clean PR gets no comment — that's correct, not a skipped step. Never merge, never
+number`), then run `node scripts/babysit-pr.mjs <PR#> --repo <repo>` once per open PR. A clean PR gets no comment — that's correct, not a skipped step. Never merge, never
 rebase a conflicting branch, never touch any commit-status/check-run API.
 
-## Step 4 — `standup-post`, written by YOU in three phases
+## Step 4 — the standup (the `report` skill, daily chapter), written by YOU in three phases
 
 The standup is no longer a dump of delta lines: **you write it, as the CPO persona, and a mechanical
 guard checks your draft before it posts.**

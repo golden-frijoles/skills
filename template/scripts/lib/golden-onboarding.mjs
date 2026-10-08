@@ -176,7 +176,7 @@ export const INSTALL_PROMPT =
   '2. Tell me in a few lines what it installs, what changes on this machine and which services it contacts. ' +
   'Offer me a security review, and wait for my go-ahead. ' +
   '3. Install it the way install.md says for the agent you are. ' +
-  '4. Run the golden-frijoles skill and start its setup.';
+  '4. Run the setup skill from the golden-frijoles plugin.';
 
 /**
  * The value of `name` in a dotenv file, or null.

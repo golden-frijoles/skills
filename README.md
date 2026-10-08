@@ -2,15 +2,15 @@
 
 Paste this into your agent, in an empty repo or an existing one:
 
-> Set up Golden Frijoles in this project. 1. Read https://goldenfrijoles.com/install.md before installing anything. 2. Tell me in a few lines what it installs, what changes on this machine and which services it contacts. Offer me a security review, and wait for my go-ahead. 3. Install it the way install.md says for the agent you are. 4. Run the golden-frijoles skill and start its setup.
+> Set up Golden Frijoles in this project. 1. Read https://goldenfrijoles.com/install.md before installing anything. 2. Tell me in a few lines what it installs, what changes on this machine and which services it contacts. Offer me a security review, and wait for my go-ahead. 3. Install it the way install.md says for the agent you are. 4. Run the setup skill from the golden-frijoles plugin.
 
 That last skill — `golden-frijoles` — is the front door: it detects what's already here (is
 `Roadmap/` present, is the kit reachable, which channel you're on), offers `frijoles-kit init` to adopt a
 bare repo, and routes you to the right named skill below. Golden Frijoles is a planning-and-operating
 system for shipping software with an agent — shape a raw idea into sliced work (`refine`), verify what
-you built against a real rendered page (`live-smoke`), and run the operate rails (standups, weekly
-recaps, PMO reports, PR watch, doc hygiene, stale-preview cleanup) — without your project carrying any
-of that tooling itself. Two layers, built in strict order:
+you built against a real rendered page (`smoke`), set the strategy (`strategy`), and post reports
+(`report`: standups, weekly recaps, PMO reports), without your project carrying any of that tooling itself.
+Nightly operations (PR watch, board drift, doc hygiene, stale previews) are routines that run the kit's scripts. Two layers, built in strict order:
 
 1. **A Claude Code plugin marketplace** (`.claude-plugin/marketplace.json` + `plugins/golden-frijoles/`)
    — the *living* skills, listed below. Installed once per project, updated from this one place — an
@@ -32,16 +32,11 @@ list anywhere in this repo.
 
 | Skill | What it does |
 |---|---|
-| `babysit-pr` | Advisory PR watch — retries flaky CI and flags merge conflicts; never merges, never gates. |
-| `build-order-sync` | Regenerates BUILD-ORDER.md when it has drifted from the epic READMEs and opens a PR for it. |
-| `doc-hygiene` | Measures the always-read session-start docs and writes a dated report of bloat and duplication. |
-| `golden-frijoles` | The umbrella skill: detects what's here, sets up a bare repo, and routes to the right named skill. |
-| `live-smoke` | Verifies rendered behavior in a real headless browser, with a screenshot and a JSON report. |
-| `prose-draft` | Drafts internal close-out prose (retros, poster entries) with a foreign model, for human review. |
 | `refine` | The planning front door: shapes a raw ask into a seed, an appetite, and a scaffolded epic. |
 | `report` | Posts a project report to your chat destination: a daily standup, a weekly recap, or the weekly PMO report and its monthly packet. |
+| `setup` | The front door: detects what's here, sets up a bare repo, and routes to refine, strategy, report or smoke. |
+| `smoke` | Verifies rendered behavior in a real headless browser, with a screenshot and a JSON report. |
 | `strategy` | The strategy coach: a sealed cold read, the PMF narrative, the North Star and risk validation, in Roadmap/00-strategy/. |
-| `vercel-prune` | Reports stale Vercel preview deployments for a frontend project; dry-run by default. |
 
 <!-- skills:end -->
 

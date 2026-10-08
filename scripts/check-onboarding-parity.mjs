@@ -102,7 +102,7 @@ export const SURFACES = [
     ],
   },
   {
-    file: 'plugins/golden-frijoles/skills/golden-frijoles/SKILL.md',
+    file: 'plugins/golden-frijoles/skills/setup/SKILL.md',
     why: 'the umbrella skill: the first thing a stranger’s agent reads must carry the same install prompt it just ran',
     must: [INSTALL_PROMPT],
   },

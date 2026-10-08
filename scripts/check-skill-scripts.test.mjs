@@ -129,11 +129,11 @@ test('a recorded gap that has been closed fails as a stale ledger entry', () => 
 // Smoke-walkthrough step 4, as a test: the four skills this epic paid for are really present in the
 // template, so re-adding ANY of them to the ledger fails. That is what separates "the debt was paid"
 // from "the line was deleted".
-test('the PAID debts: re-adding report (was weekly-recap / standup-post / pmo-report) / live-smoke to the ledger fails as stale', () => {
+test('the PAID debts: re-adding report (was weekly-recap / standup-post / pmo-report) / smoke (was live-smoke) to the ledger fails as stale', () => {
   const template = new URL('../template/', import.meta.url).pathname;
   const skillsDir = new URL('../plugins/golden-frijoles/skills/', import.meta.url).pathname;
   // plugin-1-0 S3.2: the three report skills are one, `report`, whose requires_scripts is their union.
-  for (const skill of ['report', 'live-smoke']) {
+  for (const skill of ['report', 'smoke']) {
     const declared = parseRequiresScripts(readFileSync(join(skillsDir, skill, 'SKILL.md'), 'utf8'));
     const r = resolveSkill({
       skill,
