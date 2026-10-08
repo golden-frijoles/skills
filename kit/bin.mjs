@@ -59,7 +59,8 @@ const USAGE = 'usage: frijoles-kit [--root <dir>] <script> [args…]   ·   frij
  */
 export function deprecatedNameNotice(invokedPath) {
   const name = String(invokedPath ?? '').split(/[\\/]/).pop() ?? '';
-  if (name.replace(/\.(cmd|ps1|js|mjs|cjs)$/i, '') !== 'gf-kit') return null;
+  // Unix only: npm's Windows shims start `node …\\bin.mjs`, so argv[1] is the entry file there (verifier, #324).
+  if (name !== 'gf-kit') return null;
   return 'gf-kit is now frijoles-kit. gf-kit stops working on 2026-12-31 (or in kit 1.1.0).\n';
 }
 

@@ -52,7 +52,7 @@ test("a script's exit code passes through unchanged", () => {
 });
 
 test('started as gf-kit: one stderr notice naming frijoles-kit and the date; frijoles-kit and the entry: none', () => {
-  for (const path of ['/usr/local/bin/gf-kit', 'C:\\npm\\gf-kit.cmd']) {
+  for (const path of ['/usr/local/bin/gf-kit', '/x/node_modules/.bin/gf-kit']) {
     assert.match(deprecatedNameNotice(path), /^gf-kit is now frijoles-kit\. .*2026-12-31.*\n$/);
   }
   for (const path of ['/usr/local/bin/frijoles-kit', '/x/kit/bin.mjs', '/x/gf', undefined]) {
