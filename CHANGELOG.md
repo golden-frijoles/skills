@@ -16,7 +16,7 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 - **The screens say Backlog → Refining → Ready.** The board, the epic page, the build view's stage track and the
   generated `BUILD-ORDER.md` headings; stored stage keys are unchanged. "Grooming" is retired: Scrum renamed it
   refinement in 2013, and in UK and Australian English the word mostly means child abuse. `check-gate-words` bans
-  groom, grooming and groomed on screen.
+  groom, grooming and groomed inside the gates; the console's vocabulary guard retires "Grooming" as a label.
 - **Plain agile in the last two places:** the L-bet question is now "Start the next part of `<slug>`? What waits for
   it?", and the session kickoff's shaped-bet row describes the Plan gate.
 
