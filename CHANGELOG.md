@@ -7,6 +7,24 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-10-08
+
+### Changed
+- **The three strategy coaches share one way of working** (coaches-v2 S2.1, groom's `references/coaching.md`). Each
+  opens by playing back the strategy files already written, starts every message with `Step N of X` (pmf-narrative 8 ·
+  north-star 7 · risk-validation 6), saves its file after every step with early answers parked under their headings,
+  and offers a cold read once before coaching.
+- **Options, not a blank page** (S2.2). Each step offers 2–4 options to pick or edit, looked up and cited when the step
+  leans on the present; when the coach can't look it says so and uses the classic cases. No invented figures.
+- **Delegation, the product check and private strategy** (S2.3). A step the maker hands over gets an options brief,
+  and its section opens with `_Proposed by the coach, not decided yet._` until they pick; the Strategy gate asks about
+  each such section, and Approve removes the line. Benefits and moats are labelled `(true today)` or `(aspirational)`
+  against the repo. Before the first write, `gf-kit strategy-private ensure` keeps `Roadmap/00-strategy/` out of git on
+  a public repo (or one whose visibility can't be read), unless something there is already committed or `.gitignore`
+  says `!Roadmap/00-strategy/`.
+- **Ladder up** (S2.4). An example the founder gives becomes the need behind it, checked against outside evidence or
+  labelled `(hypothesis)`, and confirmed before it reaches a dimension or a persona line.
+
 ## [0.41.0] - 2026-10-08
 
 ### Added

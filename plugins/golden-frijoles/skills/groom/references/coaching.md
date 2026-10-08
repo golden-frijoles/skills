@@ -6,9 +6,9 @@ two disagree, the coach's own step wins on content and this file wins on behavio
 
 ## 1. Open by playing back what is already agreed
 
-Before Step 1, read every file in `Roadmap/00-strategy/` that this coach does not write: the other two coaches' files,
+Before the first message, read every file in `Roadmap/00-strategy/` that this coach does not write: the other two coaches' files,
 any `brand-platform.md` or scenario files, but **never** `cold-read/` (a sealed read stays unopened until its compare).
-Open with one line per file, its status in brackets:
+The first message (`Step 1 of X`) opens with one line per file, its status in brackets:
 
 > Here's what's already written: **Narrative** (approved): founders of 2–10 person studios lose a day a week to status
 > chasing. **North Star** (draft): weekly proven bets. Still true?
