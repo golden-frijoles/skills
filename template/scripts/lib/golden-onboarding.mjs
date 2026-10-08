@@ -42,7 +42,7 @@ export const LEGACY_CLI_BIN = 'gf';
  * The minimum CLI this template's contract is written against.
  *
  * It is the version that shipped the write path — `flags create --kill-switch --all-envs`, the verb
- * every kill-switch story in this operating system now names. A project on an older `frijoles` can read
+ * every kill-switch story in this operating system now names. A project on an older `gf` can read
  * flags and cannot complete a kill-switch story, which is a failure worth naming at preflight
  * rather than discovering halfway through one.
  */

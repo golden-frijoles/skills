@@ -14,8 +14,8 @@
 //
 // ── `--exec`: presence is not execution, and that distinction cost a real defect ───────────────
 // The first version of this file only checked that strings were PRESENT, and the string it was
-// welding into five surfaces was `frijoles flags ls --env production` — a command that does not exist.
-// `frijoles flags ls` accepts only `--project`, so it exits 1 with a usage error before it ever reaches
+// welding into five surfaces was `gf flags ls --env production` — a command that does not exist.
+// `gf flags ls` accepts only `--project`, so it exits 1 with a usage error before it ever reaches
 // auth. Every surface agreed with every other surface, perfectly, about something untrue.
 //
 // `--exec` closes that: it RUNS each command the surfaces tell a reader to run and asserts the CLI
@@ -67,6 +67,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CLI_BIN,
+  LEGACY_CLI_BIN,
   CLI_GLOBAL_INSTALL,
   CLI_NPX_INIT,
   INSTALL_PROMPT,
@@ -474,7 +475,9 @@ function localConfigProbe(cliPath, version, scrubbedEnv) {
 }
 
 function execCheck() {
-  const candidates = [CLI_BIN, join(repoRoot, 'node_modules', '.bin', CLI_BIN)];
+  // `frijoles` from CLI 1.0; until that publishes, the installed CLI answers only to `gf` (plugin-1-0 D2), and a probe
+  // that looked for the new name alone would SKIP quietly instead of running.
+  const candidates = [CLI_BIN, join(repoRoot, 'node_modules', '.bin', CLI_BIN), LEGACY_CLI_BIN, join(repoRoot, 'node_modules', '.bin', LEGACY_CLI_BIN)];
   let cliVersion = null;
   const cliPath = candidates.find((candidate) => {
     const probe = spawnSync(candidate, ['--version'], { encoding: 'utf8', timeout: 20_000 });
