@@ -76,17 +76,19 @@ Answer them here, or:
 - **Answers to the decisions** are written into the files before anything else, then the gate is shown again.
 - **A section the coach proposed** (its first line is `_Proposed by the coach, not decided yet._`, groom's
   `references/coaching.md` §5) is a decision only the person can make: list it under *Decisions only you can make*
-  as "<file> · <heading>: the coach's proposal. Keep it?", ahead of the others. Past three decisions, name how many
-  more there are in one line.
+  as "<file> · <heading>: the coach's proposal. Keep it?", ahead of the others. **List every one**, however many: the
+  three-decision limit counts the other decisions, never these, because Approve accepts each proposal it removes.
 - **1 Approve the strategy** sets `status: agreed` in each strategy file's frontmatter and removes the proposed line
-  from every section that still has one (approving accepts the proposals), and changes nothing else. Then offer
+  from every section the gate listed (approving accepts those proposals), and changes nothing else. Then offer
   grooming (`groom`). The North Star's sync to the engine stays the person's own step (the `north-star` coach).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
 - **3 Coach me through it** runs `pmf-narrative`, then `north-star`, then `risk-validation`, each in its full
   step-by-step mode on the file already written (or from setup's one sentence, with no file yet, for a new idea), one after the other without asking in between, then shows this gate
   again.
 - **When a coach finishes** (each coach's last step points here): inside "Coach me through it", go on to the next coach,
-  or back to this gate after the last. Run on its own, once its file is written: when all three files exist and any is
+  or back to this gate after the last. **Before showing this gate**, when `Roadmap/00-strategy/cold-read/` holds a sealed
+  read (a `.sha256` beside it) with no `<read>-compare.md` yet, offer the compare first (the `cold-read` skill, Part 2):
+  it must run while the proposed lines are still in the files, and Approve removes them. Run on its own, once its file is written: when all three files exist and any is
   not yet approved, show this gate; with a file missing, offer that file's coach first.
 
 ## The Plan gate (groom Stage 7)
