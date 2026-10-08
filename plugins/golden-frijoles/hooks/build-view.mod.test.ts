@@ -202,7 +202,26 @@ test('S1.4: session.measure draws each figure in its colour with its reset, and 
   expect(by('5h 78% (-2h)')?.color).toBe('yellow');
   expect(by('7d 91% (-3d)')?.color).toBe('red');
   expect(parts.some((p) => p.text === ' → keep going')).toBe(true);
-  void clock;
+  // The countdown moves with the clock, not only with a new measurement (#312 review).
+  await clock.advance(60 * 60_000);
+  expect(flat(await hint.drawn()).some((p) => p.text === '5h 78% (-1h)')).toBe(true);
+});
+
+test('S1.4: a question waiting shows before the first measurement (#312 review)', async ($, on) => {
+  mock.clock(on, { now: NOW });
+  mock.store(on);
+  world(on);
+  on('ui.status', async () => ({ value: undefined }));
+  on('ui.render', { component: 'PromptHint' }, async () => ({ type: 'Text', props: {}, children: ['? for shortcuts'] }) as never);
+  let seen: string[] = [];
+  on('tool.call', async () => {
+    const hint = await $.ui.mount({ plugin: 'golden-frijoles', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '' } });
+    seen = flat(await hint.drawn()).map((p) => p.text);
+    return { result: { answers: {} }, text: 'ok' } as never;
+  });
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  await $.tool.call({ tool: 'AskUserQuestion', questions: [] } as never);
+  expect(seen).toContain('1 question waiting');
 });
 
 test('S1.2: the band draws the per-sprint bars and the stage track the resolver wrote, the marked stage in its tone', async ($, on) => {

@@ -72,9 +72,11 @@ const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', warn: 'yellow
 const RISK_COLORS = { LOW: 'green', MEDIUM: 'yellow', HIGH: 'red' } as const;
 const LABEL_WIDTH = 12; // glyph + space + the longest label (`Progress`) + gap
 
-// The session line's inputs. Module variables on purpose: a hot reload starts them over, which at worst
-// logs one repeated verdict row and hides the line until the next measurement — never a wrong figure.
+// The session line's inputs. Module variables, but a hot reload does not start the figures over: `$.state` keeps them
+// (the hint row keeps drawing them), so session.start reads them back into `measured` — otherwise the countdown would
+// freeze and the next AskUserQuestion would erase them (#312 review). At worst a reload logs one repeated verdict row.
 let measured: ReturnType<typeof figuresFromMeasure> | null = null;
+let stateWorks: boolean | null = null; // false → this engine has no `$.state`: the plain status line is the session line
 let questionsWaiting = 0; // in-flight AskUserQuestion calls; "asks open" is not observable here (D8)
 let loggedVerdict: string | null = null;
 // The live view (D1). Built in session.start, whose `$` its io closes over — the same way a `$.clock` timer's callback
@@ -88,14 +90,17 @@ let usageRefreshedAt: number | null = null; // finops D24 — the last usage ref
 // Resolves true when the state write landed. Never throws.
 async function showSession($: EngineInterface) {
   const figures = { ...(measured ?? {}), questionsWaiting };
+  // Anything to show — a question waiting counts before the first measurement, as it did on the plain line (#312 review).
+  const any = sessionParts(figures).length > 0;
   const stored = await attempt(
     async () => {
-      await $.state.set(SESSION, measured ? (figures as never) : null);
+      await $.state.set(SESSION, any ? (figures as never) : null);
       return true;
     },
     () => {},
     false,
   );
+  stateWorks = stored;
   // Never both: the row under the hint replaces the plain line (a hot reload from an older copy may have left one).
   $.ui.status(stored ? undefined : (sessionLine(figures, sessionVerdict(figures)) ?? undefined));
   return stored;
@@ -157,8 +162,17 @@ export const register: Register = (on) => {
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
     // build-view-upgrade D5 — the reset countdown moves with the clock, not only when a figure does.
+    // The figures a hot reload left in `$.state` come back (the session line's own, never invented).
+    const kept = await attempt(() => $.state.get(SESSION));
+    if (!measured && kept?.value) {
+      const { questionsWaiting: _q, ...figures } = kept.value;
+      measured = figures;
+    }
     $.clock.every(COUNTDOWN_MS, () => {
-      if (measured) $.ui.invalidate('ui.render');
+      if (!measured) return;
+      // The plain line is text, not a drawing: on an engine without `$.state` it is rewritten instead (#312 review).
+      if (stateWorks === false) void showSession($);
+      else $.ui.invalidate('ui.render');
     });
     $.clock.after(ONLINE_FIRST_MS, () => {
       void live.refreshOnline('timer');
