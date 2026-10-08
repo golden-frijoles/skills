@@ -125,7 +125,7 @@ export function toneOf(value) {
   if (/^unknown|blocked|failed|stale/.test(v)) return 'bad';
   if (/shipped|done|live|merged|complete/.test(v)) return 'good';
   if (/^qa\b|verifying|review|smoke/.test(v)) return 'info';
-  if (/building|locking|in progress|groom|planning|ready|backlog/.test(v)) return 'busy';
+  if (/building|locking|in progress|refine|planning|ready|backlog/.test(v)) return 'busy';
   return 'plain';
 }
 
@@ -519,11 +519,11 @@ export function createViewer(io, { buildState = VENDOR_BUILD_STATE } = {}) {
 }
 
 // ── /build <slug> — the kickoff's one home (live-build-view S2.4, D12) ───────────────────────────────────────────────
-// The mod runs the BUNDLED kickoff generator (the groom skill's own copy, never one the open repo supplies — the same
+// The mod runs the BUNDLED kickoff generator (the refine skill's own copy, never one the open repo supplies — the same
 // rule as the resolver) and puts its output in the prompt box; the person presses enter. Nothing is saved anywhere:
 // the epic docs are the state, and the kickoff is regenerated from them every time.
 export const VENDOR_EMIT_KICKOFF = decodeURIComponent(
-  new URL('../skills/groom/vendor/emit-epic-kickoff.mjs', import.meta.url).pathname
+  new URL('../skills/refine/vendor/emit-epic-kickoff.mjs', import.meta.url).pathname
 ).replace(/^\/([A-Za-z]:\/)/, '$1');
 export const KICKOFF_TIMEOUT_MS = 10_000;
 

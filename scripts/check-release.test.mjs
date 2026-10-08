@@ -78,7 +78,7 @@ test('changelogSection extracts one version\'s body, stopping at the next headin
 
 test('touchesShippedSurface fires on plugins/**, kit/** and a closure member; not on docs', () => {
   const closure = new Set(['template/scripts/standup.mjs']);
-  assert.equal(touchesShippedSurface(['plugins/golden-frijoles/skills/groom/SKILL.md'], closure), true);
+  assert.equal(touchesShippedSurface(['plugins/golden-frijoles/skills/refine/SKILL.md'], closure), true);
   assert.equal(touchesShippedSurface(['kit/bin.mjs'], closure), true);
   assert.equal(touchesShippedSurface(['template/scripts/standup.mjs'], closure), true);
   assert.equal(touchesShippedSurface(['README.md', 'Roadmap/LEARNINGS.md'], closure), false);
@@ -124,7 +124,7 @@ test('the committed plugin.json and CHANGELOG.md agree — the same assertion th
 
 test('fires on a plugin change without a bump (simulated: base version >= current)', () => {
   const closure = new Set();
-  const changed = ['plugins/golden-frijoles/skills/groom/SKILL.md'];
+  const changed = ['plugins/golden-frijoles/skills/refine/SKILL.md'];
   assert.equal(touchesShippedSurface(changed, closure), true);
   // the version-bump comparison itself: base == current is NOT a forward move.
   assert.equal(compareVersions('0.1.0', '0.1.0') <= 0, true);

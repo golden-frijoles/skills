@@ -1,6 +1,6 @@
 # Flags at runtime — where the provider may live, and where it may not
 
-Loaded on demand from the kill-switch decision (`groom` Stage 6b) and from `apps/*/flags.mjs`. It
+Loaded on demand from the kill-switch decision (`refine` Stage 6b) and from `apps/*/flags.mjs`. It
 answers three questions a flag story keeps rediscovering the hard way: **can the provider run in
 middleware, where does each credential live, and what happens when Golden Frijoles is down.**
 

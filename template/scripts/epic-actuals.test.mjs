@@ -266,7 +266,7 @@ test('D4: missing fields are skipped and counted; an unknown model keeps its tok
 test('D9: no content ever reaches the index, the summary or the report — and the report key set is pinned', () => {
   const fx = repoFixture();
   try {
-    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, skill: 'golden-frijoles:groom' })]);
+    write(fx.projects, '-elsewhere', 's.jsonl', [entry({ cwd: fx.root, skill: 'golden-frijoles:refine' })]);
     const { index, summary } = run(fx);
     const report = epicReport(summary, 'alpha');
     for (const blob of [index, summary, report])
@@ -298,7 +298,7 @@ test('D9: no content ever reaches the index, the summary or the report — and t
       'cache_write_5m',
       'cache_write_1h',
     ]);
-    assert.deepEqual(Object.keys(report.by_skill), ['golden-frijoles:groom']);
+    assert.deepEqual(Object.keys(report.by_skill), ['golden-frijoles:refine']);
     assert.deepEqual(report.not_measured, ['codex', 'agy', 'vibe', 'devin']);
     const rec = readEntry(entry({ cwd: fx.root })).record;
     assert.deepEqual(Object.keys(rec).sort(), [
@@ -579,7 +579,7 @@ test('3.1: on — one event per (session, epic) on /track, with the ingest key, 
   const fx = repoFixture();
   try {
     write(fx.projects, '-elsewhere', 's.jsonl', [
-      entry({ cwd: fx.root, session: 'S1', skill: 'golden-frijoles:groom' }),
+      entry({ cwd: fx.root, session: 'S1', skill: 'golden-frijoles:refine' }),
       entry({ cwd: fx.root, session: 'S1', at: '2026-10-01T11:00:00.000Z' }),
       entry({ cwd: fx.root, session: 'S2', branch: 'main' }),
     ]);
@@ -602,7 +602,7 @@ test('3.1: on — one event per (session, epic) on /track, with the ingest key, 
     assert.equal(call.body.context.idempotencyKey, 'agent_usage:S1:alpha:2026-10-01T11:00:00.000Z');
     assert.deepEqual(Object.keys(call.body.metadata.skill_breakdown).sort(), [
       '(no skill)',
-      'golden-frijoles:groom',
+      'golden-frijoles:refine',
     ]);
     assert.doesNotMatch(JSON.stringify(call.body), /SECRET PROMPT TEXT/);
     assert.equal('projectId' in call.body || 'project' in call.body, false, 'the body never names a project');

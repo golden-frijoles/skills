@@ -1,7 +1,7 @@
 // strategy-templates.test.mjs — the three strategy coaches' output contracts (think-skills D3, D4).
 //
 // Each coach writes `Roadmap/00-strategy/<name>.md` from its own `templates/<name>.md`, and that template IS the
-// contract: `groom` reads the headings (think-skills D5) and `frijoles north-star set` reads the sync block (D6). So these
+// contract: `refine` reads the headings (think-skills D5) and `frijoles north-star set` reads the sync block (D6). So these
 // tests pin the template, and the SKILL.md that points at it, rather than a copy of the contract anywhere else. The
 // payload's SHAPE is checked against the engine's real schema on the app side (apps/web/lib/north-star-template.test.ts),
 // because this mirror cannot import the app.
@@ -100,10 +100,10 @@ test('risk-validation: every dimension row uses the narrative\'s own heading nam
 });
 
 // The chain (D4): each coach offers the next; nothing auto-invokes.
-test('the chain: pmf-narrative offers north-star, north-star offers risk-validation, risk-validation offers groom', () => {
+test('the chain: pmf-narrative offers north-star, north-star offers risk-validation, risk-validation offers refine', () => {
   assert.match(read('pmf-narrative', 'SKILL.md'), /offering the North Star workshop \(the `north-star` skill\)/);
   assert.match(read('north-star', 'SKILL.md'), /offering risk validation \(the `risk-validation` skill\)/);
-  assert.match(read('risk-validation', 'SKILL.md'), /\(the `groom` skill\)/);
+  assert.match(read('risk-validation', 'SKILL.md'), /\(the `refine` skill\)/);
 });
 
 test('risk-validation reads the narrative before asking for it', () => {
@@ -150,13 +150,13 @@ test('north-star names `frijoles north-star set`, pinned, as the user\'s step', 
   assert.match(skill, /Do not run the command yourself\./);
 });
 
-// coaches-v2 D1: groom's strategy reader ships inside the plugin and cannot import from the kit, so it keeps its own
+// coaches-v2 D1: refine's strategy reader ships inside the plugin and cannot import from the kit, so it keeps its own
 // copy of the folder and the three file names. They must agree with the kit's, or a rename lands in only one.
-test('groom/strategy.mjs and the kit\'s lib/strategy-files.mjs agree on the folder and the three files', async () => {
-  const groom = await import('../plugins/golden-frijoles/skills/groom/strategy.mjs');
+test('refine/strategy.mjs and the kit\'s lib/strategy-files.mjs agree on the folder and the three files', async () => {
+  const refine = await import('../plugins/golden-frijoles/skills/refine/strategy.mjs');
   const kit = await import('../template/scripts/lib/strategy-files.mjs');
-  assert.equal(groom.STRATEGY_DIR, kit.STRATEGY_DIR);
-  assert.deepEqual(groom.KINDS, kit.KINDS);
+  assert.equal(refine.STRATEGY_DIR, kit.STRATEGY_DIR);
+  assert.deepEqual(refine.KINDS, kit.KINDS);
 });
 
 // coaches-v2 S2 (D5–D9): one shared reference every coach reads, and the few exact strings the scripts depend on.
@@ -165,7 +165,7 @@ const COACH_STEPS = { 'pmf-narrative': 8, 'north-star': 7, 'risk-validation': 6 
 for (const [name, steps] of Object.entries(COACH_STEPS)) {
   test(`${name}: reads the shared coaching reference, and its X is its real step count (${steps})`, () => {
     const skill = read(name, 'SKILL.md');
-    assert.ok(skill.includes("groom's `references/coaching.md`"), 'points at the shared reference');
+    assert.ok(skill.includes("refine's `references/coaching.md`"), 'points at the shared reference');
     assert.equal((skill.match(/^### Step \d+/gm) ?? []).length, steps, 'counted ### Step headings');
     assert.ok(skill.includes(`\`Step N of ${steps} · <step name>\``), 'states X once');
     assert.ok(skill.includes(`this coach has\n> ${steps} steps`) || skill.includes(`this coach has ${steps} steps`));
@@ -175,7 +175,7 @@ for (const [name, steps] of Object.entries(COACH_STEPS)) {
 
 test('the shared reference carries the exact marker, labels and commands the scripts and the gate read', async () => {
   const { PROPOSED_LINE } = await import('../template/scripts/lib/strategy-files.mjs');
-  const coaching = read('groom', 'references', 'coaching.md');
+  const coaching = read('refine', 'references', 'coaching.md');
   for (const s of [
     PROPOSED_LINE,
     '`(true today)`',
@@ -187,7 +187,7 @@ test('the shared reference carries the exact marker, labels and commands the scr
   ])
     assert.ok(coaching.includes(s), s);
   for (const [name, steps] of Object.entries(COACH_STEPS)) assert.ok(coaching.includes(`\`${name}\` ${steps}`), `${name} ${steps}`);
-  assert.ok(read('groom', 'references', 'gates.md').includes(PROPOSED_LINE), 'the Strategy gate asks about proposed sections');
+  assert.ok(read('refine', 'references', 'gates.md').includes(PROPOSED_LINE), 'the Strategy gate asks about proposed sections');
 });
 
 // coaches-v2 S3: the per-coach fixes, the one-pagers, and the voice.
@@ -213,14 +213,14 @@ test('every coach renders the one-pagers at its last write, and so does the Stra
     assert.ok(skill.includes('`node scripts/one-pagers.mjs`'), name);
     assert.match(skill, /requires_scripts:\n(?: {2}- .+\n)*? {2}- one-pagers\.mjs\n/, `${name} declares it`);
   }
-  assert.ok(read('groom', 'references', 'gates.md').includes('`node scripts/one-pagers.mjs`'));
+  assert.ok(read('refine', 'references', 'gates.md').includes('`node scripts/one-pagers.mjs`'));
 });
 
 test('voice: no outside method or brand in coach text, except the one Sources line that credits it (D11)', () => {
   const BRANDS = /Reforge|Amplitude|Strategyzer|Deliberate Startup|Deliberate Risk|7 Powers|Helmer|Finding PMF Loop|North Star Framework facilitator/;
   const files = [
     ...['pmf-narrative', 'north-star', 'risk-validation'].flatMap((n) => [[n, 'SKILL.md'], [n, 'templates', `${n}.md`]]),
-    ['groom', 'references', 'coaching.md'],
+    ['refine', 'references', 'coaching.md'],
     ['cold-read', 'SKILL.md'],
   ];
   for (const parts of files) {

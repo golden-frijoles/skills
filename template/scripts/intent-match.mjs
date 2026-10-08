@@ -7,27 +7,27 @@
 //   node scripts/intent-match.mjs <seed.md> --no-route  skip the second call that routes each gap to an artifact
 //
 // ── ADVISORY, NEVER A GATE (D1) ──────────────────────────────────────────────────────────────────────────────
-// The score can add a step to a groom; it never blocks a scaffold and never removes the product owner's approval.
+// The score can add a step to a refinement; it never blocks a scaffold and never removes the product owner's approval.
 // Nothing reads the exit code as a verdict: 0 means "scored", 2 means "could not look", 1 means a usage error.
 //
 // ── ONE STATISTIC PER QUESTION (D2, D11) ─────────────────────────────────────────────────────────────────────
 // Each signal is one number over Jev Noul/Score answers, so a later calibration can fit weights and bands without
 // re-asking anything (the jev-reanchor spike's lesson). Coverage in = mean P(true) over the ask's claims; coverage
 // out = mean P(true) over the pitch's acceptance criteria; clarity = mean Score ÷ 3 over the same criteria;
-// teach-back = the product owner's answer to groom's Stage 1 mirror (yes 1 · partly 0.5 · no 0). The total is
+// teach-back = the product owner's answer to refine's Stage 1 mirror (yes 1 · partly 0.5 · no 0). The total is
 // 100 × the equal-weight mean of the signals PRESENT, and it always says "uncalibrated" and which signals it used:
 // the 80 / 60 bands are placeholders until `intent-outcomes` has twenty answered epics to fit them against.
 //
 // ── THREE STATES, NEVER TWO ──────────────────────────────────────────────────────────────────────────────────
 // No key, `jev.egress` not `true`, a state over Jev's budget, a timeout or a malformed answer all print "could not
-// look" and NO number. A partial score dressed as a whole one is worse than none: it is the number a groom would
+// look" and NO number. A partial score dressed as a whole one is worse than none: it is the number a refinement would
 // quote. The pitch is never truncated to fit — `askJev` refuses an over-budget state, and so do we.
 //
 // ── NOT A JEV RAIL (C2) ──────────────────────────────────────────────────────────────────────────────────────
 // A rail (`review`, `prose`) is a guard with a regex to fall back to and an off/shadow/jev switch. This decides
 // nothing and has no fallback, so it only reads `jev.egress` and `jev.model`: egress must be an explicit `true`.
 //
-// The seed format this parses is the contract in the epic README's D9 (and groom's `templates/scope-seed.md`):
+// The seed format this parses is the contract in the epic README's D9 (and refine's `templates/scope-seed.md`):
 // `## The ask, as given` → `### Claims` (a numbered list) → `**Teach-back:** yes | partly | no`, and the list under
 // the first `## Acceptance…` heading. Zero deps — Node 18+.
 
@@ -60,7 +60,7 @@ export const BANDS = Object.freeze([
   { min: 0, label: 'sketch or spike first' },
 ]);
 
-/** The artifacts a gap can be routed to (D14) — the visuals rule (groom Stage 4.6) draws from the same words. */
+/** The artifacts a gap can be routed to (D14) — the visuals rule (refine Stage 4.6) draws from the same words. */
 export const ROUTES = Object.freeze({
   copy_deck: 'copy deck',
   wireframe: 'wireframe',

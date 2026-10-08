@@ -503,17 +503,17 @@ test('--write on a CRLF seed writes the score into the frontmatter it reports wr
 
 // ── the seed template (intent-match S2.1) is the parser's contract ───────────────────────────────────────────
 
-test('the groom seed template parses: placeholder teach-back is unanswered, Visuals never leak into criteria', async (t) => {
+test('the refine seed template parses: placeholder teach-back is unanswered, Visuals never leak into criteria', async (t) => {
   const { existsSync, readFileSync } = await import('node:fs');
   const { dirname, join } = await import('node:path');
   const { fileURLToPath } = await import('node:url');
   const here = dirname(fileURLToPath(import.meta.url));
   // This spec runs from skills/template/scripts/ and from this repo's scripts/ copy; a kit consumer has neither path.
   const tpl = [
-    join(here, '..', '..', 'plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'scope-seed.md'),
-    join(here, '..', 'skills', 'plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'scope-seed.md'),
+    join(here, '..', '..', 'plugins', 'golden-frijoles', 'skills', 'refine', 'templates', 'scope-seed.md'),
+    join(here, '..', 'skills', 'plugins', 'golden-frijoles', 'skills', 'refine', 'templates', 'scope-seed.md'),
   ].find((p) => existsSync(p));
-  if (!tpl) return t.skip('groom template not in this checkout');
+  if (!tpl) return t.skip('refine template not in this checkout');
   const text = readFileSync(tpl, 'utf8').replace(
     '## Acceptance criteria',
     '## Acceptance criteria\n- the one real check'

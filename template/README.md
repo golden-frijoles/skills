@@ -83,7 +83,7 @@ plugin is pull-based/versioned; see the repo root README for the distinction.
    [`references/flags-runtime.md`](references/flags-runtime.md) for the runtime rules — the short
    version is that **a Golden outage never fails a build**, because every read resolves
    synchronously against a default you supply at the call site.
-8. **Groom your first idea** in a fresh Claude Code session — the `groom` skill should trigger from
+8. **Refine your first idea** in a fresh Claude Code session — the `refine` skill should trigger from
    the marketplace-installed plugin.
 
 ## What ships runnable on day one

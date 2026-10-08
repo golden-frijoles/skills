@@ -96,11 +96,11 @@ test('an empty archive is still structurally valid', () => {
 
 test('collect prefixes entries with the skill name and uses forward slashes', () => {
   const names = collect(
-    new URL('../plugins/golden-frijoles/skills/groom', import.meta.url).pathname,
-    'groom'
+    new URL('../plugins/golden-frijoles/skills/refine', import.meta.url).pathname,
+    'refine'
   ).map((e) => e.name);
-  assert.ok(names.includes('groom/SKILL.md'), 'SKILL.md must sit at the skill-dir root');
-  assert.ok(names.includes('groom/templates/scope-seed.md'), 'nested files are included');
+  assert.ok(names.includes('refine/SKILL.md'), 'SKILL.md must sit at the skill-dir root');
+  assert.ok(names.includes('refine/templates/scope-seed.md'), 'nested files are included');
   assert.ok(
     names.every((n) => !n.includes('\\')),
     'zip entry names are always POSIX-separated'

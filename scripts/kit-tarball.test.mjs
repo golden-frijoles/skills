@@ -241,9 +241,9 @@ test('the packed kit runs `frijoles-kit init` in an EMPTY temp repo and writes t
 
 // kickoff-generator-path S1.3: both kickoff generators run from the PACKED kit in a project that holds nothing but a
 // Roadmap/ (no plugin, no scripts/), installed outside it the way npx's cache is. And they print exactly what the
-// groom skill's vendored copy prints for the same epic: one source, so a kit/plugin difference is a packaging hole.
+// refine skill's vendored copy prints for the same epic: one source, so a kit/plugin difference is a packaging hole.
 
-test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project, byte-identical to groom’s copy', { skip: !hasNpm && 'npm not found — could not look' }, () => {
+test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project, byte-identical to refine’s copy', { skip: !hasNpm && 'npm not found — could not look' }, () => {
   const kitDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-stage-')));
   stageKit(kitDir);
   const packDir = realpathSync(mkdtempSync(join(tmpdir(), 'kit-pack-')));
@@ -271,7 +271,7 @@ test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project
 
   // Run from a subdirectory: the installed kit finds the project by walking up from cwd.
   mkdirSync(join(repo, 'docs'));
-  const groomCopy = (name) => join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor', `${name}.mjs`);
+  const groomCopy = (name) => join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'refine', 'vendor', `${name}.mjs`);
   const runs = [
     ['emit-epic-kickoff', ['--epic', 'kick-fixture'], /Start by pushing the epic branch[\s\S]*Kick fixture[\s\S]*Sprints/],
     ['emit-epic-kickoff', ['--list'], /^kick-fixture {2}Kick fixture {2}\(scaffolded, #3\)$/m],
@@ -281,10 +281,10 @@ test('the packed kit runs emit-epic-kickoff and emit-kickoff from a bare project
     const kit = spawnSync(bin, [name, ...args], { cwd: join(repo, 'docs'), encoding: 'utf8', env: sealedEnv() });
     assert.equal(kit.status, 0, `frijoles-kit ${name} ${args.join(' ')}\n${kit.stdout}\n${kit.stderr}`);
     assert.match(kit.stdout, expected, `frijoles-kit ${name} ${args.join(' ')}`);
-    // groom's vendored copy, run the way groom's Stage 8 runs it: from the project, no --repo-root.
-    const groom = spawnSync(process.execPath, [groomCopy(name), ...args], { cwd: repo, encoding: 'utf8', env: sealedEnv() });
-    assert.equal(groom.status, 0, groom.stderr);
-    assert.equal(kit.stdout, groom.stdout, `the kit and groom’s copy differ for ${name} ${args.join(' ')}`);
+    // refine's vendored copy, run the way refine's Stage 8 runs it: from the project, no --repo-root.
+    const refine = spawnSync(process.execPath, [groomCopy(name), ...args], { cwd: repo, encoding: 'utf8', env: sealedEnv() });
+    assert.equal(refine.status, 0, refine.stderr);
+    assert.equal(kit.stdout, refine.stdout, `the kit and refine’s copy differ for ${name} ${args.join(' ')}`);
   }
   assert.equal(existsSync(join(repo, 'scripts')), false, 'nothing may be copied into the project');
 });

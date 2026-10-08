@@ -1,10 +1,10 @@
 # bets/ — the underwriting record
 
-One file per cycle: `wave-YYYY-MM.md`, opened by `groom`'s `fund.mjs` at the month's first funded bet. Each
+One file per cycle: `wave-YYYY-MM.md`, opened by `refine`'s `fund.mjs` at the month's first funded bet. Each
 file records the bets placed, their appetite, and — the whole point — **what each displaced**. This is the
 opportunity-cost ledger a ticket board can't show: one row per bet, not a ceremony.
 
-**The approval gate is the betting table** (WAYS-OF-WORKING → *Betting & appetite*): approving a pitch in `groom`
+**The approval gate is the betting table** (WAYS-OF-WORKING → *Betting & appetite*): approving a pitch in `refine`
 funds it in the same answer, so the row is written in the same commit as the scaffold. "Park it" writes
 nothing here and leaves the seed `ready`. An L bet adds a row each time it is re-bet at a wave boundary.
 

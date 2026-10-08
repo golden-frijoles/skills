@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // check-gate-words.mjs — the bookkeeping words stay off the screen (gates-in-plain-agile S2.2, D9).
 //
-// The gates a person reads (Strategy, Plan, Build) live once, as fenced ```gate <name>``` blocks in groom's
+// The gates a person reads (Strategy, Plan, Build) live once, as fenced ```gate <name>``` blocks in refine's
 // `references/gates.md`. That file's screen-word table says which words never reach the screen (fund, scaffold,
 // underwritten, displaced, cycle, kickoff, epic mode, agreed, draft …) and its Was | Now table names the retired
 // options ("approve (fund + scaffold)", "approve, don't fund"). This check reads BOTH lists from that file, never from
@@ -24,7 +24,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const GATES_REF = 'plugins/golden-frijoles/skills/groom/references/gates.md';
+export const GATES_REF = 'plugins/golden-frijoles/skills/refine/references/gates.md';
 export const REQUIRED_GATES = ['strategy', 'plan', 'build'];
 const ROADMAP_COPIES = [
   'Roadmap/WAYS-OF-WORKING.md',

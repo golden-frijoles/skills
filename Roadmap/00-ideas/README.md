@@ -52,7 +52,7 @@ silently to a derived status. A silent fallback makes drift undetectable exactly
 One field is authoritative at each stage — they never both drive the board:
 
 - **Before an epic exists** (`epic: null`) → the **seed's** `status` (`raw`/`ready`/`queued`) is
-  authoritative; you set it by hand or the `groom` skill sets it. This is what the BUILD-ORDER
+  authoritative; you set it by hand or the `refine` skill sets it. This is what the BUILD-ORDER
   **funnel** shows.
 - **Once `epic:` is set** → the **epic README's frontmatter `status:` is the SSOT** (set at epic
   close: `scaffolded` → `in-progress` → `shipped`). The seed is now **funnel-only** — its `status:` is
@@ -64,7 +64,7 @@ One field is authoritative at each stage — they never both drive the board:
 `appetite` (S | M | L) is the **budget the idea is worth**, fixed at shaping *before* the solution
 is designed — sessions + an implied token band, never a time estimate (see WAYS-OF-WORKING →
 *Betting & appetite*). `underwritten_by` names the **cycle that paid for it** — the bare name of a
-`Roadmap/bets/<cycle>.md` file (`wave-2026-10`), written by `groom`'s `fund.mjs` at the approval gate.
+`Roadmap/bets/<cycle>.md` file (`wave-2026-10`), written by `refine`'s `fund.mjs` at the approval gate.
 `null` means nobody has paid for it yet — fine in the funnel, impossible on the board: `build-order.mjs`
 **hard-fails** a `queued` seed with no `appetite`, and a live bet (`queued`, or an epic scaffolded or in
 progress) whose `underwritten_by` is missing or names no cycle file. Like `status`, `appetite` is an
@@ -72,15 +72,15 @@ enforced enum — a present-but-unrecognized value fails the board, it never fal
 
 ## How seeds flow (no file moves)
 
-1. **Capture** — drop a raw idea as `seeds/<slug>.md` with `status: raw` (the `groom` skill does this
+1. **Capture** — drop a raw idea as `seeds/<slug>.md` with `status: raw` (the `refine` skill does this
    from a brain-dump).
-2. **Scope** — `groom` fills out the Definition-of-Ready (appetite included) and flips
+2. **Scope** — `refine` fills out the Definition-of-Ready (appetite included) and flips
    `status: ready`.
-3. **Fund + scaffold, in one answer** — the approval gate is the betting table. On "Approve the plan", `groom`
+3. **Fund + scaffold, in one answer** — the approval gate is the betting table. On "Approve the plan", `refine`
    runs its own `fund.mjs` (a row in the month's `Roadmap/bets/wave-YYYY-MM.md`, created on first use,
    recording what the bet displaced; `underwritten_by:`; a `build_order` placed with `--next` or
    `--after <slug>`, renumbering only the queue) and then `scaffold-epic.mjs` (the epic/sprint docs; the
-   seed gets `epic:` + `status: scaffolded`), committed together. Both ship inside the `groom` skill,
+   seed gets `epic:` + `status: scaffolded`), committed together. Both ship inside the `refine` skill,
    `golden-frijoles` plugin. A fixed-scope seed scaffolds from its slug alone, its acceptance criteria
    becoming sprint 1's stories. "Park it" leaves the seed `ready` and scaffolds nothing.
    **No file ever moves between folders** — the frontmatter carries the state.

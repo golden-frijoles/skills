@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// render-hook-vendor.mjs — bundle the build-view resolver (and the groom kickoff builder) INSIDE the plugin
+// render-hook-vendor.mjs — bundle the build-view resolver (and the refine kickoff builder) INSIDE the plugin
 // (distribute-what-we-use D5; board-sinks-and-scrumban D17).
 //
 //   node scripts/render-hook-vendor.mjs            # (re)write plugins/golden-frijoles/hooks/vendor/
@@ -29,7 +29,7 @@ export const SOURCE_DIR = join(repoRoot, 'template', 'scripts');
 export const VENDOR_DIR = join(repoRoot, 'plugins', 'golden-frijoles', 'hooks', 'vendor');
 export const ENTRY = 'build-state.mjs';
 
-// board-sinks-and-scrumban D17 — a SECOND bundle, same rule. The groom skill's kickoff generators live in
+// board-sinks-and-scrumban D17 — a SECOND bundle, same rule. The refine skill's kickoff generators live in
 // `template/scripts/` (so the Hub card, the kit and the plugin print one kickoff), and an installed plugin cannot reach
 // `template/scripts/` any more than the hook can. Each bundle is one entry plus its
 // real import closure, written next to the code that imports it.
@@ -37,15 +37,15 @@ export const BUNDLES = Object.freeze([
   // + the usage refresh the mod runs on session.measure (finops S1.3, D24) — an entry of its own, same rule.
   { name: 'the build-view bundle', entry: ENTRY, also: ['epic-actuals.mjs'], vendorDir: VENDOR_DIR, fix: 'hooks/vendor/' },
   {
-    name: 'the groom kickoff bundle',
+    name: 'the refine kickoff bundle',
     // kickoff-generator-path C1: the generators themselves, not only their builder. Their import closure brings
     // `emit-kickoff.mjs`, `lib/epic-kickoff.mjs`, `lib/wip.mjs`, `lib/kickoff-cli.mjs` and the extractor chain;
     // `templates/kickoff.md` is read, not imported, so it is named. The copies sit in `vendor/`, beside their `lib/`,
     // because the source's `./lib/…` imports must resolve unchanged and writeVendor empties the directory first.
     entry: 'emit-epic-kickoff.mjs',
     also: ['templates/kickoff.md'],
-    vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'groom', 'vendor'),
-    fix: 'skills/groom/vendor/',
+    vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'refine', 'vendor'),
+    fix: 'skills/refine/vendor/',
   },
 ]);
 

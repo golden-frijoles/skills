@@ -132,7 +132,7 @@ function parseBlockLine(rest) {
   if (/^[a-z][\w-]*:(\s|$)/.test(rest)) {
     throw (
       '`- <kind>: "…"` is the old list shape — write `- <kind> "words"` (for example `- head "Orders"`); ' +
-      'see groom/references/intent-and-visuals.md'
+      'see refine/references/intent-and-visuals.md'
     );
   }
   const tokens = tokenize(rest);

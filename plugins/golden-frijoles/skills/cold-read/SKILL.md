@@ -65,7 +65,7 @@ compare measures nothing.
 
 ## Part 2: after coaching (the compare)
 
-Run this once the last coach has finished, before the Strategy gate (groom's `references/gates.md`).
+Run this once the last coach has finished, before the Strategy gate (refine's `references/gates.md`).
 
 1. Ask the maker for the hash they kept, then
    `node scripts/cold-read.mjs compare <the sealed read> --expect <their hash, or its first 12 characters>`.
@@ -81,7 +81,7 @@ Run this once the last coach has finished, before the Strategy gate (groom's `re
    - **Decisions for the maker**: numbered. A change to a strategy file the maker has already approved is a decision,
      never a silent edit.
    - **Did it earn its place**: what it changed, what it cost.
-3. Show the maker the Decisions, then follow *When a coach finishes* in groom's `references/gates.md`.
+3. Show the maker the Decisions, then follow *When a coach finishes* in refine's `references/gates.md`.
 
 ## Rules
 

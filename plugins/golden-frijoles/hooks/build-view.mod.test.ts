@@ -138,7 +138,7 @@ test('/build <slug>: registered at start; runs the bundled generator and fills t
   expect(w.filled).toEqual(['Start by pushing the epic branch…']);
   expect(String(out.text)).toContain('press enter');
   const gen = w.ran.find((a) => a.includes('--epic')) ?? '';
-  expect(gen).toContain('/skills/groom/vendor/emit-epic-kickoff.mjs --epic live-build-view --repo-root /repo');
+  expect(gen).toContain('/skills/refine/vendor/emit-epic-kickoff.mjs --epic live-build-view --repo-root /repo');
 });
 
 test('/build with no slug or an unknown one lists the epics and fills nothing', async ($, on) => {

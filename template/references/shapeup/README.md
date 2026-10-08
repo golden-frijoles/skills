@@ -38,7 +38,7 @@ still being figured out — not evidence that it needs more tokens. This is the 
 `underwritten_by: null` is the truthful state of an idea nobody has paid for yet: fine in the funnel,
 impossible on the board. Scaffolded is not the same as bet — an epic may have complete docs and no
 funding, which is exactly what makes the next betting table a three-line decision rather than a fresh
-groom.
+refine.
 
 ## An unpicked pitch is let go, not backlogged
 

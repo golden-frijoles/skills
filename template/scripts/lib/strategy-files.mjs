@@ -1,7 +1,7 @@
 // strategy-files.mjs — where the strategy coaches' files live, and the few shapes every strategy script reads
 // (coaches-v2 D1, D4, D7).
 //
-// groom's own reader (`skills/groom/strategy.mjs`) ships inside the plugin and cannot import from the kit, so it keeps
+// refine's own reader (`skills/refine/strategy.mjs`) ships inside the plugin and cannot import from the kit, so it keeps
 // its own STRATEGY_DIR and KINDS; `skills/scripts/strategy-templates.test.mjs` fails while the two disagree, so a
 // rename lands in both or in neither.
 //

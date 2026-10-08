@@ -264,7 +264,7 @@ test('kitFallback: no local copy of any of its scripts means the skill runs whol
 test('kitFallback judges PER SCRIPT: a stale local build-order.mjs with no lib/ fails, whatever the first entry is', () => {
   const files = { '/p/scripts/build-order.mjs': "import './lib/roadmap-status-buckets.mjs';\n" };
   const r = resolveSkill({
-    skill: 'groom',
+    skill: 'refine',
     declared: ['cross-panel.mjs', 'build-order.mjs', 'lib/roadmap-status-buckets.mjs'],
     scriptsDir: '/p/scripts',
     exists: (p) => p in files,

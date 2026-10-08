@@ -4,7 +4,7 @@
 //   node scripts/init.mjs             # write the skeleton into projectRoot(); never overwrite a file
 //
 // ── Why ───────────────────────────────────────────────────────────────────────────────────────
-// A stranger who pastes the install prompt into an EXISTING repo gets the plugin, but `groom` needs
+// A stranger who pastes the install prompt into an EXISTING repo gets the plugin, but `refine` needs
 // somewhere to write on day one — `Roadmap/README.md`, `WAYS-OF-WORKING.md`, `LEARNINGS.md`, and the
 // `00-ideas/` funnel. `frijoles-kit init` is that one step: it writes the same skeleton a project spawned
 // from `template/` already has, into any repo, copied or installed (D2's two roots).

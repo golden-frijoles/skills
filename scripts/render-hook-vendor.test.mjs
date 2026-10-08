@@ -62,12 +62,12 @@ test('the committed bundles match template/scripts right now', () => {
   }
 });
 
-test('the groom kickoff bundle is the two generators, their template and their closure (D17, S3.4, kickoff-generator-path C1)', () => {
-  const groom = BUNDLES.find((b) => b.name === 'the groom kickoff bundle');
-  assert.ok(groom, 'a groom kickoff bundle');
-  assert.equal(groom.entry, 'emit-epic-kickoff.mjs');
-  assert.match(groom.vendorDir, /plugins\/golden-frijoles\/skills\/groom\/vendor$/);
-  const files = bundleManifest(groom);
+test('the refine kickoff bundle is the two generators, their template and their closure (D17, S3.4, kickoff-generator-path C1)', () => {
+  const refine = BUNDLES.find((b) => b.name === 'the refine kickoff bundle');
+  assert.ok(refine, 'a refine kickoff bundle');
+  assert.equal(refine.entry, 'emit-epic-kickoff.mjs');
+  assert.match(refine.vendorDir, /plugins\/golden-frijoles\/skills\/refine\/vendor$/);
+  const files = bundleManifest(refine);
   for (const f of [
     'emit-epic-kickoff.mjs',
     'emit-kickoff.mjs',
@@ -79,12 +79,12 @@ test('the groom kickoff bundle is the two generators, their template and their c
     'lib/stage.mjs',
     'lib/config.mjs',
   ])
-    assert.ok(files.includes(f), `${f} in the groom bundle`);
+    assert.ok(files.includes(f), `${f} in the refine bundle`);
 });
 
-test('groom holds NO hand-kept generator beside its vendored copy (kickoff-generator-path C1)', () => {
-  // A second hand-edited copy at groom/emit-*.mjs is the fork this bundle exists to end.
-  const groomDir = join(BUNDLES.find((b) => b.name === 'the groom kickoff bundle').vendorDir, '..');
+test('refine holds NO hand-kept generator beside its vendored copy (kickoff-generator-path C1)', () => {
+  // A second hand-edited copy at refine/emit-*.mjs is the fork this bundle exists to end.
+  const groomDir = join(BUNDLES.find((b) => b.name === 'the refine kickoff bundle').vendorDir, '..');
   for (const f of ['emit-epic-kickoff.mjs', 'emit-kickoff.mjs', 'templates/kickoff.md'])
-    assert.equal(existsSync(join(groomDir, f)), false, `groom/${f} must not exist — the copy is groom/vendor/${f}`);
+    assert.equal(existsSync(join(groomDir, f)), false, `refine/${f} must not exist — the copy is refine/vendor/${f}`);
 });

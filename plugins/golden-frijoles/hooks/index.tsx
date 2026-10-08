@@ -17,7 +17,7 @@
 // so a write redraws the band and nothing else.
 //
 // THE SESSION LINE (session-budget D2/D8): `session.measure` pushes the engine's own figures after each turn;
-// `sessionVerdict()` — the SAME function groom's Cowork line uses, imported from the groom skill — turns them
+// `sessionVerdict()` — the SAME function refine's Cowork line uses, imported from the refine skill — turns them
 // into keep going / checkpoint / hand off. It advises and never acts: nothing here compacts, clears or ends a session
 // (D5). Each verdict CHANGE appends a row to `.golden-frijoles/session-budget.jsonl`, ignored by its own `.gitignore`
 // (D7). WHERE IT DRAWS (build-view-upgrade D5/D6): each figure in its own colour, with the time to its window's reset,
@@ -61,7 +61,7 @@ import {
   sessionLine,
   sessionParts,
   sessionVerdict,
-} from '../skills/groom/session-budget.mjs';
+} from '../skills/refine/session-budget.mjs';
 
 const STORE_KEY = 'golden-frijoles/build-view';
 const VIEW = { plugin: 'golden-frijoles', key: 'buildView' } as const;

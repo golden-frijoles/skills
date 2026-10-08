@@ -29,7 +29,7 @@ fi
 
 fail=0
 
-# ── Staged Roadmap docs: format against the groom templates (scripts/doc-format.mjs) ───────────────
+# ── Staged Roadmap docs: format against the refine templates (scripts/doc-format.mjs) ───────────────
 # Path-scoped by construction: `--files` checks ONLY the docs you staged, never the ~whole corpus —
 # the full-tree `--check` is a CI job. scripts/pre-commit-hook.test.mjs times this against the 2s budget.
 staged_docs=$(echo "$changed" | grep -E '^Roadmap/.*\.md$' || true)

@@ -126,7 +126,7 @@ if (unfunded.length) {
 }
 
 // Scaffolded ⇒ funded (fund-at-approval D8). A live bet — an epic scaffolded or in progress, or a queued seed — must
-// name the cycle that paid for it, and that cycle must be a file in Roadmap/bets/. `groom` funds a bet at its approval
+// name the cycle that paid for it, and that cycle must be a file in Roadmap/bets/. `refine` funds a bet at its approval
 // gate (`fund.mjs`), in the same commit as the scaffold, so this only fails on work that skipped the gate.
 const BETS = join(REPO, 'Roadmap', 'bets');
 const cycleOf = (v) => String(v).replace(/^Roadmap\/bets\//, '').replace(/\.md$/, '');
@@ -139,7 +139,7 @@ const unpaid = liveBets.filter((r) => !paidBy(r));
 if (unpaid.length) {
   console.error('Live bets with no funding record (`underwritten_by:` must name a Roadmap/bets/<cycle>.md):');
   for (const r of unpaid) console.error(`  - ${r.doc_link}${r.underwritten_by ? ` — no Roadmap/bets/${cycleOf(r.underwritten_by)}.md` : ''}`);
-  console.error('Fund it at the approval gate: node "$GROOM/fund.mjs" --slug <slug> --displaced "<…>" --next | --after <slug>');
+  console.error('Fund it at the approval gate: node "$REFINE/fund.mjs" --slug <slug> --displaced "<…>" --next | --after <slug>');
   process.exit(1);
 }
 

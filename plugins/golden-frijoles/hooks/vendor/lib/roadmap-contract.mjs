@@ -140,7 +140,7 @@ export function validateResultFields(fm) {
   return offenses;
 }
 
-// one-epic-page D11 — the epic's flag, decided at groom Stage 6b and copied into the README by the scaffold. The SDK's
+// one-epic-page D11 — the epic's flag, decided at refine Stage 6b and copied into the README by the scaffold. The SDK's
 // flag-key grammar (`FLAG_KEY` in apps/web/lib/flag-admin-operation.ts). Optional: `flag_key: null` (no flag) is the
 // default and never an error; a value that is not a key is named, never pushed (the extract sends null for it).
 export const FLAG_KEY_RE = /^[a-z][a-z0-9_.-]{0,127}$/;

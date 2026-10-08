@@ -36,7 +36,7 @@ test('the flag-mechanism rule fires on each of the mechanisms the epic named', (
 });
 
 test('the flag-mechanism rule fires wherever a consumer receives the file', () => {
-  for (const rel of ['template/AGENTS.md', 'plugins/ways-of-work/skills/groom/SKILL.md', 'README.md']) {
+  for (const rel of ['template/AGENTS.md', 'plugins/ways-of-work/skills/refine/SKILL.md', 'README.md']) {
     assert.equal(scan([{ rel, text: 'DEFAULT_FLAGS' }], { allow: [] }).violations.length, 1, rel);
   }
 });
@@ -79,9 +79,9 @@ test('the retired plugin identity rule fires on each spelling of the old marketp
     // Fresh review of #44: three spellings the first pattern missed.
     '"dobby-foundation": { "source": { "source": "github" } }',
     '"golden-frijoles@dobby-foundation": true',
-    'invoke ways-of-work:groom to plan it',
+    'invoke ways-of-work:refine to plan it',
   ]) {
-    const result = scan(file(leak, 'plugins/golden-frijoles/skills/groom/SKILL.md'), { allow: [] });
+    const result = scan(file(leak, 'plugins/golden-frijoles/skills/refine/SKILL.md'), { allow: [] });
     assert.ok(names(result).includes('retired plugin identity'), `expected a leak for: ${leak}`);
   }
 });
@@ -94,7 +94,7 @@ test('the retired plugin identity rule does NOT fire on the process name or the 
     '`epic-dod` and `render-ways-of-working` are copied, not forked',
     'the golden-frijoles marketplace',
     'the `golden-frijoles` plugin',
-    'plugins/golden-frijoles/skills/groom',
+    'plugins/golden-frijoles/skills/refine',
     // Provenance D6 keeps: past PRs and the epic that extracted this repo.
     'found by codex on dobby-foundation#17',
     '(`Roadmap/09-platform-infra/dobby-foundation/`), so a second project',
@@ -184,7 +184,7 @@ test('scanPaths names every Python or optimize/ file among the shipped paths, an
   assert.deepEqual(
     scanPaths([
       'template/scripts/optimize/refit.py',
-      'plugins/golden-frijoles/skills/groom/helper.py',
+      'plugins/golden-frijoles/skills/refine/helper.py',
       'template/__pycache__/x.pyc',
       'kit/requirements.lock',
       'template/pyproject.toml',
@@ -195,7 +195,7 @@ test('scanPaths names every Python or optimize/ file among the shipped paths, an
     ]),
     [
       'template/scripts/optimize/refit.py',
-      'plugins/golden-frijoles/skills/groom/helper.py',
+      'plugins/golden-frijoles/skills/refine/helper.py',
       'template/__pycache__/x.pyc',
       'kit/requirements.lock',
       'template/pyproject.toml',

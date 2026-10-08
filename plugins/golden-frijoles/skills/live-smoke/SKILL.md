@@ -81,7 +81,7 @@ because the app script owns its environment matrix. That is expected; run it the
 - **`<appDir>/e2e/_live/ad-hoc.browser.spec.ts`** — the one generic spec `--path` mode runs. Never
   edit this to check a specific page — it's parametrized by env vars the script sets.
 - **`<appDir>/e2e/*.browser.spec.ts`** — the permanent regression suite. A shipped story's
-  browser-testable acceptance criterion belongs here (`groom`'s own "one spec per browser/API-testable
+  browser-testable acceptance criterion belongs here (`refine`'s own "one spec per browser/API-testable
   story" rule), run via `--spec` once written.
 
 ## Two modes — pick the right one

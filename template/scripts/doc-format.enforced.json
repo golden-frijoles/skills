@@ -1,4 +1,4 @@
 {
-  "$comment": "Which Roadmap docs `node scripts/doc-format.mjs --check` FAILS on (everything else is reported, not enforced). A trailing \"/\" makes a prefix. A new project enforces all of Roadmap/ — nothing predates the groom templates. A project adopting this late lists files as each area is swept.",
+  "$comment": "Which Roadmap docs `node scripts/doc-format.mjs --check` FAILS on (everything else is reported, not enforced). A trailing \"/\" makes a prefix. A new project enforces all of Roadmap/ — nothing predates the refine templates. A project adopting this late lists files as each area is swept.",
   "enforced": ["Roadmap/"]
 }

@@ -30,9 +30,9 @@ test('projectRoot() is used when it holds a Roadmap/ — a project running its o
   assert.equal(root, '/proj');
 });
 
-test('the plugin’s vendored copy (projectRoot() = groom/, no Roadmap/) walks up from cwd instead', () => {
+test('the plugin’s vendored copy (projectRoot() = refine/, no Roadmap/) walks up from cwd instead', () => {
   const exists = has('/repo/Roadmap');
-  const root = resolveRepoRoot({}, { env: {}, cwd: '/repo/apps/web', exists, project: () => '/plugins/golden-frijoles/skills/groom' });
+  const root = resolveRepoRoot({}, { env: {}, cwd: '/repo/apps/web', exists, project: () => '/plugins/golden-frijoles/skills/refine' });
   assert.equal(root, '/repo');
 });
 

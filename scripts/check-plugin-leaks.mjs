@@ -65,7 +65,7 @@ export const RULES = [
   },
   {
     // golden-flags-by-default S1.3. The leak that produced that epic lived in this very repo for
-    // months and NO rule here caught it: the groom skill told every consuming project to extend
+    // months and NO rule here caught it: the refine skill told every consuming project to extend
     // `lib/flags.ts` `DEFAULT_FLAGS` \u2014 one consumer's in-house table, hardcoded into the
     // supposedly project-agnostic planning skill. The filename is generic, so the origin-project
     // rule above could never have seen it. A mechanism does not have to be named after a project

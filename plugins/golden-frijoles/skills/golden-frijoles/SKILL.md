@@ -6,7 +6,7 @@ description: >
   golden-frijoles plugin is freshly installed, or when a session isn't sure which of the thirteen named
   skills to reach for. Detects state with commands, never guesses (is Roadmap/ present, is frijoles linked,
   is the kit reachable, which install channel is this), offers `frijoles-kit init` to adopt a bare repo, and
-  routes by job to groom / live-smoke / the operate skills / frijoles. States plainly what the `npx skills`
+  routes by job to refine / live-smoke / the operate skills / frijoles. States plainly what the `npx skills`
   channel lacks (no build-view hook, no pr-reviewer agent) instead of pretending it has parity with
   the Claude Code plugin channel.
 requires_scripts:
@@ -139,8 +139,8 @@ Never hand-edit `golden-frijoles.config.json`.
    No `activeProject` → the second line says "no product picked yet (`frijoles projects use <slug>`)". Exit 2 (no credential
    on this machine) → leave this block out and say nothing about it. Any other failure → one line: "Sign-in: could not
    look (<why>)". Never say "new account": `whoami` does not report it.
-2. **I looked first.** Find groom's generators (`$GROOM`, with the block in groom's SKILL.md → *Locate the
-   generators*), run `node "$GROOM/read-repo.mjs" --look` and print what it prints: whether `Roadmap/` is here, then
+2. **I looked first.** Find refine's generators (`$REFINE`, with the block in refine's SKILL.md → *Locate the
+   generators*), run `node "$REFINE/read-repo.mjs" --look` and print what it prints: whether `Roadmap/` is here, then
    the stack, the commit count and the open pull requests (or why they were not counted). It writes nothing. Generators
    not found → say so and print the Stage 1 answers instead.
 
@@ -188,17 +188,17 @@ needs a flag. Ask Q4 last, after the route below has finished.
   running local-wins here could silently execute a stranger's own unrelated script instead of adopting the repo. It
   writes the `Roadmap/` skeleton, never overwrites anything, and writes nothing outside `Roadmap/`.
 - **1 This repo** (`config set project.startPoint building`): read it into the roadmap.
-  1. The dry run: `node "$GROOM/read-repo.mjs"`. Print what it prints, as it prints it: what it looked at, the counts
+  1. The dry run: `node "$REFINE/read-repo.mjs"`. Print what it prints, as it prints it: what it looked at, the counts
      (shipped, Building, issues grouped into ideas), what was left out and what was skipped, the first few of each.
      It writes nothing. If it says a roadmap is already here (first run only), skip to step 4.
   2. Ask: **1 Write it into Roadmap/** · **2 Don't write anything**. Nothing is written until the answer is 1.
-  3. On 1: `node "$GROOM/read-repo.mjs" --write`. It writes new files under `Roadmap/` only, through groom's
+  3. On 1: `node "$REFINE/read-repo.mjs" --write`. It writes new files under `Roadmap/` only, through refine's
      generators, and checks them; a non-zero exit names what failed: show it and stop. Then `node scripts/build-order.mjs`
      (the run rule applies), then show `node scripts/build-order.mjs --live`: what shipped, what's building, the
      backlog. Say once that nothing reaches Golden Frijoles until they push the roadmap.
   4. Then: **1 Yes, review the strategy (about 10 minutes)** · **2 Later: help me plan a first epic now**. 1 is the
      strategy step: write the three strategy files from the conversation and the repo, then show the **Strategy gate**
-     (groom's `references/gates.md`, the one home of every gate and its words). 2 hands off to `groom`.
+     (refine's `references/gates.md`, the one home of every gate and its words). 2 hands off to `refine`.
 - **2 A new idea**: one question, in these words:
   > A new idea. In a sentence or two: what is it, and who is it for?
 
@@ -209,9 +209,9 @@ needs a flag. Ask Q4 last, after the route below has finished.
 
   1 (`config set project.startPoint idea`): run `pmf-narrative`, then `north-star`, then `risk-validation`, each from
   the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the **Strategy
-  gate**. 2 (`config set project.startPoint plan`): hand off to `groom` with the sentence as the ask, word for word.
-  With no strategy, groom marks the epic not grounded (its `references/strategy.md`; the Plan gate's *Not grounded*).
-- **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `groom`.
+  gate**. 2 (`config set project.startPoint plan`): hand off to `refine` with the sentence as the ask, word for word.
+  With no strategy, refine marks the epic not grounded (its `references/strategy.md`; the Plan gate's *Not grounded*).
+- **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `refine`.
 
 Keep this stage to the steps above — don't re-explain the registry or restate `lib/config-registry.mjs` here.
 
@@ -219,8 +219,8 @@ Keep this stage to the steps above — don't re-explain the registry or restate 
 
 | The ask sounds like… | Route to |
 |---|---|
-| planning, shaping, a new idea, "what should we build" | `groom` |
-| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `pmf-narrative` → `north-star` → `risk-validation` (each writes `Roadmap/00-strategy/<name>.md` and offers the next; approval is the Strategy gate in groom's `references/gates.md`; outputs: the three files and three one-pagers in `Roadmap/00-strategy/one-pagers/`, a business model canvas, a value proposition sheet and a persona poster; a sealed `cold-read` can go first) |
+| planning, shaping, a new idea, "what should we build" | `refine` |
+| strategy before planning: a PMF narrative, a North Star metric, the riskiest assumption, "is it worth doing?" | `pmf-narrative` → `north-star` → `risk-validation` (each writes `Roadmap/00-strategy/<name>.md` and offers the next; approval is the Strategy gate in refine's `references/gates.md`; outputs: the three files and three one-pagers in `Roadmap/00-strategy/one-pagers/`, a business model canvas, a value proposition sheet and a persona poster; a sealed `cold-read` can go first) |
 | verifying rendered behavior, "does this look right", a build-time check | `live-smoke` (the cross-review rails also ship in the kit) |
 | daily/weekly ops: standups, recaps, PMO reporting, watching a PR, doc bloat, stale previews | `standup-post` / `weekly-recap` / `pmo-report` / `babysit-pr` / `doc-hygiene` / `vercel-prune` |
 | standing up a reviewed Claude Code routine | `node scripts/routine-bootstrap.mjs <name>`, then paste it into `/schedule` |

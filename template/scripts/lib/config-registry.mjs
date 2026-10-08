@@ -6,8 +6,8 @@
 //
 //   key       dotted, `<section>.<name>`: the path in golden-frijoles.config.json
 //   module    the product module doctor groups it under (Plan · Build · Ship · Measure · Spend · Operate)
-//   askWhen   'setup' | 'first-groom' | 'first-pr' | 'first-smoke' | 'first-report' | 'first-prune'
-//             | 'first-high-risk-groom' | 'never-yet' (declared so the schema is ready; nothing reads it this wave)
+//   askWhen   'setup' | 'first-refine' | 'first-pr' | 'first-smoke' | 'first-report' | 'first-prune'
+//             | 'first-high-risk-refine' | 'never-yet' (declared so the schema is ready; nothing reads it this wave)
 //   default   what a skipped question means. `null` = "unanswered", which a rail must treat as its safest choice
 //   question  the plain words an agent asks, once
 //   choices   optional allowed values; `store: 'env'` means the answer lives in .env.local (frijoles init), never here
@@ -81,14 +81,14 @@ export const REGISTRY = Object.freeze([
   {
     key: 'roadmap.areas',
     module: 'Plan',
-    askWhen: 'first-groom',
+    askWhen: 'first-refine',
     default: ['09 Platform & Infra'],
     question: 'Which areas (macro-sections) does this roadmap have? 09 Platform & Infra is reserved.',
   },
   {
     key: 'ways.fillIns',
     module: 'Plan',
-    askWhen: 'first-groom',
+    askWhen: 'first-refine',
     default: 'Roadmap/fill-ins.yml',
     question: 'Where are this project\'s WAYS-OF-WORKING fill-ins?',
   },
@@ -157,7 +157,7 @@ export const REGISTRY = Object.freeze([
   {
     key: 'ship.killSwitchPolicy',
     module: 'Ship',
-    askWhen: 'first-high-risk-groom',
+    askWhen: 'first-high-risk-refine',
     default: 'every-risk-high-story-names-its-flag',
     question: 'Should every risk:high story name its kill-switch flag?',
   },

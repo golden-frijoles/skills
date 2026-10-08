@@ -8,7 +8,7 @@
 // set from the desktop app, so a project can have `golden-frijoles` enabled for years and Cowork will
 // never see it.
 //
-// Which matters most for exactly one skill: `groom` is titled "the planning front door (Cowork)"
+// Which matters most for exactly one skill: `refine` is titled "the planning front door (Cowork)"
 // and states the role split "Cowork plans, Claude Code builds." The one skill written FOR Cowork
 // was the one Cowork could not load.
 //
@@ -28,7 +28,7 @@
 //
 // ── Usage ──────────────────────────────────────────────────────────────────────────────────────
 //   node scripts/pack-skills.mjs                     # all skills -> dist/
-//   node scripts/pack-skills.mjs --skill groom       # just one
+//   node scripts/pack-skills.mjs --skill refine       # just one
 //   node scripts/pack-skills.mjs --out /tmp/skills   # somewhere else
 //
 // Zero deps — Node 18+.

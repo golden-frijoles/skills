@@ -125,7 +125,7 @@ export const SURFACES = [
     ],
   },
   {
-    file: 'plugins/golden-frijoles/skills/groom/references/kill-switch.md',
+    file: 'plugins/golden-frijoles/skills/refine/references/kill-switch.md',
     why: 'Stage 6b: the mechanism a kill-switch story is planned against',
     must: [
       `${CLI_BIN} flags create <domain>.<feature>_enabled --kill-switch --all-envs`,
@@ -370,7 +370,7 @@ function installPromptExecChecks() {
  * `~/.agents/skills/` (this CLI's own config lives there too). Asserts every skill directory this
  * repo actually declares (`listSkills()` — the same registry `check-skill-scripts.mjs` walks, never
  * a hand-typed pair) landed under `.agents/skills/<name>/SKILL.md` in the project dir — not just
- * `golden-frijoles` and `groom`, though those two are named explicitly in the failure message since
+ * `golden-frijoles` and `refine`, though those two are named explicitly in the failure message since
  * they are the ones a stranger's very first prompt depends on.
  */
 function installPromptCodexInstallCheck() {
@@ -416,7 +416,7 @@ function installPromptCodexInstallCheck() {
   // Named even though they're already covered by `missing` above — the failure message should say
   // outright whether the two surfaces a stranger's FIRST prompt depends on made it, not just "3 of
   // 11 missing" and leave the reader to go check which three.
-  const criticalMissing = ['golden-frijoles', 'groom'].filter((name) => missing.includes(name));
+  const criticalMissing = ['golden-frijoles', 'refine'].filter((name) => missing.includes(name));
   if (missing.length) {
     console.error(
       `  ❌ npx skills add ${label} --skill '*' -a codex -y  →  missing under .agents/skills/: ${missing.join(', ')}` +
@@ -427,7 +427,7 @@ function installPromptCodexInstallCheck() {
   }
   console.log(
     `  ✅ npx skills add ${label} --skill '*' -a codex -y  →  all ${expected.length} skill(s) installed under ` +
-      '.agents/skills/, including golden-frijoles and groom'
+      '.agents/skills/, including golden-frijoles and refine'
   );
   return 0;
 }

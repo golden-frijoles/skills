@@ -156,7 +156,7 @@ export function readerSection({ family, agreement, seedComponents, seedTotal, da
     ? `- Seed score: **${seedTotal ?? '—'}** (${Object.entries(seedComponents)
         .map(([k, v]) => `${SIGNAL_NAMES[k]} ${f2(v)}`)
         .join(' · ')})`
-    : '- Seed score: none recorded (run `node scripts/intent-match.mjs <seed> --write` at groom Stage 3.5)';
+    : '- Seed score: none recorded (run `node scripts/intent-match.mjs <seed> --write` at refine Stage 3.5)';
   const lines = [
     '## Intent match',
     '',

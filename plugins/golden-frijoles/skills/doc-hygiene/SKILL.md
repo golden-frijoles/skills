@@ -62,7 +62,7 @@ fourth step (`scripts/routines/roadmap-hygiene.prompt.md`).
   `node scripts/doc-hygiene.mjs` (writes the dated report) or `node scripts/doc-hygiene.mjs --check`
   (prints only, writes nothing — use this for a quick look or when just verifying the script itself).
 - **`scripts/doc-format.mjs`** — the FORMAT half of doc hygiene (this script is the content half):
-  epic README / sprint / retrospective shape against the groom templates. `node scripts/doc-format.mjs`
+  epic README / sprint / retrospective shape against the refine templates. `node scripts/doc-format.mjs`
   reports every finding; `--check` fails only on the paths in `scripts/doc-format.enforced.json`;
   `--fix` rewrites only the mechanical ones. Include its report summary in yours.
 - **`scripts/roadmap-extract.mjs`** — the epic-status SSOT the script's "archived epic mention" check

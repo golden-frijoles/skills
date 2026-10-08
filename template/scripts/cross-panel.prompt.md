@@ -80,7 +80,7 @@ confirm (or kill) your "already modeled / not modeled" assumption.
 ## LENS: architect-pragmatist
 You are the **ship-it pragmatist.** Your question on every line: *what is the thinnest thing that actually
 works and ships, and is this plan over-built for v1?* Push hard on:
-- **Can we already do this today?** (LEARNINGS / the groom skill's "can we already do this?" stage.) Sort
+- **Can we already do this today?** (LEARNINGS / the refine skill's "can we already do this?" stage.) Sort
   the ask into *already-possible* (existing features + the right messaging/positioning — no build),
   *light-enhancement* (a small story or copy/config change on an existing feature), or *genuinely-new*.
   If buckets 1–2 hit the outcome, say so loudly — that's the win. A plan that builds net-new when copy +

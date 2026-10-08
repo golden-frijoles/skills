@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // doc-format.mjs — check Roadmap/ epic docs (README.md, sprint-N.md, RETROSPECTIVE.md) against the
-// canonical shape: the `groom` plugin's scaffolding templates (golden-frijoles/skills,
-// skills/groom/templates/) — proven canonical in the project this was ported from by a zero-drift
+// canonical shape: the `refine` plugin's scaffolding templates (golden-frijoles/skills,
+// skills/refine/templates/) — proven canonical in the project this was ported from by a zero-drift
 // control group (81 seeds, one authoring path, identical shape; epic READMEs drift because they get
 // hand-edited after scaffolding, away from the template). dobby-foundation's CI renders a scaffolded
 // epic and runs this checker over it, so the producer validates its own templates.
@@ -392,7 +392,7 @@ export function checkRetrospective(content) {
     // long as the italic markup actually closes somewhere (immediately after the date, or at the end
     // of the line). Require: starts with the italic-open + "Closed:" + a real date, and a closing "_"
     // appears somewhere after that.
-    // The canonical groom scaffold intentionally has no close date yet. Accept its literal sentinel:
+    // The canonical refine scaffold intentionally has no close date yet. Accept its literal sentinel:
     // treating an unbuilt epic as closed would make roadmap-to-notion derive a false Shipped state.
     const isScaffoldPlaceholder = trimmed === '_Closed: <date>_';
     const startsWithDate = /^_Closed:\s*\d{4}-\d{2}-\d{2}/.test(trimmed);

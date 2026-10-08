@@ -7,7 +7,7 @@
 //
 // The quote is the p25–p75 of `actual_usd` over SHIPPED epics at the same appetite — the middle half of what epics
 // that size actually cost here. Until there are MIN_HISTORY of them it is WIDE_DEFAULT, labelled `wide` with its n,
-// never a guess dressed as a calibration (D4). It is recomputed at every groom, so it moves as history accumulates.
+// never a guess dressed as a calibration (D4). It is recomputed at every refinement, so it moves as history accumulates.
 // Epics are read through the extractor (`buildRows`), so appetite follows the board's own rule (README, else seed —
 // D20) and no second frontmatter reader exists.
 //

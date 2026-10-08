@@ -469,19 +469,19 @@ test('ITEMS: intent-answered is the sixth derived item', () => {
   ]);
 });
 
-test('intent-answered: the REAL groom retro template, as scaffolded, is unanswered (fresh review of #198)', async (t) => {
+test('intent-answered: the REAL refine retro template, as scaffolded, is unanswered (fresh review of #198)', async (t) => {
   const { existsSync, readFileSync } = await import('node:fs');
   const { dirname, join } = await import('node:path');
   const { fileURLToPath } = await import('node:url');
   const here = dirname(fileURLToPath(import.meta.url));
-  const rel = ['plugins', 'golden-frijoles', 'skills', 'groom', 'templates', 'RETROSPECTIVE.md'];
+  const rel = ['plugins', 'golden-frijoles', 'skills', 'refine', 'templates', 'RETROSPECTIVE.md'];
   // From scripts/, skills/scripts/ or skills/template/scripts/; a consumer's copy has none of them.
   const tpl = [
     join(here, '..', 'skills', ...rel),
     join(here, '..', ...rel),
     join(here, '..', '..', ...rel),
   ].find((p) => existsSync(p));
-  if (!tpl) return t.skip('groom template not in this checkout');
+  if (!tpl) return t.skip('refine template not in this checkout');
   const text = readFileSync(tpl, 'utf8').replace('<date>', '2026-09-30');
   assert.equal(intentAnswer(text), null, 'the template, guidance comment included, is not an answer');
   const r = evaluate({ ...closedEpic, readme: SCORED_README, retro: text });

@@ -1,11 +1,11 @@
 // epic-kickoff.mjs — the epic-mode kickoff, as one pure builder (board-sinks-and-scrumban D17).
 //
-// It used to live only in the groom skill (`emit-epic-kickoff.mjs` + `templates/epic-kickoff.md`), which the kit does
+// It used to live only in the refine skill (`emit-epic-kickoff.mjs` + `templates/epic-kickoff.md`), which the kit does
 // not ship and an installed extractor cannot import (lock C11). The Hub's "Ready to build" card has to carry the same
 // kickoff the CLI prints — a kickoff composed twice is the exact drift `emit-epic-kickoff` was written to end — so
 // the builder, the parsers it reads the docs with and the template text all live here, in the ONE source
-// (`template/scripts/`). The groom skill imports a byte-identical copy that `skills/scripts/render-hook-vendor.mjs`
-// writes into `groom/vendor/` and checks in CI; the extractor imports this file directly.
+// (`template/scripts/`). The refine skill imports a byte-identical copy that `skills/scripts/render-hook-vendor.mjs`
+// writes into `refine/vendor/` and checks in CI; the extractor imports this file directly.
 //
 // The parsers moved here from `emit-kickoff.mjs` unchanged; that file re-exports them, so the per-sprint generator
 // and this one still read the doc format with ONE set of parsers.
@@ -164,7 +164,7 @@ export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }
   if (String(appetite).toUpperCase() === 'L')
     rules.push(
       `- **L bet:** it is funded one wave at a time. When you stop at a wave boundary, ask the product owner one line — ` +
-        `"fund the next wave of \`${slug}\`? what does it displace?" — and on yes run groom's ` +
+        `"fund the next wave of \`${slug}\`? what does it displace?" — and on yes run refine's ` +
         `\`fund.mjs --slug ${slug} --displaced "<…>"\` (position kept) before the next wave starts.`
     );
   return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';
