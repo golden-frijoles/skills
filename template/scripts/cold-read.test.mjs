@@ -62,8 +62,16 @@ test('verifySeal: holds, refuses a changed file by name of both hashes, refuses 
 
 test('missingSections: sealable only with all eleven sections and a reading log that discloses contamination', () => {
   assert.deepEqual(missingSections(READ), []);
-  assert.equal(missingSections('## Header\n').length, REQUIRED_SECTIONS.length - 1);
+  assert.equal(missingSections('## Header\n\nA read.\n').length, REQUIRED_SECTIONS.length - 1);
   assert.deepEqual(missingSections(READ.replace('## 11. Sources', '## 11. Links')), ['Sources']);
+  assert.deepEqual(
+    missingSections(READ.replace('\n\nNone.', '')),
+    ['Sources'],
+    'a heading with nothing under it is missing'
+  );
+  assert.deepEqual(missingSections(READ.replace('**Contamination:** none.', '**Contamination:**')), [
+    'Contamination (inside the reading log)',
+  ]);
   // the prompt and the check name the same sections, so a section added to one cannot be forgotten in the other
   const prompt = readFileSync(join(dirname(SCRIPT), 'cold-read.prompt.md'), 'utf8');
   const asked = [...prompt.matchAll(/^\d+\. \*\*(.+?)\*\*/gm)].map((m) => m[1].replace(/:$/, ''));
@@ -78,7 +86,7 @@ test('missingSections: sealable only with all eleven sections and a reading log 
 
 test('stampRead always writes our kind, family and date, keeping any other key the read brought', () => {
   assert.match(
-    stampRead('## Header\n', { family: 'codex', date: '2026-10-08' }),
+    stampRead('## Header\n\nA read.\n', { family: 'codex', date: '2026-10-08' }),
     /^---\nkind: cold-read\nfamily: codex\n/
   );
   const stamped = stampRead('---\nkind: cold-read\nfamily: me\nsources: 19\n---\n\n## Header\n', {
@@ -221,7 +229,7 @@ test('a replaced seal is caught by the hash the maker was shown; an unfinished r
     );
 
     const unfinished = join(dirname(file), 'unfinished.md');
-    writeFileSync(unfinished, '## Header\n');
+    writeFileSync(unfinished, '## Header\n\nA read.\n');
     const r = cli(root, 'seal', unfinished);
     assert.equal(r.status, 1);
     assert.match(r.stderr, /not sealed .*missing: Reading log; What this product is/);
@@ -298,7 +306,7 @@ test('run: Codex reads the project root, the read is stamped family: codex over 
 test('run: no codex on PATH exits 3 with one line and writes nothing; an unfinished Codex read writes nothing, so the retry works', () => {
   const root = mkdtempSync(join(tmpdir(), 'cold-read-run-'));
   const empty = mkdtempSync(join(tmpdir(), 'no-codex-'));
-  const bin = stubCodex('## Header\n');
+  const bin = stubCodex('## Header\n\nA read.\n');
   try {
     const none = runCli(root, `${empty}:/usr/bin:/bin`, root);
     assert.equal(none.status, 3);

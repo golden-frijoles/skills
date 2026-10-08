@@ -117,9 +117,15 @@ export const REQUIRED_SECTIONS = [
  */
 export function missingSections(text) {
   const all = headings(text);
-  const missing = REQUIRED_SECTIONS.filter(([, re]) => !all.some((h) => re.test(h))).map(([name]) => name);
+  // A heading with nothing under it is a missing section. Whether the words under it are any good is the compare's
+  // judgement, not a script's: this only refuses the read that plainly isn't finished.
+  const filled = (h) => (section(text, h) ?? '').trim() !== '';
+  const missing = REQUIRED_SECTIONS.filter(([, re]) => !all.some((h) => re.test(h) && filled(h))).map(
+    ([name]) => name
+  );
   const log = all.find((h) => /reading log/i.test(h));
-  if (log && !/contamination/i.test(section(text, log) ?? ''))
+  // The disclosure has to be more than the word: a "Contamination" line followed by something.
+  if (log && !/contamination\W*\s*\S+/i.test((section(text, log) ?? '').replace(/contamination\W*$/i, '')))
     missing.push('Contamination (inside the reading log)');
   return missing;
 }
