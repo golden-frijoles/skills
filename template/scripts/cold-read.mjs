@@ -298,8 +298,17 @@ function run(root) {
       err: `cold-read: no other model family reachable (${why}). Run the brief with a same-family agent and record \`family: claude (same family)\`.`,
     };
   }
+  const read = stampRead(r.text, { family: 'codex', date });
+  // Checked BEFORE anything is written: an unfinished read on disk would block every retry today (the same-day guard
+  // above), and nobody may open it to see why (review of #314, round 2). Only a sealable read ever lands.
+  const missing = missingSections(read);
+  if (missing.length)
+    return {
+      code: 1,
+      err: `cold-read: Codex returned an unfinished read (missing: ${missing.join('; ')}); nothing was written. Run it again, or use a same-family agent (exit 3's route).`,
+    };
   mkdirSync(dir, { recursive: true });
-  writeFileSync(file, stampRead(r.text, { family: 'codex', date }));
+  writeFileSync(file, read);
   const s = seal(file);
   return { code: s.code, out: `cold-read: Codex wrote ${file}.\n${s.out ?? ''}`, err: s.err };
 }

@@ -268,7 +268,7 @@ test('run: Codex reads the project root, the read is stamped family: codex over 
   }
 });
 
-test('run: no codex on PATH exits 3 with one line and writes nothing; an unfinished Codex read is not sealed', () => {
+test('run: no codex on PATH exits 3 with one line and writes nothing; an unfinished Codex read writes nothing, so the retry works', () => {
   const root = mkdtempSync(join(tmpdir(), 'cold-read-run-'));
   const empty = mkdtempSync(join(tmpdir(), 'no-codex-'));
   const bin = stubCodex('## Header\n');
@@ -280,7 +280,10 @@ test('run: no codex on PATH exits 3 with one line and writes nothing; an unfinis
 
     const thin = runCli(root, `${bin}:/usr/bin:/bin`, root);
     assert.equal(thin.status, 1);
-    assert.match(thin.stderr, /not sealed/);
+    assert.match(thin.stderr, /unfinished read \(missing: Reading log/);
+    assert.ok(!existsSync(join(root, 'Roadmap')), 'nothing written, so a retry today is not blocked');
+    writeFileSync(join(bin, 'reply.md'), BODY);
+    assert.equal(runCli(root, `${bin}:/usr/bin:/bin`, root).status, 0, 'the retry runs and seals');
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(empty, { recursive: true, force: true });
