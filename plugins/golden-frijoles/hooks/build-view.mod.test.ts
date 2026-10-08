@@ -160,3 +160,83 @@ test('/build with no slug or an unknown one lists the epics and fills nothing', 
   expect(String(flag.text)).toContain('is not an epic slug');
   expect(w.filled).toEqual([]);
 });
+
+// ── build-view-upgrade S1.4 (D5/D6): the session line, coloured, under the hint — with the time to each reset ─────────
+const HOUR = 3_600_000;
+const NOW = Date.UTC(2026, 9, 8, 1, 0);
+const flat = (node: unknown): { text: string; color?: string }[] => {
+  if (typeof node === 'string') return [{ text: node }];
+  if (!node || typeof node !== 'object') return [];
+  const el = node as { type?: string; props?: { color?: string }; children?: unknown };
+  const kids = ([] as unknown[]).concat(el.children ?? []);
+  const out = kids.flatMap(flat);
+  return el.props?.color ? out.map((p) => ({ ...p, color: p.color ?? el.props?.color })) : out;
+};
+
+test('S1.4: session.measure draws each figure in its colour with its reset, and clears the plain status line', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW });
+  mock.store(on);
+  world(on);
+  const statuses: (string | undefined)[] = [];
+  on('ui.status', async (_$, e) => {
+    statuses.push(e.text);
+    return { value: undefined };
+  });
+  on('session.measure', async (_$, e) => ({ changed: e.changed }) as never);
+  on('ui.render', { component: 'PromptHint' }, async () => ({ type: 'Text', props: {}, children: ['? for shortcuts'] }) as never);
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  await $.session.measure({
+    context: { window: 200000, tokens: 96000, percent: 48 },
+    rateLimits: [
+      { kind: 'five_hour', percentUsed: 78, resetsAt: new Date(NOW + 2.5 * HOUR).toISOString() },
+      { kind: 'seven_day', percentUsed: 91, resetsAt: new Date(NOW + 75 * HOUR).toISOString() },
+    ],
+    changed: ['context'],
+  } as never);
+  expect(statuses.at(-1)).toBe(undefined); // never both: the coloured row replaces the plain line
+  const hint = await $.ui.mount({ plugin: 'golden-frijoles', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '? for shortcuts' } });
+  const parts = flat(await hint.drawn());
+  expect(parts[0].text).toBe('? for shortcuts'); // the engine's own hint is kept
+  const by = (text: string) => parts.find((p) => p.text === text);
+  expect(by('Session 48%')?.color).toBe('green');
+  expect(by('5h 78% (-2h)')?.color).toBe('yellow');
+  expect(by('7d 91% (-3d)')?.color).toBe('red');
+  expect(parts.some((p) => p.text === ' → keep going')).toBe(true);
+  void clock;
+});
+
+test('S1.2: the band draws the per-sprint bars and the stage track the resolver wrote, the marked stage in its tone', async ($, on) => {
+  mock.clock(on);
+  mock.store(on);
+  world(on, (argv) =>
+    argv.includes('--json')
+      ? {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            facts_mode: 'live',
+            lines: [
+              'Currently building',
+              '  Epic     Build view upgrade    02-commercial · risk LOW',
+              '  Why      no target set',
+              '  Progress ▰▰▱│▱▱ 2 of 5 stories done · in flight S1.2 · Sprint 1 of 2',
+              '  Status   Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped',
+              '           from git: feat/build-view-upgrade (live)',
+            ],
+          }),
+        }
+      : null,
+  );
+  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  await $.turn.start({ text: 'go', turnId: 't1' });
+  const band = await $.ui.mount({
+    plugin: 'golden-frijoles',
+    surface: 'terminal',
+    component: 'AbovePrompt',
+    props: { hasSurvey: false, isWorking: false, rows: 20, bodyColumns: 100 } as never,
+  });
+  const parts = flat(await band.drawn());
+  expect(parts.find((p) => p.text === '▰▰')?.color).toBe('green');
+  expect(parts.find((p) => p.text === '◉ Building')?.color).toBe('yellow');
+  expect(parts.some((p) => p.text === '2 of 5 stories done · in flight S1.2 · Sprint 1 of 2')).toBe(true);
+  expect(parts.some((p) => p.text.includes('from git: feat/build-view-upgrade (live)'))).toBe(true);
+});

@@ -45,8 +45,9 @@ import {
   isEpicSlug,
   isOnlineTrigger,
   kickoffArgv,
-  progressOf,
+  barsOf,
   publishedManifestPath,
+  trackOf,
   shouldRefreshUsage,
   spendOf,
   versionOf,
@@ -283,15 +284,31 @@ export const register: Register = (on) => {
     if (!rows.length) return next(e);
     const { Box, Text } = $.ui.resolve(e);
 
-    const bar = (value: string) => {
-      const p = progressOf(value);
-      if (!p) return null;
-      const width = Math.min(p.total, 12);
-      const filled = Math.round((p.done / p.total) * width);
+    // build-view-upgrade D2/D3 — the resolver's own glyphs and words, coloured; nothing computed here.
+    const progress = (value: string) => {
+      const b = barsOf(value);
+      if (!b) return null;
       return (
         <Text>
-          <Text color="green">{'▰'.repeat(filled)}</Text>
-          <Text dimColor>{'▱'.repeat(width - filled)}</Text>{' '}
+          {b.runs.map((r, j) =>
+            r.kind === 'done' ? (
+              <Text key={`b${j}`} color="green">{r.text}</Text>
+            ) : (
+              <Text key={`b${j}`} dimColor>{r.text}</Text>
+            ),
+          )}{' '}
+          <Text>{b.rest}</Text>
+        </Text>
+      );
+    };
+    const track = (value: string, tone: keyof typeof TONE_COLORS) => {
+      const t = trackOf(value);
+      if (!t) return null;
+      return (
+        <Text>
+          <Text dimColor>{t.before}</Text>
+          <Text bold color={TONE_COLORS[tone]}>{t.mark}</Text>
+          <Text dimColor>{t.after}</Text>
         </Text>
       );
     };
@@ -337,10 +354,12 @@ export const register: Register = (on) => {
                 <Text dimColor>{row.label}</Text>
               </Box>
               <Box flexShrink={1}>
-                <Text wrap="wrap">
-                  {row.label === 'Progress' ? bar(row.main) : null}
+                <Text wrap={row.label === 'Status' ? 'truncate' : 'wrap'}>
                   {row.label === 'Spend' ? spendBar(row.main) : null}
-                  <Text bold={row.label === 'Epic'} color={TONE_COLORS[row.tone]}>{row.main}</Text>
+                  {(row.label === 'Progress' && progress(row.main)) ||
+                    (row.label === 'Status' && track(row.main, row.tone)) || (
+                      <Text bold={row.label === 'Epic'} color={TONE_COLORS[row.tone]}>{row.main}</Text>
+                    )}
                   {row.meta ? <Text dimColor>{'  ·  '}{row.risk ? row.meta.replace(/ ?· ?risk \w+/, '') : row.meta}</Text> : null}
                   {row.risk ? (
                     <Text>

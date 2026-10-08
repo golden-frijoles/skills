@@ -125,17 +125,36 @@ export function toneOf(value) {
   if (/^unknown|blocked|failed|stale/.test(v)) return 'bad';
   if (/shipped|done|live|merged|complete/.test(v)) return 'good';
   if (/^qa\b|verifying|review|smoke/.test(v)) return 'info';
-  if (/building|in progress|groom|planning|ready/.test(v)) return 'busy';
+  if (/building|locking|in progress|groom|planning|ready|backlog/.test(v)) return 'busy';
   return 'plain';
 }
 
-/** `3 of 7 stories have commits · …` → `{ done: 3, total: 7 }` (live-build-view S2.2); anything else → null. */
-export function progressOf(value) {
-  const m = /(\d+) of (\d+) stories have commits/.exec(String(value || ''));
+/**
+ * The Progress row's bars (build-view-upgrade D2), read from the resolver's OWN glyphs — never computed here (D3):
+ * `▰▰▱│▱▱ 2 of 5 stories done · …` → runs of `▰` (done), `▱` (not yet) and `│` (between sprints), and the rest of the
+ * value. Anything without a leading bar → null, and the row draws as plain text.
+ */
+export function barsOf(value) {
+  const m = /^([▰▱│]+) (.*)$/.exec(String(value || ''));
   if (!m) return null;
-  const total = Number(m[2]);
-  const done = Math.max(0, Math.min(total, Number(m[1])));
-  return total > 0 ? { done, total } : null;
+  const runs = [...m[1].matchAll(/▰+|▱+|│+/g)].map(([text]) => ({
+    kind: text[0] === '▰' ? 'done' : text[0] === '▱' ? 'todo' : 'sep',
+    text,
+  }));
+  return { runs, rest: m[2] };
+}
+
+/**
+ * The Status row's stage track (build-view-upgrade D3): `Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped` → the words
+ * before the mark, the marked word (`◉ Building`) and the words after it. No mark → null (the old one-line status).
+ */
+export function trackOf(value) {
+  const v = String(value || '');
+  const at = v.indexOf('◉ ');
+  if (at === -1) return null;
+  const end = v.indexOf(' ─ ', at);
+  const mark = end === -1 ? v.slice(at) : v.slice(at, end);
+  return { before: v.slice(0, at), mark, after: end === -1 ? '' : v.slice(end), word: mark.slice(2) };
 }
 
 export const SPEND_BAR_WIDTH = 10;
@@ -177,7 +196,7 @@ export function bandRowsFrom(text) {
       const [, label, value] = field;
       const tone =
         label === 'Status' || label === 'Open'
-          ? toneOf(label === 'Open' ? value.split(' · ')[1] : value)
+          ? toneOf(label === 'Open' ? value.split(' · ')[1] : (trackOf(value)?.word ?? value))
           : label === 'Spend'
             ? spendOf(value).tone
             : 'plain';

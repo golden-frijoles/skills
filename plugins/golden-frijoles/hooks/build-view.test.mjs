@@ -120,7 +120,7 @@ test('the bundle exists and is the real resolver: it emits `lines` for this repo
 
 // ── The band (fix/build-view-band): a status row cut the view off at the right edge and drew its newlines
 // as U+FFFD. The band decorates the resolver's lines; these pin that it never adds or drops a fact.
-const { bandRowsFrom, progressOf, toneOf } = view;
+const { bandRowsFrom, barsOf, trackOf, toneOf } = view;
 
 test('bandRowsFrom: one row per resolver line, every fact kept', () => {
   const lines = [
@@ -128,13 +128,14 @@ test('bandRowsFrom: one row per resolver line, every fact kept', () => {
     '  Epic     Semantic lint — Jev judges    09-platform-infra · risk LOW',
     '  Story    S1.2 — the rule',
     '           As a PM, I want X, so that Y.',
-    '  Progress 1 of 5 stories have commits · in flight S1.2 · Sprint 1 of 2',
-    '  Status   Building',
+    '  Progress ▰▱│▱▱▱ 1 of 5 stories done · in flight S1.2 · Sprint 1 of 2',
+    '  Status   Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped',
+    '           from git: feat/y (live)',
     '  Also     1 more in other worktrees: feat/y',
   ];
   const rows = bandRowsFrom(lines.join('\n'));
   assert.equal(rows.length, lines.length);
-  assert.deepEqual(rows.map((r) => r.kind), ['heading', 'field', 'field', 'note', 'field', 'field', 'field']);
+  assert.deepEqual(rows.map((r) => r.kind), ['heading', 'field', 'field', 'note', 'field', 'field', 'note', 'field']);
   for (const [i, row] of rows.entries()) {
     const shown = row.kind === 'field' ? `${row.label} ${row.value}` : row.value;
     assert.equal(shown.replace(/\s+/g, ' '), lines[i].trim().replace(/\s+/g, ' '), `row ${i} is its line`);
@@ -153,11 +154,29 @@ test('bandRowsFrom: the idle view, and nothing for no text', () => {
   for (const none of [null, undefined, '', '  \n']) assert.deepEqual(bandRowsFrom(none), []);
 });
 
-test('progressOf / toneOf: colour and bar hints only', () => {
-  assert.deepEqual(progressOf('3 of 7 stories have commits · in flight S1.4 · Sprint 1 of 2'), { done: 3, total: 7 });
-  assert.deepEqual(progressOf('0 of 3 stories have commits · Sprint ? of 2'), { done: 0, total: 3 });
-  assert.equal(progressOf('Story 2 of 5 · Sprint 1 of 2'), null, 'the old ordinal is not progress');
-  assert.equal(progressOf('0 of 0 stories have commits'), null);
+test('barsOf / trackOf / toneOf: colour hints read from the resolver\'s own words', () => {
+  assert.deepEqual(barsOf('▰▰▱│▱ 2 of 4 stories done · Sprint 1 of 2'), {
+    runs: [
+      { kind: 'done', text: '▰▰' },
+      { kind: 'todo', text: '▱' },
+      { kind: 'sep', text: '│' },
+      { kind: 'todo', text: '▱' },
+    ],
+    rest: '2 of 4 stories done · Sprint 1 of 2',
+  });
+  assert.equal(barsOf('3 of 7 stories have commits · Sprint 1 of 2'), null, 'no bar drawn by the mod itself');
+  assert.deepEqual(trackOf('Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped'), {
+    before: 'Grooming ─ Ready ─ ',
+    mark: '◉ Building',
+    after: ' ─ QA ─ Shipped',
+    word: 'Building',
+  });
+  assert.equal(trackOf('Grooming ─ Ready ─ Building ─ QA ─ ◉ Shipped').after, '');
+  assert.equal(trackOf('Building'), null);
+  // The track always names Shipped: the tone comes from the MARKED word, never from the whole line.
+  assert.equal(bandRowsFrom('Currently building\n  Status   Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped')[1].tone, 'busy');
+  assert.equal(bandRowsFrom('Currently building\n  Status   Grooming ─ Ready ─ Building ─ ◉ QA ─ Shipped')[1].tone, 'info');
+  assert.equal(bandRowsFrom('Currently building\n  Status   Grooming ─ Ready ─ ◉ Locking ─ QA ─ Shipped')[1].tone, 'busy');
   assert.equal(toneOf('unknown — no README'), 'bad');
   assert.equal(toneOf('Shipped'), 'good');
   assert.equal(toneOf('Something else'), 'plain');
