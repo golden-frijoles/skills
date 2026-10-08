@@ -73,6 +73,27 @@ Then every benefit in **Value proposition** and every moat in **Competitive adva
 
 Never reword an aspirational claim into a true-today one; offer to reword it to what is true today instead.
 
+## 7. Ladder up: an example becomes a need
+
+A founder explains with stories. A story is evidence of a need, not the need itself, and it never goes into the file
+as a goal, a frustration or a persona line. For each example the maker gives:
+
+1. **Ask what it shows**: "What was the person trying to get done there, and what got in the way?" Offer 2–3 readings.
+2. **Write the need** in the customer's terms, one line, with no story detail in it.
+3. **Check it outside**: a source (an interview, a forum thread, a survey, a review, a market report) or, when none
+   is found, the label `(hypothesis)`.
+4. **Confirm**: "So the need is <need>. Right?" Only a confirmed need goes into a dimension or a persona line.
+
+**Worked example.** The founder of a shift-scheduling app for cafés answers the problem step with three stories:
+
+| What the founder said | The need, confirmed | Evidence |
+|---|---|---|
+| "My sister ran her café from a WhatsApp group and lost a Saturday to a no-show." | Know a shift is covered before the day starts | A cited trade-association survey on no-shows, or `(hypothesis)` |
+| "One owner told me she redoes the rota every Sunday night." | Build next week's rota without starting from zero | A cited forum thread of owners describing it, or `(hypothesis)` |
+| "I hated chasing people for swaps when I managed a bar." | Let staff swap shifts without the manager in the middle | `(hypothesis)`: no source found |
+
+The file gets the three needs with their labels. The stories stay in the conversation.
+
 ## 8. Voice
 
 Honest (says what it doesn't know; "couldn't tell" is an answer), numerate (numbers over adjectives), warm and calm.
