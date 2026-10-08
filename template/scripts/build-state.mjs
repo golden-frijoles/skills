@@ -56,12 +56,12 @@ function repoEnv() {
 import { readFileSync, readdirSync, existsSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { PHASES, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
+import { PHASES, isDay, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
-import { groupByStage } from './lib/stage.mjs';
+import { STAGES, groupByStage } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -222,6 +222,7 @@ function readEpic(root, slug) {
     locked_at: readme.data.locked_at ?? null, // live-build-view D10 — stamped by scripts/epic-phase.mjs lock
     lifecycle: readme.data.status ?? null,
     quote: quoteOf(readme.data),
+    target: targetOf(readme.data),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
     sprints,
   };
@@ -433,6 +434,25 @@ function spendLine(spend, quote) {
     return [usd, `${over} quote ${range}`, tok].filter(Boolean).join(' · ');
   }
   return [`${usd} of quote ${range}`, tok, sessions].filter(Boolean).join(' · ');
+}
+
+/**
+ * The result record's target off the README frontmatter (build-view-upgrade D1; the fields are result-record's
+ * TARGET_FIELDS). A target is the metric with both numbers; a hypothesis on its own is kept, and is not a target.
+ */
+export function targetOf(readme) {
+  const text = (v) => (typeof v === 'string' && v.trim() && v.trim() !== 'null' ? v.trim() : null);
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const metric = text(readme.target_metric);
+  const from = num(readme.target_from);
+  const to = num(readme.target_to);
+  return {
+    hypothesis: text(readme.hypothesis),
+    metric: metric !== null && from !== null && to !== null ? metric : null,
+    from,
+    to,
+    read_date: isDay(readme.read_date) ? readme.read_date : null,
+  };
 }
 
 /** The epic's quote off its README frontmatter, or null (an unquoted epic — never a $0 quote, D4). */
@@ -812,8 +832,15 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     story_source: storySource,
     story_note: unreadableSprint ? `${unreadableSprint}${storyNote ? ` — ${storyNote}` : ''}` : storyNote,
     warning: unreadableSprint,
+    target: epic.target,
     progress: {
       stories_with_commits: withCommits.size,
+      // build-view-upgrade D2 — the same measure per sprint, in build order: [done, total] for each.
+      by_sprint: epic.sprints.map((sp) => ({
+        n: sp.n,
+        done: sp.stories.filter((st) => withCommits.has(st.id)).length,
+        total: sp.stories.length,
+      })),
       story: story ? story.ordinal : null,
       stories: allStories.length,
       sprint: sprint ? epic.sprints.indexOf(sprint) + 1 : null,
@@ -869,6 +896,12 @@ function elsewhereLines(state, pad) {
  */
 export function statusValue(state) {
   if (!state.stage) return state.status || `unknown${state.warning ? ` — ${state.warning}` : ''}`;
+  const { stage, source, age, phase } = stageParts(state);
+  return `${stage} · from ${source} (${age})${phase}`;
+}
+
+/** The stage in flight, where it came from, how old that is and a differing written phase — statusValue's parts. */
+function stageParts(state) {
   const source = String(state.stage_source || '').replace(/ · snapshot@\S+$/, '');
   // live-build-view D11 — the band's refinement of Building, not a new stage (the Hub and the board keep Building): an
   // epic whose branch is live but whose README carries no `locked_at` is still Locking architecture. The lock is a
@@ -890,7 +923,72 @@ export function statusValue(state) {
         : 'docs only, no snapshot yet';
   const phase =
     state.phase_written && state.phase_written !== stage ? ` · phase ${state.phase_written}` : '';
-  return `${stage} · from ${source} (${age})${phase}`;
+  return { stage, locking, source, age, phase };
+}
+
+// build-view-upgrade D3 — the stage as a track, in lib/stage.mjs's words. `To groom` shows only when it is the stage.
+const TRACK_WORDS = { 'To groom': 'Backlog', 'Ready to build': 'Ready' };
+export const TRACK_MARK = '◉';
+
+/** `Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped` for a stage; `◉ Locking` in Building's place while locking. */
+export function stageTrack(stage, locking = false) {
+  return STAGES.filter((s) => s !== 'To groom' || stage === 'To groom')
+    .map((s) => {
+      const word = s === 'Building' && locking ? 'Locking' : (TRACK_WORDS[s] ?? s);
+      return s === stage ? `${TRACK_MARK} ${word}` : word;
+    })
+    .join(' ─ ');
+}
+
+/** The Status line and its continuation (D3): the track, then where the stage came from. No stage → one plain line. */
+function statusLines(state, pad, cont) {
+  if (!state.stage || !STAGES.includes(state.stage)) return [`${pad('Status')}${statusValue(state)}`];
+  const { locking, source, age, phase } = stageParts(state);
+  return [`${pad('Status')}${stageTrack(state.stage, locking)}`, `${cont}from ${source} (${age})${phase}`];
+}
+
+// build-view-upgrade D1 — why we are building it: the result record's target, or "no target set".
+const WIDTH = 80;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** `2026-12-04` → `4 Dec` (with the year when it is not `now`'s), read in UTC like every result-record day. */
+export function shortDay(day, now = new Date()) {
+  if (!isDay(day)) return null;
+  const [y, m, d] = day.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]}${y !== now.getUTCFullYear() ? ` ${y}` : ''}`;
+}
+
+const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
+
+/** The Why line and, with a target, its continuation — each clipped to fit 80 columns. */
+export function whyLines(target, pad, cont, now = new Date()) {
+  const room = WIDTH - cont.length;
+  const t = target || {};
+  if (!t.metric) {
+    if (!t.hypothesis) return [`${pad('Why')}no target set`];
+    return [`${pad('Why')}${clip(t.hypothesis, room)}`, `${cont}no target set`];
+  }
+  const read = t.read_date ? `read ${shortDay(t.read_date, now)}` : 'read 30 days after shipping';
+  const numbers = ` ${fmtNum(t.from)} ━━▸ ${fmtNum(t.to)} · ${read}`;
+  const metric = `${clip(t.metric, Math.max(8, room - numbers.length))}${numbers}`;
+  return t.hypothesis
+    ? [`${pad('Why')}${clip(t.hypothesis, room)}`, `${cont}${clip(metric, room)}`]
+    : [`${pad('Why')}${clip(metric, room)}`];
+}
+
+// build-view-upgrade D2 — one cell per story, sprint by sprint: ▰ has a commit, ▱ not yet, │ between sprints.
+export const SPRINT_CELLS_MAX = 8;
+
+/** `[{done:2,total:3},{done:0,total:4}]` → `▰▰▱│▱▱▱▱`. A sprint wider than SPRINT_CELLS_MAX is scaled to it. */
+export function sprintBars(bySprint) {
+  return (bySprint || [])
+    .filter((sp) => sp.total > 0)
+    .map((sp) => {
+      const width = Math.min(sp.total, SPRINT_CELLS_MAX);
+      const filled = Math.max(0, Math.min(width, Math.round((sp.done / sp.total) * width)));
+      return '▰'.repeat(filled) + '▱'.repeat(width - filled);
+    })
+    .join('│');
 }
 
 /** The board around this work in one line, and the link to it when `board.hubUrl` is set (S3.1). */
@@ -904,7 +1002,7 @@ function boardLines(state, pad) {
   return [`${pad('Board')}${counts}`, ...(b.url ? [`${pad('')}↗ ${b.url}`] : [])];
 }
 
-export function renderLines(state) {
+export function renderLines(state, now = new Date()) {
   const pad = (label) => `  ${label.padEnd(9)}`;
   if (!state.in_flight)
     return [`No epic in flight — ${state.reason}`, ...elsewhereLines(state, pad), ...boardLines(state, pad)];
@@ -927,7 +1025,7 @@ export function renderLines(state) {
       HEADINGS[seed.type] || 'Currently working on',
       `${pad(label)}${seed.title}${meta ? `    ${meta}` : ''}`,
       `${pad('Seed')}${seed.path}`,
-      `${pad('Status')}${statusValue(state)}`,
+      ...statusLines(state, pad, ' '.repeat(11)),
       ...also,
       ...boardLines(state, pad),
     ];
@@ -935,7 +1033,11 @@ export function renderLines(state) {
   const { epic, story, progress } = state;
   const cont = ' '.repeat(11);
   const risk = epic.risk ? ` · risk ${epic.risk.toUpperCase()}` : '';
-  const lines = ['Currently building', `${pad('Epic')}${epic.title}    ${epic.area}${risk}`];
+  const lines = [
+    'Currently building',
+    `${pad('Epic')}${epic.title}    ${epic.area}${risk}`,
+    ...whyLines(state.target, pad, cont, now),
+  ];
   if (story) {
     lines.push(`${pad('Story')}${story.id}${story.title ? ` — ${story.title}` : ''}`);
     lines.push(
@@ -949,12 +1051,14 @@ export function renderLines(state) {
   }
   // S2.2 — stories DONE (with commits), not the in-flight story's position: "Story 1 of 7" at the end of a sprint
   // was a position, and read as progress.
-  const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} stories have commits`;
+  // build-view-upgrade D2: "done" is the same measure, a story with a commit — the bars draw it per sprint.
+  const bars = sprintBars(progress.by_sprint);
+  const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} stories done`;
   const inFlight = story ? ` · in flight ${story.id}` : '';
   const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
-  lines.push(`${pad('Progress')}${done}${inFlight} · ${sprintPart}`);
+  lines.push(`${pad('Progress')}${bars ? `${bars} ` : ''}${done}${inFlight} · ${sprintPart}`);
   if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend, state.quote ?? null)}`);
-  lines.push(`${pad('Status')}${statusValue(state)}`);
+  lines.push(...statusLines(state, pad, cont));
   return [...lines, ...also, ...boardLines(state, pad)];
 }
 

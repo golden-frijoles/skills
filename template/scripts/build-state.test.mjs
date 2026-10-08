@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import {
   resolveBuildState,
   renderLines,
+  sprintBars,
+  stageTrack,
   parseBranch,
   branchCandidates,
   parseWorktrees,
@@ -20,6 +22,11 @@ import {
 import { PHASES } from './lib/roadmap-contract.mjs';
 
 const LOCKED = '2026-10-01T00:00:00Z';
+/** The Status line and its continuation as one string, `<track> | <source>` (build-view-upgrade D3). */
+const statusOf = (lines) => {
+  const at = lines.findIndex((l) => l.startsWith('  Status'));
+  return [lines[at], lines[at + 1]].map((l) => l.slice(11)).join(' | ');
+};
 // `lockedAt: null` leaves the stamp out — an epic whose architecture lock has not been run (live-build-view D11).
 const EPIC_README = (phase = 'Building', lockedAt = LOCKED) => `---
 status: in-progress
@@ -145,7 +152,17 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
     assert.equal(s.story.id, 'S2.1');
     assert.equal(s.story.as_a, "a buyer's agent");
     assert.equal(s.story_source, 'commit');
-    assert.deepEqual(s.progress, { stories_with_commits: 1, story: 2, stories: 3, sprint: 2, sprints: 2 });
+    assert.deepEqual(s.progress, {
+      stories_with_commits: 1,
+      by_sprint: [
+        { n: 1, done: 0, total: 1 },
+        { n: 2, done: 1, total: 2 },
+      ],
+      story: 2,
+      stories: 3,
+      sprint: 2,
+      sprints: 2,
+    });
     assert.equal(s.status, 'Building');
     assert.equal(s.evidence.gh, 'skipped (--offline)');
 
@@ -160,7 +177,7 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
     f.commit('S2.2 — a second commit on the same story');
     const p = resolveBuildState({ root: f.root, offline: true, gh: noGh });
     assert.equal(p.progress.stories_with_commits, 3, 'S1.1 + S2.1 + S2.2; S1.2 is not a story of this epic');
-    assert.match(renderLines(p).find((l) => l.startsWith('  Progress')), /^ {2}Progress 3 of 3 stories have commits · in flight S2\.2 · Sprint 2 of 2$/);
+    assert.match(renderLines(p).find((l) => l.startsWith('  Progress')), /^ {2}Progress ▰│▰▰ 3 of 3 stories done · in flight S2\.2 · Sprint 2 of 2$/);
   } finally {
     f.done();
   }
@@ -212,8 +229,9 @@ test('commits with no story convention and no journal → story unknown, never a
     assert.equal(s.story_source, 'unknown');
     assert.equal(s.sprint, null, 'no -s<N> and no story → no sprint either, not "the first unshipped one"');
     assert.equal(s.progress.story, null);
-    assert.equal(renderLines(s)[2], '  Story    unknown');
-    assert.match(renderLines(s)[4], /^ {2}Progress 0 of 3 stories have commits · Sprint \? of 2$/, 'no story → no "in flight"');
+    assert.equal(renderLines(s)[2], '  Why      no target set');
+    assert.equal(renderLines(s)[3], '  Story    unknown');
+    assert.match(renderLines(s)[5], /^ {2}Progress ▱│▱▱ 0 of 3 stories done · Sprint \? of 2$/, 'no story → no "in flight"');
   } finally {
     f.done();
   }
@@ -316,15 +334,26 @@ test('renderLines is a pure function of the state: the exact five lines, no box'
       i_want: 'checkout options to reflect arranged-only listings',
       so_that: "I'm never offered a carrier rail the seller can't fulfil",
     },
-    progress: { stories_with_commits: 3, story: 4, stories: 7, sprint: 2, sprints: 2 },
+    progress: {
+      stories_with_commits: 3,
+      by_sprint: [
+        { n: 1, done: 3, total: 3 },
+        { n: 2, done: 0, total: 4 },
+      ],
+      story: 4,
+      stories: 7,
+      sprint: 2,
+      sprints: 2,
+    },
     status: 'Building',
   };
   assert.deepEqual(renderLines(state), [
     'Currently building',
     '  Epic     Arranged-only delivery    04-shipping · risk HIGH',
+    '  Why      no target set',
     '  Story    S2.1 — Agent surface parity',
     "           As a buyer's agent, I want checkout options to reflect arranged-only listings, so that I'm never offered a carrier rail the seller can't fulfil.",
-    '  Progress 3 of 7 stories have commits · in flight S2.1 · Sprint 2 of 2',
+    '  Progress ▰▰▰│▱▱▱▱ 3 of 7 stories done · in flight S2.1 · Sprint 2 of 2',
     '  Status   Building',
   ]);
 });
@@ -735,7 +764,7 @@ test('on main with a builder in a worktree: the view names the worktree, and the
     const there = resolveBuildState({ board: false, root: wt, offline: true, gh: noGh });
     assert.equal(there.in_flight, true);
     assert.equal(there.elsewhere.worktrees.length, 0, 'the root is on main, so nothing else is in flight');
-    assert.equal(renderLines(there).length, 6, 'no Also line');
+    assert.equal(renderLines(there).length, 7, 'no Also line');
   } finally {
     try {
       f.git('worktree', 'remove', '--force', wt);
@@ -785,8 +814,12 @@ test('S3.1: the stage comes from the resolver, said with its source; ONE facts g
     assert.equal(s.stage, 'QA');
     assert.equal(s.stage_source, 'github: PR #7 ready');
     assert.equal(s.evidence.pr.number, 7, 'the PR comes from the same facts — no second gh call');
-    const status = renderLines(s).find((l) => l.startsWith('  Status'));
-    assert.equal(status, '  Status   QA · from github: PR #7 ready (live) · phase Building');
+    const lines = renderLines(s);
+    const at = lines.findIndex((l) => l.startsWith('  Status'));
+    assert.deepEqual(lines.slice(at, at + 2), [
+      '  Status   Grooming ─ Ready ─ Building ─ ◉ QA ─ Shipped',
+      '           from github: PR #7 ready (live) · phase Building',
+    ]);
   } finally {
     f.done();
   }
@@ -813,14 +846,14 @@ test('S3.1: offline, the stage is read from the snapshot and says how old it is;
     });
     assert.equal(s.stage, 'Building');
     assert.match(
-      renderLines(s).find((l) => l.startsWith('  Status')),
-      /^ {2}Status {3}Building · from git: feat\/arranged-only-s2 \(snapshot, 3h ago\)/
+      statusOf(renderLines(s)),
+      /^Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, 3h ago\)/
     );
 
     rmSync(join(f.root, '.golden-frijoles'), { recursive: true, force: true });
     const none = resolveBuildState({ root: f.root, offline: true, elsewhere: false });
     assert.match(
-      renderLines(none).find((l) => l.startsWith('  Status')),
+      statusOf(renderLines(none)),
       /\(docs only, no snapshot yet\)/
     );
   } finally {
@@ -841,17 +874,16 @@ test('S2.3: a live epic branch with no locked_at reads Locking architecture; the
         JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs })
       );
     snapshot([]);
-    const status = () =>
-      renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) => l.startsWith('  Status'));
-    assert.match(status(), /^ {2}Status {3}Locking architecture · from git: feat\/arranged-only-s2 \(snapshot, /);
+    const status = () => statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
+    assert.match(status(), /^Grooming ─ Ready ─ ◉ Locking ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, /);
     // A draft PR is still the lock in progress; a READY one is QA whatever the docs say (the stage resolver decides).
     snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: true, url: 'u' }]);
-    assert.match(status(), /Locking architecture · from github: PR #9 draft/);
+    assert.match(status(), /◉ Locking .*\| from github: PR #9 draft/);
     snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: false, url: 'u' }]);
-    assert.match(status(), /QA · from github: PR #9 ready/);
+    assert.match(status(), /◉ QA .*\| from github: PR #9 ready/);
     snapshot([]);
     writeFileSync(readme, EPIC_README('Building'));
-    assert.match(status(), /^ {2}Status {3}Building · from git: feat\/arranged-only-s2/);
+    assert.match(status(), /◉ Building .*\| from git: feat\/arranged-only-s2/);
   } finally {
     f.done();
   }
@@ -867,10 +899,8 @@ test('S2.3 (#241 review r2): the gate reads the README phase, not a sprint file 
       join(f.root, '.golden-frijoles', 'board.json'),
       JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
     );
-    const line = renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) =>
-      l.startsWith('  Status')
-    );
-    assert.doesNotMatch(line, /Locking architecture/);
+    const line = statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
+    assert.doesNotMatch(line, /Locking/);
   } finally {
     f.done();
   }
@@ -887,11 +917,9 @@ test('S2.3 (#241 review): an epic built before the lock command — no stamp, ph
         join(f.root, '.golden-frijoles', 'board.json'),
         JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
       );
-      const line = renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })).find((l) =>
-        l.startsWith('  Status')
-      );
-      assert.match(line, /^ {2}Status {3}Building · from git: /, phase);
-      assert.doesNotMatch(line, /Locking architecture/, phase);
+      const line = statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
+      assert.match(line, /◉ Building .*\| from git: /, phase);
+      assert.doesNotMatch(line, /Locking/, phase);
     } finally {
       f.done();
     }
@@ -912,6 +940,77 @@ test('S2.1/S2.2 (#241 review): version numbers and prose are not stories', () =>
   } finally {
     f.done();
   }
+});
+
+test('build-view-upgrade D4: the link opens the epic page; with no board row it opens the board', () => {
+  const f = fixture();
+  try {
+    writeFileSync(
+      join(f.root, 'golden-frijoles.config.json'),
+      JSON.stringify({ board: { hubUrl: 'https://goldenfrijoles.com/hub/demo/' } })
+    );
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const lines = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
+    assert.ok(lines.includes('           ↗ https://goldenfrijoles.com/hub/demo/epic/arranged-only'), lines.join('\n'));
+    f.git('checkout', '-q', 'main');
+    const idle = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
+    assert.ok(idle.includes('           ↗ https://goldenfrijoles.com/hub/demo/board'), idle.join('\n'));
+    writeFileSync(
+      join(f.root, 'golden-frijoles.config.json'),
+      JSON.stringify({ board: { hubUrl: 'http://goldenfrijoles.com/hub/demo' } })
+    );
+    assert.ok(!renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false })).some((l) => l.includes('↗')), 'https only');
+  } finally {
+    f.done();
+  }
+});
+
+test('build-view-upgrade D1: the Why line reads the README target, and says so when there is none', () => {
+  const f = fixture();
+  try {
+    const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
+    const now = new Date('2026-10-08T00:00:00Z');
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const why = () => {
+      const lines = renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }), now);
+      const at = lines.findIndex((l) => l.startsWith('  Why'));
+      return lines.slice(at, lines.findIndex((l) => l.startsWith('  Story')));
+    };
+    assert.deepEqual(why(), ['  Why      no target set']);
+    const withTarget = (fields) => writeFileSync(readme, EPIC_README().replace('type: feature', `type: feature\n${fields}`));
+    withTarget(
+      'hypothesis: "Sellers who can mark a listing arranged-only stop losing orders to carrier rails they cannot fulfil at checkout time"\ntarget_metric: arranged_checkout_rate\ntarget_from: 12\ntarget_to: 30\nread_date: 2026-12-04'
+    );
+    const lines = why();
+    assert.equal(lines.length, 2);
+    assert.match(lines[0], /^ {2}Why {6}Sellers who can mark .*…$/);
+    assert.equal(lines[1], '           arranged_checkout_rate 12 ━━▸ 30 · read 4 Dec');
+    for (const l of lines) assert.ok(l.length <= 80, `${l.length}: ${l}`);
+    withTarget('target_metric: "activation rate"\ntarget_from: 0.4\ntarget_to: 0.55\nread_date: null');
+    assert.deepEqual(why(), ['  Why      activation rate 0.4 ━━▸ 0.55 · read 30 days after shipping']);
+    withTarget('hypothesis: "a sentence on its own"\ntarget_metric: null');
+    assert.deepEqual(why(), ['  Why      a sentence on its own', '           no target set']);
+    withTarget('target_metric: half_a_target\ntarget_from: 1');
+    assert.deepEqual(why(), ['  Why      no target set'], 'a metric without both numbers is not a target');
+  } finally {
+    f.done();
+  }
+});
+
+test('build-view-upgrade D2/D3: bars per sprint, the track per stage', () => {
+  assert.equal(sprintBars([{ done: 2, total: 3 }, { done: 0, total: 4 }]), '▰▰▱│▱▱▱▱');
+  assert.equal(sprintBars([{ done: 6, total: 16 }]), '▰▰▰▱▱▱▱▱', 'a wide sprint is scaled to 8 cells');
+  assert.equal(sprintBars([{ done: 0, total: 0 }, { done: 1, total: 1 }]), '▰', 'an empty sprint draws nothing');
+  assert.equal(sprintBars([]), '');
+  assert.equal(stageTrack('Grooming'), '◉ Grooming ─ Ready ─ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Ready to build'), 'Grooming ─ ◉ Ready ─ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Building'), 'Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped');
+  assert.equal(stageTrack('Building', true), 'Grooming ─ Ready ─ ◉ Locking ─ QA ─ Shipped');
+  assert.equal(stageTrack('QA'), 'Grooming ─ Ready ─ Building ─ ◉ QA ─ Shipped');
+  assert.equal(stageTrack('Shipped'), 'Grooming ─ Ready ─ Building ─ QA ─ ◉ Shipped');
+  assert.equal(stageTrack('To groom'), '◉ Backlog ─ Grooming ─ Ready ─ Building ─ QA ─ Shipped');
+  for (const s of ['To groom', 'Grooming', 'Ready to build', 'Building', 'QA', 'Shipped'])
+    assert.ok(`  Status   ${stageTrack(s)}`.length <= 80, s);
 });
 
 test('S3.1: the Board line links to the card on the Hub when board.hubUrl is set, and is silent about it when not', () => {
