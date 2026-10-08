@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  REQUIRED_SECTIONS,
   deliveryTail,
   missingSections,
   parseSealLine,
@@ -28,9 +29,19 @@ import {
 import { PROPOSED_LINE, proposedSections } from './lib/strategy-files.mjs';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'cold-read.mjs');
-const BODY =
-  '## 1. Header\n\nA read.\n\n## 2. Reading log\n\nRead the README.\n\n**Contamination:** none.\n\n' +
-  '## 9. Riskiest assumption and the cheapest test\n\nThat makers pay. Ask five.\n';
+const BODY = [
+  '## 1. Header\n\nA read.',
+  '## 2. Reading log\n\nRead the README.\n\n**Contamination:** none.',
+  '## 3. What this product is\n\nA tool.',
+  '## 4. Who it is for\n\nMakers.',
+  "## 5. The problem, in the customer's words\n\nTime.",
+  '## 6. Market and competitors\n\nSpreadsheets.',
+  '## 7. Positioning\n\nA category.',
+  '## 8. Growth and business model\n\nA plugin; a plan.',
+  '## 9. Riskiest assumption and the cheapest test\n\nThat makers pay. Ask five.',
+  '## 10. Confidence and open questions\n\nLow.',
+  '## 11. Sources\n\nNone.',
+].join('\n\n');
 const READ = `---\nkind: cold-read\nfamily: codex\ndate: 2026-10-08\n---\n\n${BODY}`;
 
 test('a seal line is shasum format and parses back', () => {
@@ -49,12 +60,17 @@ test('verifySeal: holds, refuses a changed file by name of both hashes, refuses 
   assert.match(verifySeal({ text: READ, seal: null }).reason, /not sealed/);
 });
 
-test('missingSections: sealable only with a reading log that discloses contamination, and the riskiest assumption', () => {
+test('missingSections: sealable only with all eleven sections and a reading log that discloses contamination', () => {
   assert.deepEqual(missingSections(READ), []);
-  assert.deepEqual(missingSections('## Header\n'), [
-    'Reading log',
-    'Riskiest assumption and the cheapest test',
-  ]);
+  assert.equal(missingSections('## Header\n').length, REQUIRED_SECTIONS.length - 1);
+  assert.deepEqual(missingSections(READ.replace('## 11. Sources', '## 11. Links')), ['Sources']);
+  // the prompt and the check name the same sections, so a section added to one cannot be forgotten in the other
+  const prompt = readFileSync(join(dirname(SCRIPT), 'cold-read.prompt.md'), 'utf8');
+  const asked = [...prompt.matchAll(/^\d+\. \*\*(.+?)\*\*/gm)].map((m) => m[1].replace(/:$/, ''));
+  assert.deepEqual(
+    asked,
+    REQUIRED_SECTIONS.map(([name]) => name)
+  );
   assert.deepEqual(missingSections(READ.replace('**Contamination:** none.', '')), [
     'Contamination (inside the reading log)',
   ]);
@@ -192,12 +208,18 @@ test('a replaced seal is caught by the hash the maker was shown; an unfinished r
     assert.equal(swapped.status, 1);
     assert.match(swapped.stderr, /The seal was replaced/);
     assert.equal(cli(root, 'compare', file, '--expect', '').status, 1, 'an empty --expect is not a pass');
+    const resealed = readFileSync(`${file}.sha256`, 'utf8').slice(0, 11);
+    assert.equal(
+      cli(root, 'compare', file, '--expect', resealed).status,
+      1,
+      'fewer than 12 characters is not a check'
+    );
 
     const unfinished = join(dirname(file), 'unfinished.md');
     writeFileSync(unfinished, '## Header\n');
     const r = cli(root, 'seal', unfinished);
     assert.equal(r.status, 1);
-    assert.match(r.stderr, /not sealed .*missing: Reading log; Riskiest assumption/);
+    assert.match(r.stderr, /not sealed .*missing: Reading log; What this product is/);
     assert.ok(!existsSync(`${unfinished}.sha256`));
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -281,6 +303,7 @@ test('run: no codex on PATH exits 3 with one line and writes nothing; an unfinis
     const thin = runCli(root, `${bin}:/usr/bin:/bin`, root);
     assert.equal(thin.status, 1);
     assert.match(thin.stderr, /unfinished read \(missing: Reading log/);
+    assert.match(thin.stderr, /Sources/);
     assert.ok(!existsSync(join(root, 'Roadmap')), 'nothing written, so a retry today is not blocked');
     writeFileSync(join(bin, 'reply.md'), BODY);
     assert.equal(runCli(root, `${bin}:/usr/bin:/bin`, root).status, 0, 'the retry runs and seals');

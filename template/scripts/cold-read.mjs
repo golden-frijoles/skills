@@ -93,19 +93,34 @@ export function stampRead(body, { family, date }) {
 }
 
 /**
+ * The eleven sections `cold-read.prompt.md` asks for, matched by a word or two so a numbered or lightly reworded
+ * heading ("## 2. Reading log", "## Who it's for") still counts. Keep in step with the prompt; the spec reads both.
+ */
+export const REQUIRED_SECTIONS = [
+  ['Header', /header/i],
+  ['Reading log', /reading log/i],
+  ['What this product is', /what this product/i],
+  ['Who it is for', /who it(?: i|')s for/i],
+  ["The problem, in the customer's words", /problem/i],
+  ['Market and competitors', /competitor|market/i],
+  ['Positioning', /positioning/i],
+  ['Growth and business model', /growth|business model/i],
+  ['Riskiest assumption and the cheapest test', /riskiest assumption/i],
+  ['Confidence and open questions', /confidence|open questions/i],
+  ['Sources', /sources/i],
+];
+
+/**
  * Pure — the mandatory parts a read must have before it is sealed (D2, sprint-1 acceptance): a reading log that
  * discloses contamination, and the riskiest assumption with its cheapest test. Checked HERE because nobody else can:
  * the facilitator must not open the read before the compare. Headings may be numbered ("## 2. Reading log").
  */
 export function missingSections(text) {
   const all = headings(text);
+  const missing = REQUIRED_SECTIONS.filter(([, re]) => !all.some((h) => re.test(h))).map(([name]) => name);
   const log = all.find((h) => /reading log/i.test(h));
-  const missing = [];
-  if (!log) missing.push('Reading log');
-  else if (!/contamination/i.test(section(text, log) ?? ''))
+  if (log && !/contamination/i.test(section(text, log) ?? ''))
     missing.push('Contamination (inside the reading log)');
-  if (!all.some((h) => /riskiest assumption/i.test(h)))
-    missing.push('Riskiest assumption and the cheapest test');
   return missing;
 }
 
@@ -239,7 +254,8 @@ function compare(file, root, expect) {
   if (!v.ok) return { code: 1, err: `cold-read: refused — ${file}: ${v.reason}` };
   // The seal sits beside the read, so whoever can edit the read can replace the seal too. The hash the maker was
   // shown at sealing time is the check a swapped sidecar cannot pass (review of #314).
-  if (expect !== null && (!expect || !v.sealed.startsWith(String(expect).toLowerCase())))
+  // At least 12 hex characters: a shorter prefix could be matched by grinding a few edits of the read.
+  if (expect !== null && (!/^[0-9a-f]{12,64}$/i.test(expect) || !v.sealed.startsWith(expect.toLowerCase())))
     return {
       code: 1,
       err: `cold-read: refused — the seal beside ${file} is ${v.sealed}, not the ${expect || '(empty)'} you were shown when it was sealed. The seal was replaced.`,
