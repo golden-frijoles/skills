@@ -109,7 +109,7 @@ export function promptPathFor(lens) {
 
 const BANNER =
   '> **Cross-agent review — every finding is fixed, or answered on this PR, before merge. This does not authorize one.** ' +
-  'CI and the risk-tier merge rule remain the only merge authority. A fresh `pr-reviewer` pass covers context independence; ' +
+  'CI and the risk-tier merge rule remain the only merge authority. A fresh `verifier` pass covers context independence; ' +
   'this is the family-independence pass: one single-pass read by a model family that did not build the diff.';
 
 const HELP = `cross-review.mjs — the cross-agent judgment-layer review for a PR diff.

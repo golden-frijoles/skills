@@ -7,7 +7,7 @@ description: >
   to reach for. Detects state with commands, never guesses (is Roadmap/ present, is frijoles linked,
   is the kit reachable, which install channel is this), offers `frijoles-kit init` to adopt a bare repo, and
   routes by job to refine / strategy / report / smoke / frijoles. States plainly what the `npx skills`
-  channel lacks (no build-view hook, no pr-reviewer agent) instead of pretending it has parity with
+  channel lacks (no build-view hook, no verifier agent) instead of pretending it has parity with
   the Claude Code plugin channel.
 requires_scripts:
   - init.mjs
@@ -290,7 +290,7 @@ State this plainly the first time you detect that channel (this skill's base dir
 
 - **No build-view hook** — the "Currently building" status line is a Claude Code function-hook mod
   (`plugins/golden-frijoles/hooks/`); `npx skills` installs `SKILL.md` folders only, no hooks.
-- **No `pr-reviewer` agent** — the fresh-reviewer subagent the review stack routes to isn't installed
+- **No `verifier` agent** — the fresh-reviewer subagent the review stack routes to isn't installed
   either; the cross-review rails (`review-route.mjs`, external CLI families) still work if the project
   has their scripts, but nothing auto-spawns a reviewing agent.
 

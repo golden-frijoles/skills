@@ -150,7 +150,7 @@ export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }
   const rules = [];
   if (String(risk).toUpperCase() === 'HIGH')
     rules.push(
-      '- **High risk:** the fresh `pr-reviewer` pass is mandatory on every PR, on top of the routed external passes.'
+      '- **High risk:** the fresh `verifier` pass is mandatory on every PR, on top of the routed external passes.'
     );
   if (MIGRATION_RE.test(all))
     rules.push(

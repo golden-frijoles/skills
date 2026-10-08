@@ -4,7 +4,7 @@
 // ── The rule ──────────────────────────────────────────────────────────────────────────────────────
 //   The highest-preference family that did NOT build the diff runs the general pass.
 //   If the PR touches a security path, the NEXT eligible family runs the lean security lens.
-//   The fresh `pr-reviewer` subagent runs too, in whatever scope the project's review-config.json sets.
+//   The fresh `verifier` subagent runs too, in whatever scope the project's review-config.json sets.
 //
 // That is the whole policy. It replaces a 273-line router with a four-row table, a two-passes-per-PR
 // count, a HIGH-only branch on the fresh reviewer, and the REFUND-ASK / --fallback-after / DARK-layer
@@ -84,7 +84,7 @@ export function planReview({ builder, available = PREFERENCE, securityPass = fal
     else notes.push(`The security lens is triggered but no family can run it. Say so in the PR body.`);
   }
   notes.push(
-    'The fresh `pr-reviewer` subagent runs as well — context independence is a different axis from family independence.'
+    'The fresh `verifier` subagent runs as well — context independence is a different axis from family independence.'
   );
   return { builder, general, security, notes };
 }
@@ -107,7 +107,7 @@ export function renderPlan(plan, pr, repo) {
   l.push('  Run:');
   if (plan.general) l.push(`    ${arg(plan.general)}`);
   if (plan.security) l.push(`    ${arg(plan.security)} --lens security`);
-  l.push(`    then: use the pr-reviewer subagent on PR #${pr}`);
+  l.push(`    then: use the verifier subagent on PR #${pr}`);
   return l.join('\n');
 }
 

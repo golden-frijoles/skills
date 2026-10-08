@@ -2,7 +2,7 @@
   cross-review.prompt.md — the ONE shared reviewer prompt, read by BOTH readers.
 
   • `scripts/cross-review.mjs` (the external CLI pass) sends everything below the first `---`.
-  • The fresh `pr-reviewer` subagent reads *Shared bar*, *What to check* and *Project rules*, and ignores
+  • The fresh `verifier` subagent reads *Shared bar*, *What to check* and *Project rules*, and ignores
     *CLI reader only*.
 
   One prompt, two independent readers, no drift: that is the whole design (ways-of-work-lean-pass D8).

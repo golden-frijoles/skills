@@ -118,7 +118,7 @@ questions** — not more reviewers of the same kind.
 
 ```
 CI (deterministic gate)            — does it build, typecheck, pass the suite?   BLOCKS merge
-  → fresh pr-reviewer subagent     — context independence: did not hold the diff
+  → fresh verifier subagent     — context independence: did not hold the diff
   → one external cross-family pass — family independence: different blind spots
   → + a lean security lens         — when the diff touches a security path
   → the builder merges on green

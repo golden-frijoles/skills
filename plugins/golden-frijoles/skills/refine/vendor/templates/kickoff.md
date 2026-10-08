@@ -17,7 +17,7 @@ api) is green, open a draft PR declaring the risk tier, then flip it ready-for-r
 SMOKE WALKTHROUGH (below) into sprint-{{N}}.md before you call the sprint done.
 Review (WAYS-OF-WORKING → Review & merge): CI always; then run
 `node scripts/review-route.mjs --builder <who-wrote-it> <PR#>` and take what it prints — one external
-general pass, a security lens when the changed paths trigger it, and the fresh `pr-reviewer` subagent, in
+general pass, a security lens when the changed paths trigger it, and the fresh `verifier` subagent, in
 the scope `scripts/review-config.json` sets. A family never reviews its own diff, so don't pick `--agent`
 by hand; a capped family is routed past with `--exclude <family>`, and if only one can run it runs both
 prompts and you say so in the PR body. You merge your own PR on a green gate once findings are resolved.

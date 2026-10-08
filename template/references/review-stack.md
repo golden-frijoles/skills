@@ -8,7 +8,7 @@ does not pay for it on every load.
 - **Family independence** — a different model family, with different blind spots. Delivered by the
   external `cross-review.mjs` pass.
 - **Context independence** — an agent that did not hold the diff in its head while writing it.
-  Delivered by the fresh `pr-reviewer` subagent, which also has the repo, the sibling repos and
+  Delivered by the fresh `verifier` subagent, which also has the repo, the sibling repos and
   `origin/main` available to it.
 
 These are *different axes*, not substitutes. The stack used to run **two** external passes plus a fresh

@@ -30,7 +30,7 @@ test('exactly ONE general pass — the second cross-family pass is gone', () => 
   assert.equal(plan.security, null, 'no security lens unless the PR triggers it');
   const rendered = renderPlan(plan, 7, 'o/r');
   assert.equal(rendered.match(/cross-review\.mjs/g).length, 1);
-  assert.match(rendered, /pr-reviewer subagent/);
+  assert.match(rendered, /verifier subagent/);
 });
 
 test('the security lens takes a DIFFERENT family from the general pass', () => {
@@ -65,7 +65,7 @@ test('no family available is reported as DARK, never as a clean pass', () => {
 
 test('the fresh reviewer is named on every plan — it is unconditional now, not HIGH-only', () => {
   for (const builder of BUILDERS) {
-    assert.ok(planReview({ builder }).notes.some((n) => /pr-reviewer/.test(n)));
+    assert.ok(planReview({ builder }).notes.some((n) => /verifier/.test(n)));
   }
 });
 

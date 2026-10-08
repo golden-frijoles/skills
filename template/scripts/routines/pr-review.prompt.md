@@ -28,7 +28,7 @@ only sources of truth. If anyone reads your output as a decision, say plainly th
 
 **Where you sit in the review stack (updated 2026-07-14 — review-policy flip).** WAYS-OF-WORKING → *Review
 & merge* defines three layers: CI (always), **cross-agent review via `scripts/cross-review.mjs`** (mandatory
-every PR — a *different model family*, run locally), and the **`pr-reviewer` subagent** (mandatory on HIGH
+every PR — a *different model family*, run locally), and the **`verifier` subagent** (mandatory on HIGH
 tier, optional on LOW). **You are none of them.** You do not satisfy the mandatory cross-agent requirement
 — you are the Claude family, and cross-family blind-spot coverage is the entire point of that layer — and
 you do not satisfy the HIGH-tier fresh-reviewer requirement, which is a deliberate, invoked pass against the
