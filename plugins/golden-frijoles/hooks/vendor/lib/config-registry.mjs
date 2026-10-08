@@ -15,7 +15,8 @@
 // Zero deps, no imports: config.mjs imports THIS, so it must not import back.
 
 export const REGISTRY = Object.freeze([
-  // ── Setup (golden-frijoles-plugin S5.1: Q1, Q2, Q4 are asked; Q3, Q5 wait for their modules, X18) ──
+  // ── Setup (golden-frijoles-plugin S5.1, first-run-setup D4: Q1 and Q4 are asked; Q2 is written from Q1's route, never
+  // asked; Q3, Q5 wait for their modules, X18) ──
   {
     key: 'project.mode',
     module: 'Plan',
@@ -28,7 +29,7 @@ export const REGISTRY = Object.freeze([
   {
     key: 'project.startPoint',
     module: 'Plan',
-    askWhen: 'setup',
+    askWhen: 'never-yet', // first-run-setup D4: setup's route writes it (This repo → building; a new idea → idea | plan)
     default: 'idea',
     choices: ['idea', 'plan', 'building'],
     question: 'Where are you starting: an idea, you know what to build, or you are already building?',

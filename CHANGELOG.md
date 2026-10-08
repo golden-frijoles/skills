@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-10-08
+
+### Changed
+- **The config registry no longer asks "where are you starting" at setup** (first-run-setup D4 follow-up).
+  `project.startPoint` is now `askWhen: 'never-yet'`: setup's route writes it (This repo → `building`; a new idea →
+  `idea` or `plan`). Any tool that asks the setup questions from the registry, such as `gf config` once it depends
+  on this kit, now asks Q1 and the account question only.
+
 ## [0.37.0] - 2026-10-07
 
 ### Changed
