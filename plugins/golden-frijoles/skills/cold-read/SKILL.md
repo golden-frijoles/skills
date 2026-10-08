@@ -70,7 +70,8 @@ Run this once the last coach has finished, before the Strategy gate (groom's `re
 1. Ask the maker for the hash they kept, then
    `node scripts/cold-read.mjs compare <the sealed read> --expect <their hash, or its first 12 characters>`.
    It verifies the seal, checks it is the one they were shown, and writes `<date>-compare.md` beside the read. If they
-   didn't keep it, run without `--expect` and show them the full hash it prints, to check against their notes.
+   didn't keep it, run without `--expect`: the compare is then marked **UNVERIFIED**, and it stays so until they confirm
+   the full hash it prints against their notes. Say so in one line; never call an unverified compare verified.
    **If it refuses, stop**: tell the maker the hashes it names and that the read or its seal changed after sealing,
    so this compare cannot run on it. Never reseal it.
 2. **Now read the cold read**, then the coached files, and fill each section of the compare:

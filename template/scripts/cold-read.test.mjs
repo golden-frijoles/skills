@@ -122,7 +122,11 @@ test('renderCompare: the reference sections, the full hash, and facilitator-auth
   ])
     assert.ok(out.includes(h), h);
   assert.match(out, new RegExp(`cold_read_sha256: ${sha256(READ)}`));
-  assert.match(out, new RegExp(`matches the seal beside it \\(sha256 \`${sha256(READ)}\`\\)`));
+  assert.match(out, /Seal check \(2026-10-08\): UNVERIFIED/, 'no --expect, no claim it was verified');
+  assert.match(
+    renderCompare({ readPath: 'r', hash: 'h', family: 'codex', date: 'd', coached: [], expected: true }),
+    /verified\. The cold read matches its seal/
+  );
   assert.match(out, /Same model family/);
   assert.match(out, /pmf-narrative\.md` → \*\*Business model\*\*: written by the coach/);
   const other = renderCompare({ readPath: 'r', hash: 'h', family: 'codex', date: 'd', coached: [] });
@@ -191,6 +195,7 @@ test('a seal is never replaced, and the compare writes once, listing the propose
     assert.match(text, /cold_read: Roadmap\/00-strategy\/cold-read\/2026-10-08-cold-read\.md/);
     assert.match(text, /north-star\.md` → \*\*North Star metric\*\*/);
     assert.match(text, /coached: \[Roadmap\/00-strategy\/north-star\.md\]/);
+    assert.match(text, /Seal check \(\d{4}-\d{2}-\d{2}\):\*\* verified/);
     assert.equal(cli(root, 'compare', file).status, 1, 'never overwrites a compare in progress');
   } finally {
     rmSync(root, { recursive: true, force: true });

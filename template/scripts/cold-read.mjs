@@ -135,7 +135,7 @@ export function deliveryTail(out) {
  * `coached` is `[{ path, text }]` for each strategy file that exists. A section a coach marked proposed is listed by
  * name as facilitator-authored, read from the file, so the compare never treats the coach's words as the maker's.
  */
-export function renderCompare({ readPath, hash, family, date, coached }) {
+export function renderCompare({ readPath, hash, family, date, coached, expected = false }) {
   const independence = !family
     ? '- **Model family not recorded.** Treat agreement as weaker evidence than it looks.'
     : /same family|claude/i.test(family)
@@ -162,8 +162,16 @@ export function renderCompare({ readPath, hash, family, date, coached }) {
     '',
     "# Cold read vs coached: what agreed, what didn't, what each missed",
     '',
-    `**Seal check (${date}):** the cold read matches the seal beside it (sha256 \`${hash}\`).`,
-    'Check this hash against the one printed when it was sealed: a matching seal file proves nothing if it was replaced.',
+    ...(expected
+      ? [
+          `**Seal check (${date}):** verified. The cold read matches its seal (sha256 \`${hash}\`), and that seal is the`,
+          'one the maker was shown when it was sealed.',
+        ]
+      : [
+          `**Seal check (${date}): UNVERIFIED.** The cold read matches the seal beside it (sha256 \`${hash}\`), but no hash`,
+          'from sealing time was checked, and a seal file can be replaced. Until the maker confirms this hash against the one',
+          'they were shown, treat this compare as unverified.',
+        ]),
     '',
     '**How independent were they?**',
     independence,
@@ -275,11 +283,15 @@ function compare(file, root, expect) {
       family: parseFrontmatter(text).family,
       date,
       coached,
+      expected: expect !== null,
     })
   );
   return {
     code: 0,
-    out: `cold-read: seal holds (${v.sealed}).\nWrote ${out}: fill each section from the two runs.`,
+    out:
+      expect !== null
+        ? `cold-read: seal verified (${v.sealed}).\nWrote ${out}: fill each section from the two runs.`
+        : `cold-read: UNVERIFIED — the read matches the seal beside it (${v.sealed}), but no hash from sealing time was given (--expect). Ask the maker to confirm this hash.\nWrote ${out}, marked unverified.`,
   };
 }
 
