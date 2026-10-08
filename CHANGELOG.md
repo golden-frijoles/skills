@@ -7,6 +7,18 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-10-08
+
+### Changed
+- **The build view says why, how far and where** (build-view-upgrade S1.1–S1.3). A Why line under Epic reads the
+  epic's target (hypothesis, metric from ━━▸ to, read date) or says "no target set". Progress is one bar per sprint
+  (▰ a story with a commit, ▱ not yet, │ between sprints). Status is the stage as a track, `Grooming ─ Ready ─
+  ◉ Building ─ QA ─ Shipped`, with where it came from on the line under it. The link opens the epic's own page on
+  the Hub (`<board.hubUrl>/epic/<slug>`), and the board when nothing is in flight.
+- **The session line is in colour, with the time to each reset** (build-view-upgrade S1.4). Each figure is green,
+  yellow from 60 %, red from the hand-off line, and each rate-limit window shows its reset: `5h 78% (-2h) · 7d 46%
+  (-3d)`. It draws on a row under the prompt's hint line; an engine without `$.state` keeps the plain status line.
+
 ## [0.39.0] - 2026-10-08
 
 ### Changed
