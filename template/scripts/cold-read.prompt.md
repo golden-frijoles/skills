@@ -1,7 +1,7 @@
 You are writing a **cold read** of the product in this repository: an independent view of what it is, who it is for
 and what is riskiest, written before its makers' own strategy work can shape yours. Someone will compare your read with
-theirs later, so your independence is the whole value. Read the repository; write one Markdown document; change no
-file.
+theirs later, so your independence is the whole value. Read the repository and write one Markdown document; *Delivery*, at
+the end, says where it goes.
 
 ## What you must not read
 
