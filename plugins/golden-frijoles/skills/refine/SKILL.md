@@ -105,8 +105,7 @@ Ask the inverted estimation question: **how much is this problem worth?** Set `a
 time estimate — WAYS-OF-WORKING → *Betting & appetite*) and record it in the seed with its **quote**: run
 `node scripts/quote.mjs --appetite <A>` and copy its line into the seed's `quote:` (no history → `wide`; carry on). The
 solution must fit the appetite; if it can't, narrow the problem or cut scope — never grow the appetite mid-shaping. Then write
-**the bet**: trace which North Star input this moves, for whom and why, and draft the sentence *We believe that … for
-… will … because … We'll know when …* with its target (`references/result-record.md`).
+**the bet**: the input it moves, for whom and why, as one sentence with its target (`references/result-record.md`).
 
 ## Stage 2 — Classify
 | Class | Tell | Path |
