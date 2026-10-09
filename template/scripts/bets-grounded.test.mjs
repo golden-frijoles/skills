@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   INPUT_KEY,
+  engineInputKeys,
   isGrounded,
   monthOf,
   northStarInputKeys,
@@ -174,4 +175,22 @@ test('D4: a second push the same day is reported, never an error; a refusal is a
   });
   assert.equal(r2.ok, false);
   assert.equal(r2.line, 'push failed (404): unknown input');
+});
+
+test('verifier #334: with the strategy private, the engine names the input keys (same key), and anything else is null', async () => {
+  const env = { SELF_PROJECT_API_KEY: 'gk_self', GROWTH_ENGINE_URL: 'https://e.test' };
+  const ok = fakeFetch({
+    ok: true,
+    metrics: [{ key: 'proven_bets', inputs: [{ key: 'grounded_bets_share' }, { key: 'x' }] }],
+  });
+  assert.deepEqual(await engineInputKeys({ env, fetchImpl: ok.fetchImpl }), ['grounded_bets_share', 'x']);
+  assert.equal(ok.calls[0].url, 'https://e.test/api/v1/north-star');
+  assert.equal(ok.calls[0].init.headers.Authorization, 'Bearer gk_self');
+  assert.equal(await engineInputKeys({ env: {}, fetchImpl: ok.fetchImpl }), null, 'no key: no request');
+  assert.equal(ok.calls.length, 1);
+  assert.equal(await engineInputKeys({ env, fetchImpl: fakeFetch({ ok: false }, 401).fetchImpl }), null);
+  const boom = async () => {
+    throw new Error('fetch failed');
+  };
+  assert.equal(await engineInputKeys({ env, fetchImpl: boom }), null);
 });

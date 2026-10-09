@@ -23,7 +23,9 @@
 // `--push` posts `{ occurredOn: today (UTC), value: this month's share }` to `/api/v1/inputs/grounded_bets_share/values`
 // with the same key and URL as roadmap-push.mjs. It skips, cleanly and saying why, when the key is missing, when the
 // project's North Star has no `grounded_bets_share` input (so a project never posts to an input it lacks) or when the
-// month has no counted bets. The route is append-only per day: the first value of a day stands, and a later different
+// month has no counted bets. The strategy is often private (untracked), so a CI checkout has no `north-star.md`: then
+// `--push` asks the engine for the project's input keys (`GET /api/v1/north-star`, the same key) and counts with
+// those (verifier, #334: without it the push could never run in CI). The route is append-only per day: the first value of a day stands, and a later different
 // one is reported as a mismatch, never an error. Plain fetch, not the SDK: this is a zero-dependency kit script.
 //
 // Zero deps — Node 18+.
@@ -155,6 +157,25 @@ export function formatShares(rows, inputKeys) {
   return out.join('\n');
 }
 
+/** The project's North Star input keys from the engine; null when it cannot say (no key, a refusal, a network error). */
+export async function engineInputKeys({ env = process.env, fetchImpl = fetch } = {}) {
+  const apiKey = apiKeyFrom(env);
+  if (!apiKey) return null;
+  const base = (env.GROWTH_ENGINE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  try {
+    const res = await fetchImpl(`${base}/api/v1/north-star`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok || !Array.isArray(body.metrics)) return null;
+    return body.metrics.flatMap((m) =>
+      Array.isArray(m?.inputs) ? m.inputs.map((i) => i?.key).filter((k) => typeof k === 'string') : []
+    );
+  } catch {
+    return null;
+  }
+}
+
 const apiKeyFrom = (env) => env.SELF_PROJECT_API_KEY || env.GROWTH_ENGINE_API_KEY || null; // as roadmap-push.mjs
 
 /** Post today's value. Returns a line to print; never throws for a skip. */
@@ -205,7 +226,16 @@ async function main(argv) {
     return 1;
   }
   const root = opt('--root') ? resolve(opt('--root')) : projectRoot();
-  const { docs, inputKeys } = readProject(root);
+  const project = readProject(root);
+  const { docs } = project;
+  let { inputKeys } = project;
+  if (!inputKeys.length && argv.includes('--push')) {
+    const fromEngine = await engineInputKeys();
+    if (fromEngine) {
+      inputKeys = fromEngine;
+      console.log('North Star inputs read from the engine (no local Roadmap/00-strategy/north-star.md).');
+    }
+  }
   const rows = shareByMonth({ docs, inputKeys, month });
   if (argv.includes('--json')) console.log(JSON.stringify({ inputKeys, months: rows }, null, 2));
   else console.log(formatShares(rows, inputKeys));
