@@ -1,7 +1,7 @@
 // read-product.test.mjs — the product read setup drafts from (setup-drafts-strategy D1–D3).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -59,7 +59,11 @@ test('D2: README, package, landing copy, routes, analytics and flags, each with 
         'heading:Sell online today@app/page.tsx:1',
       ]
     );
-    assert.deepEqual(p.routes, ['/', '/about', '/checkout'], 'route groups dropped, api routes are not pages');
+    assert.deepEqual(
+      p.routes.map((x) => `${x.path}@${x.at}`),
+      ['/@app/page.tsx', '/about@pages/about.tsx', '/checkout@app/(shop)/checkout/page.tsx'],
+      'route groups dropped, api routes are not pages; each with its file'
+    );
     assert.deepEqual(
       p.analytics.map((a) => `${a.vendor}:${a.name}@${a.at}`),
       [
@@ -112,10 +116,10 @@ test('D3: bounded — the file cap and the size cap are counted and said', () =>
 });
 
 test('routes: Next pages/ and app/, also under apps/*', () => {
-  assert.deepEqual(readRoutes(['apps/web/app/settings/page.tsx', 'pages/index.tsx', 'pages/_app.tsx', 'pages/api/x.ts']), [
-    '/',
-    '/settings',
-  ]);
+  assert.deepEqual(
+    readRoutes(['apps/web/app/settings/page.tsx', 'pages/index.tsx', 'pages/_app.tsx', 'pages/api/x.ts']).map((x) => x.path),
+    ['/', '/settings']
+  );
 });
 
 test('D1: the CLI reads, writes nothing, and --json is the same facts', () => {
@@ -127,8 +131,41 @@ test('D1: the CLI reads, writes nothing, and --json is the same facts', () => {
     assert.match(human.stdout, /PostHog: order_placed \(lib\/track\.ts:1\)/);
     const json = spawnSync(process.execPath, [join(HERE, 'read-product.mjs'), '--root', root, '--json'], { encoding: 'utf8' });
     assert.equal(JSON.parse(json.stdout).routes.length, 3);
+    assert.match(human.stdout, /\/checkout \(app\/\(shop\)\/checkout\/page\.tsx\)/);
+    assert.match(human.stdout, /package\.json \.+ tiendas: Online shops for small sellers/);
     assert.equal(spawnSync(process.execPath, [join(HERE, 'read-product.mjs'), '--root'], { encoding: 'utf8' }).status, 1);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('codex #336: a key-shaped README heading is never printed; every call on a line is found', () => {
+  const root = project({
+    'README.md': '# Shop\n\nSells things.\n\n## sk-abcdefghijklmnopqrstuvwxyz0123\n',
+    'lib/a.ts': "posthog.capture('one'); posthog.capture('two')\n",
+  });
+  try {
+    const p = readProduct(root);
+    assert.doesNotMatch(JSON.stringify(p), /sk-abcdef/);
+    assert.deepEqual(p.analytics.map((a) => a.name), ['one', 'two']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('agy #336: symlinks are never followed — a linked README, package.json or folder is not read', () => {
+  const outside = project({ 'secret.md': '# Outside title\n\nprivate words\n', 'pkg.json': '{"name":"outside"}', 'src/x.ts': "posthog.capture('outside_event')\n" });
+  const root = project({ 'lib/in.ts': "posthog.capture('inside_event')\n" });
+  try {
+    symlinkSync(join(outside, 'secret.md'), join(root, 'README.md'));
+    symlinkSync(join(outside, 'pkg.json'), join(root, 'package.json'));
+    symlinkSync(join(outside, 'src'), join(root, 'linked'));
+    const p = readProduct(root);
+    assert.equal(p.readme, null);
+    assert.equal(p.package, null);
+    assert.deepEqual(p.analytics.map((a) => a.name), ['inside_event']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
   }
 });

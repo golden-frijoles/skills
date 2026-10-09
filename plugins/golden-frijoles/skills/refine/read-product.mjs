@@ -17,7 +17,7 @@
 // what it skipped.
 //
 // Zero deps — Node 18+.
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readStack } from './read-repo.mjs';
@@ -52,6 +52,14 @@ export const FLAGS = [
 ];
 
 const posix = (p) => p.split(sep).join('/');
+/** A file read by name (README, package.json) only when it is a plain file: a symlink could point outside the repo. */
+const plainFile = (path) => {
+  try {
+    return lstatSync(path).isFile();
+  } catch {
+    return false;
+  }
+};
 const clip = (text, n = 200) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text);
 const safe = (line) => !KEYISH.test(line);
 
@@ -104,7 +112,7 @@ export function walk(root, { maxFiles = MAX_FILES, maxBytes = MAX_BYTES } = {}) 
 
 /** README: its title, first paragraph and headings, each with its line. */
 export function readReadme(root) {
-  const name = ['README.md', 'readme.md', 'Readme.md'].find((n) => existsSync(join(root, n)));
+  const name = ['README.md', 'readme.md', 'Readme.md'].find((n) => plainFile(join(root, n)));
   if (!name) return null;
   const lines = readFileSync(join(root, name), 'utf8').split(/\r?\n/);
   let title = null;
@@ -112,6 +120,8 @@ export function readReadme(root) {
   const headings = [];
   lines.forEach((line, i) => {
     const h = /^(#{1,3})\s+(.+?)\s*#*$/.exec(line);
+    // Every printed line passes the key filter, headings included (codex, #336).
+    if (h && !safe(line)) return;
     if (h) {
       if (!title && h[1] === '#') title = { text: h[2], at: `${name}:${i + 1}` };
       else if (headings.length < 12) headings.push({ text: h[2], at: `${name}:${i + 1}` });
@@ -126,13 +136,13 @@ export function readReadme(root) {
 /** package.json's name, description and keywords. */
 export function readPackage(root) {
   const path = join(root, 'package.json');
-  if (!existsSync(path)) return null;
+  if (!plainFile(path)) return null;
   try {
     const pkg = JSON.parse(readFileSync(path, 'utf8'));
     return {
-      name: typeof pkg.name === 'string' ? pkg.name : null,
+      name: typeof pkg.name === 'string' && safe(pkg.name) ? pkg.name : null,
       description: typeof pkg.description === 'string' && safe(pkg.description) ? clip(pkg.description) : null,
-      keywords: Array.isArray(pkg.keywords) ? pkg.keywords.filter((k) => typeof k === 'string').slice(0, 12) : [],
+      keywords: Array.isArray(pkg.keywords) ? pkg.keywords.filter((k) => typeof k === 'string' && safe(k)).slice(0, 12) : [],
     };
   } catch {
     return null;
@@ -163,22 +173,23 @@ export function readLanding(root, files) {
   return out;
 }
 
-/** The routes: Next.js app/ (page files) and pages/ entries, also under apps/*. */
+/** The routes: Next.js app/ (page files) and pages/ entries, also under apps/*; each with the file that defines it. */
 export function readRoutes(files) {
-  const routes = new Set();
+  const routes = new Map();
   for (const f of files) {
     let m = /^(?:apps\/[^/]+\/|src\/)?app\/(.*?)\/?page\.[jt]sx?$/.exec(f);
     if (m) {
-      const path = `/${m[1]}`
-        .replace(/\/\([^)]+\)/g, '')
-        .replace(/\/$/, '');
-      routes.add(path || '/');
+      const path = `/${m[1]}`.replace(/\/\([^)]+\)/g, '').replace(/\/$/, '') || '/';
+      if (!routes.has(path)) routes.set(path, f);
       continue;
     }
     m = /^(?:apps\/[^/]+\/|src\/)?pages\/(?!api\/|_)(.*?)\.[jt]sx?$/.exec(f);
-    if (m) routes.add(`/${m[1].replace(/(^|\/)index$/, '')}`.replace(/\/$/, '') || '/');
+    if (m) {
+      const path = `/${m[1].replace(/(^|\/)index$/, '')}`.replace(/\/$/, '') || '/';
+      if (!routes.has(path)) routes.set(path, f);
+    }
   }
-  return [...routes].sort();
+  return [...routes].sort(([a], [b]) => a.localeCompare(b)).map(([path, at]) => ({ path, at }));
 }
 
 /** Calls matching `table` across the source files: [{ vendor, name|null, at }], de-duplicated by vendor and name. */
@@ -197,14 +208,15 @@ export function scanCalls(root, files, table, limit = 60) {
     for (let i = 0; i < lines.length && out.length < limit; i++) {
       if (!safe(lines[i])) continue;
       for (const [vendor, re] of table) {
-        const m = re.exec(lines[i]);
-        if (!m) continue;
-        // A template literal with a placeholder (`${EVENT}`) is not a name the draft can cite.
-        const name = m[1] && !m[1].includes('${') ? m[1] : null;
-        const key = `${vendor}\u0000${name ?? `${rel}:${i + 1}`}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({ vendor, name, at: `${rel}:${i + 1}` });
+        // Every call on the line, not just the first (codex, #336).
+        for (const m of lines[i].matchAll(new RegExp(re.source, 'g'))) {
+          // A template literal with a placeholder (`${EVENT}`) is not a name the draft can cite.
+          const name = m[1] && !m[1].includes('${') ? m[1] : null;
+          const key = `${vendor}\u0000${name ?? `${rel}:${i + 1}`}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push({ vendor, name, at: `${rel}:${i + 1}` });
+        }
       }
     }
   }
@@ -232,11 +244,13 @@ export function formatProduct(p) {
   out.push(`  Stack .......... ${p.stack.length ? p.stack.join(', ') : 'no manifest file found'}`);
   if (p.readme?.title) out.push(`  README ......... ${p.readme.title.text} (${p.readme.title.at})`);
   if (p.readme?.paragraph) out.push(`                   ${p.readme.paragraph.text} (${p.readme.paragraph.at})`);
-  if (p.package?.description) out.push(`  package.json ... ${p.package.description} (package.json)`);
+  if (p.package?.name || p.package?.description)
+    out.push(`  package.json ... ${[p.package.name, p.package.description].filter(Boolean).join(': ')} (package.json)`);
+  if (p.package?.keywords?.length) out.push(`  Keywords ....... ${p.package.keywords.join(', ')} (package.json)`);
   for (const l of p.landing.slice(0, 8)) out.push(`  Landing ${l.kind.padEnd(8, '.')} ${l.text} (${l.at})`);
-  out.push(
-    `  Routes ......... ${p.routes.length ? `${p.routes.length}: ${p.routes.slice(0, 12).join(' ')}${p.routes.length > 12 ? ' …' : ''}` : 'none found'}`
-  );
+  out.push(`  Routes ......... ${p.routes.length ? p.routes.length : 'none found'}`);
+  for (const r of p.routes.slice(0, 15)) out.push(`    ${r.path} (${r.at})`);
+  if (p.routes.length > 15) out.push(`    … ${p.routes.length - 15} more (--json lists them all)`);
   out.push(`What it already measures:`);
   if (!p.analytics.length) out.push('  no analytics calls found');
   for (const a of p.analytics.slice(0, 20)) out.push(`  ${a.vendor}: ${a.name ?? '(event name not a literal)'} (${a.at})`);
