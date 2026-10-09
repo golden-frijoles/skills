@@ -7,13 +7,15 @@ afterwards; they open on this draft, never on a blank template.
 
 ## 1. The question first
 
-Before reading anything aloud or drafting anything, ask, in these words:
+Before writing or showing any strategy, ask, in these words:
 
 > In one sentence: what is this for, and who is it for?
 
-Skip it only when the founder already answered it in this conversation (route 2's question is the same one). Quote the
-answer in the draft as the founder's words: `(your words)`. Asking first matters: a draft shown before the founder has
-said what the product is for anchors their answer to whatever the agent guessed.
+Skip it only on route 2, whose question ("A new idea. In a sentence or two: what is it, and who is it for?") is the
+same one, answered moments ago. A README, a repo description or the answer to "What are we working on?" is not an
+answer to it. Quote the answer in the draft as the founder's words: `(your words)`. Asking first matters: a draft
+shown before the founder has said what the product is for anchors their answer to whatever the agent guessed. (The
+facts `read-repo` prints at setup's first steps are counts, not a strategy, so they may come first.)
 
 ## 2. The reads
 

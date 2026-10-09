@@ -212,7 +212,7 @@ needs a flag. Ask Q4 last, after the route below has finished.
      generators, and checks them; a non-zero exit names what failed: show it and stop. Then `node scripts/build-order.mjs`
      (the run rule applies), then show `node scripts/build-order.mjs --live`: what shipped, what's building, the
      backlog. Say once that nothing reaches Golden Frijoles until they push the roadmap.
-  4. Then: **1 Yes, draft the strategy (about 10 minutes)** · **2 Later: help me plan a first epic now**. 1 is the
+  4. Then: **1 Yes, write the strategy (about 10 minutes)** · **2 Later: help me plan a first epic now**. 1 is the
      strategy step, by `references/draft.md`: the one-sentence question first, then `read-product.mjs`, then the three
      files drafted with a source on every line and two North Star candidates, then the **Strategy gate** (refine's
      `references/gates.md`, the one home of every gate and its words). 2 hands off to `refine`.
@@ -220,7 +220,7 @@ needs a flag. Ask Q4 last, after the route below has finished.
   > A new idea. In a sentence or two: what is it, and who is it for?
 
   Then:
-  > **1 Draft it now** (about 5 minutes: a draft strategy from your sentence, with two North Stars to choose
+  > **1 Write it now** (about 5 minutes: a first strategy from your sentence, with two North Stars to choose
   > between) · **2 Coach me through it** (about 45 minutes with the coaches: your narrative, a North Star and the
   > riskiest assumption; saved as you go) · **3 A first epic now** (strategy can come later; until then the epic is
   > marked as not grounded)
