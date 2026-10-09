@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-09
+
+**Setup instruments and connects: the events the North Star needs, in a pull request, and the first one seen.**
+
+### Added
+- After the Strategy gate, setup offers the measuring code as a **pull request you review**
+  (`setup/references/instrument.md`): the SDK, a server-side client per request, one `track` per North Star input that
+  needs an event (at the code point that proves it), and error capture. It is never merged for you, never on the
+  default branch, and no key goes into code.
+- Setup's connect step (`setup/references/connect.md`): sign in, `frijoles init --ingest`, the North Star synced, the
+  roadmap pushed, then `frijoles status`. Setup ends with three lines: your North Star, your first idea and the PR,
+  and the console link.
+- `roadmap-push --env-file .env.local` reads the push's own variables from the file, evaluating nothing.
+- Pairs with CLI 1.1.0 (which pins kit 1.2.0, the latest published when it was built): `frijoles init --ingest` (an ingest key in `.env.local`, verified before anything is minted) and
+  `frijoles status` (has the project's first event arrived). Today shows the same, behind the
+  `onboarding.first_event_band_enabled` switch.
+
+### Removed
+- **The `gf` CLI alias**, as 1.0 promised ("until 2026-12-31 or CLI 1.1.0"): CLI 1.1.0 publishes `frijoles` only. Replace
+  `gf <command>` with `frijoles <command>` (or `npx -y @golden-frijoles/cli <command>`).
+
 ## [1.2.0] - 2026-10-09
 
 **Setup drafts the strategy: two North Stars from the evidence, and a first bet in one review.**
