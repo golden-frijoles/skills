@@ -1,6 +1,21 @@
-# The target at Stage 1.5 — the result record
+# The bet at Stage 1.5 — the result record
 
-Right after the appetite, ask **once: which number should this move, from what to what, and when do we read it?**
+Right after the appetite, write the bet: **which input this moves, for whom, by how much, by when, and why we think
+so.** It is one sentence (North Star Playbook's bet shape, in product prose), and it becomes the seed's `hypothesis`:
+
+> **We believe that** <the change> **for** <persona, doing their job> **will** <move input X from a to b by the read
+> date>, **because** <the insight: their pain or behaviour, with the evidence>. **We'll know when** <the signal: the
+> event the target counts>.
+
+**Trace it from the strategy** (`strategy.mjs` printed it at Stage 0):
+1. **Which input?** Offer the keys on its `inputs a seed can move` line, by name, and say which one this ask most
+   plausibly moves.
+2. **For whom, doing what?** Its `persona:` and `job:` lines are the agreed answer; narrow them to the slice this ask
+   serves rather than inventing a new person.
+3. **By what mechanism, on what evidence?** The *because*: the pain or behaviour the change acts on, and how we know
+   (a reading, a conversation, a dogfood finding). "We think so" is allowed, said as such.
+4. **Draft the sentence** from the answers and show it; the product owner edits it. Write it into `hypothesis`, the
+   persona into `persona`, and the target into the fields below.
 
 - **Which number.** Offer the input keys `strategy.mjs` printed on its `Target:` line, by name. A key from that list is
   a *grounded* bet. With no North Star inputs, take free text; readers show it as "not grounded". Never check the

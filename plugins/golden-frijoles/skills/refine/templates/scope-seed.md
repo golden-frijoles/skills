@@ -11,7 +11,10 @@ epic: null
 build_order: null
 updated: {{DATE}}
 intent_ask: verbatim   # verbatim = the product owner's own words below · proxy = reconstructed after the fact
-hypothesis: null       # the result record (Stage 1.5): what this should change, in one sentence
+hypothesis: null       # the bet (Stage 1.5): We believe that … for … will … because … We'll know when … (one sentence)
+persona: null          # for whom, doing which job (from strategy.mjs's persona/job lines, narrowed to this ask)
+grounded: null         # true = traced to a North Star input with a target · false = funded anyway (say why below) · null = Bug/Chore
+grounded_reason: null  # required with grounded: false — one sentence (references/result-record.md → The challenge)
 target_metric: null    # which number — a North Star input key `strategy.mjs` printed, or free text (not grounded)
 target_from: null      # from what (a number)
 target_to: null        # to what (a number)

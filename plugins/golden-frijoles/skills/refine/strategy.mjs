@@ -129,6 +129,32 @@ export function parseRiskValidation(text) {
   };
 }
 
+/**
+ * grounded-bets D5 — the text after a bold label, as one sentence. Reads the template's `**Now:** text` and the shapes an
+ * agreed narrative uses in practice: `**Outcome.** text` and `**Now: text** more`. The paragraph may wrap; it ends at a
+ * blank line. Null when the label is absent or still a `<…>` placeholder.
+ */
+export function leadSentence(body, label) {
+  if (!body) return null;
+  const lines = body.split('\n');
+  const at = lines.findIndex((line) => new RegExp(`^\\*\\*${label}[:.]`).test(line.trim()));
+  if (at === -1) return null;
+  const para = [];
+  for (const line of lines.slice(at)) {
+    if (line.trim() === '' || (para.length && /^\*\*[^*]+[:.]/.test(line.trim()))) break;
+    para.push(line.trim());
+  }
+  const joined = para.join(' ');
+  const closed = joined.match(new RegExp(`^\\*\\*${label}[:.]\\*\\*\\s*(.*)$`));
+  // `**Now: one persona …** more`: the bold run itself is the value; `**Now:** text`: the text after it.
+  const open = closed ? null : joined.match(new RegExp(`^\\*\\*${label}:\\s*([^*]+?)\\*\\*`));
+  const value = (closed ? closed[1] : open ? open[1] : '').trim();
+  if (unfilled(value)) return null;
+  const sentence = value.match(/^(.+?[.!?])(\s|$)/);
+  const out = (sentence ? sentence[1] : value).replace(/\*\*/g, '');
+  return out.length > 220 ? `${out.slice(0, 217).trimEnd()}…` : out;
+}
+
 export function parsePmfNarrative(text) {
   const dimensions = [
     'Problem to solve',
@@ -138,7 +164,16 @@ export function parsePmfNarrative(text) {
     'Growth strategy',
     'Business model',
   ];
-  return { dimensions: dimensions.filter((heading) => section(text, heading) !== null) };
+  const audience = section(text, 'Target audience');
+  // grounded-bets D5 — the bet sentence's "for <persona, doing their job>": who (Attributes, when the narrative has
+  // them, then Now) and the job (Problem to solve → Outcome).
+  const attributes = leadSentence(audience, 'Attributes');
+  const now = leadSentence(audience, 'Now');
+  return {
+    dimensions: dimensions.filter((heading) => section(text, heading) !== null),
+    persona: attributes && now ? `${attributes} Now: ${now}` : (attributes ?? now),
+    job: leadSentence(section(text, 'Problem to solve'), 'Outcome'),
+  };
 }
 
 const PARSERS = {
@@ -195,9 +230,15 @@ export function formatStrategy({ files }) {
       if (f.lowConviction.length) out.push(`    low conviction: ${f.lowConviction.join(' · ')}`);
     } else {
       out.push(`${head} — dimensions: ${f.dimensions.join(' · ') || 'none written'}`);
+      if (f.persona) out.push(`    persona: ${f.persona}`);
+      if (f.job) out.push(`    job: ${f.job}`);
     }
   }
   out.push('Pitch line: Moves: <input key> · Tests: <dimension>   (or: Moves · Tests: neither — <why>)');
+  // grounded-bets D6 — the bet sentence Stage 1.5 drafts from the lines above (references/result-record.md).
+  out.push(
+    "Bet (Stage 1.5): We believe that <the change> for <persona, doing their job> will <move an input from a to b by the read date>, because <the insight, with evidence>. We'll know when <the event the target counts>."
+  );
   // result-record D4 — the Stage 1.5 target offers these same inputs by key; anything else is free text, "not grounded".
   const keys = files.flatMap((f) => (f.kind === 'north-star' && !f.problem ? f.inputs.map((i) => i.key) : []));
   out.push(

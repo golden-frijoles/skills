@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { formatStrategy, readStrategy } from './strategy.mjs';
+import { formatStrategy, leadSentence, parsePmfNarrative, readStrategy } from './strategy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const template = (coach) => readFileSync(join(HERE, '..', 'strategy', 'templates', `${coach}.md`), 'utf8');
@@ -161,4 +161,40 @@ test('an unfilled north-star template yields no inputs a pitch could claim to mo
   assert.match(out, /North Star: not filled in yet/);
   assert.match(out, /inputs a seed can move: none/);
   assert.doesNotMatch(out, /<input_key>|<metric_key>/);
+});
+
+// grounded-bets D5 — the bet sentence's "for <persona, doing their job>" comes from the agreed narrative.
+test('the narrative template, filled: persona from Now, job from Outcome, each one sentence', () => {
+  const text = template('pmf-narrative')
+    .replace(/\*\*Now:\*\* <[^>]+>/, '**Now:** Solo founders building with agents. They ship weekly.')
+    .replace(/\*\*Outcome:\*\* <[^>]+>/, '**Outcome:** Reach product-market fit with the smallest team.');
+  const parsed = parsePmfNarrative(text);
+  assert.equal(parsed.persona, 'Solo founders building with agents.');
+  assert.equal(parsed.job, 'Reach product-market fit with the smallest team.');
+  const out = formatStrategy(readStrategy(project({ 'pmf-narrative.md': text })));
+  assert.match(out, /^ {4}persona: Solo founders building with agents\.$/m);
+  assert.match(out, /^ {4}job: Reach product-market fit with the smallest team\.$/m);
+  assert.match(out, /^Bet \(Stage 1\.5\): We believe that <the change> for <persona, doing their job> will /m);
+});
+
+test('the unfilled template has no persona or job, and prints neither line', () => {
+  const parsed = parsePmfNarrative(template('pmf-narrative'));
+  assert.equal(parsed.persona, null);
+  assert.equal(parsed.job, null);
+  assert.doesNotMatch(formatStrategy(readStrategy(project({ 'pmf-narrative.md': template('pmf-narrative') }))), /persona:|job:/);
+});
+
+test('the label shapes an agreed narrative uses: **Outcome.** text, **Now: text** more, wrapped lines', () => {
+  const body = [
+    '**Attributes.** Startup founders who own the product: usually the CEO. They fund the work',
+    'themselves.',
+    '',
+    '**Now: one persona across the range, from solo to mid-size.** *Solo* builds through agents.',
+  ].join('\n');
+  assert.equal(leadSentence(body, 'Attributes'), 'Startup founders who own the product: usually the CEO.');
+  assert.equal(leadSentence(body, 'Now'), 'one persona across the range, from solo to mid-size.');
+  assert.equal(leadSentence('**Outcome.** The founder wants\nproof of what worked. More.', 'Outcome'), 'The founder wants proof of what worked.');
+  assert.equal(leadSentence(body, 'Later'), null);
+  const both = parsePmfNarrative(`## Target audience\n\n${body}\n\n## Problem to solve\n\n**Outcome.** Proof.\n`);
+  assert.equal(both.persona, 'Startup founders who own the product: usually the CEO. Now: one persona across the range, from solo to mid-size.');
 });
