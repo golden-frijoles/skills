@@ -14,6 +14,8 @@ import {
   VERDICTS,
   validateResultFields,
   isEvidencePointer,
+  validateGrounded,
+  groundedValue,
 } from './roadmap-contract.mjs';
 
 const sprintDoc = (fields, body = '# E — Sprint 1: One\n') => `---\n${fields}\n---\n${body}`;
@@ -374,4 +376,19 @@ test('result-record D2: the pointer grammar, syntax only', () => {
   assert.equal(isEvidencePointer('ab:'), false);
   assert.equal(isEvidencePointer('see the dashboard'), false);
   assert.equal(isEvidencePointer(null), false);
+});
+
+test('grounded-bets D1: grounded is true, false or null; false needs its reason, and a reason needs false', () => {
+  const rules = (fm) => validateGrounded(fm).map((o) => o.detail).join(' / ');
+  assert.equal(rules({}), '');
+  assert.equal(rules({ grounded: 'true' }), '');
+  assert.equal(rules({ grounded: true }), '');
+  assert.equal(rules({ grounded: 'false', grounded_reason: 'a launch blocker' }), '');
+  assert.match(rules({ grounded: 'false' }), /grounded: false needs grounded_reason/);
+  assert.match(rules({ grounded: 'yes' }), /grounded: "yes" is not true, false or null/);
+  assert.match(rules({ grounded: 'true', grounded_reason: 'why' }), /grounded_reason is set but grounded is not false/);
+  assert.match(rules({ grounded: 'false', grounded_reason: '  ' }), /grounded_reason: ".*" is not text/);
+  assert.equal(groundedValue('true'), true);
+  assert.equal(groundedValue('false'), false);
+  assert.equal(groundedValue('maybe'), null);
 });

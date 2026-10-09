@@ -22,6 +22,9 @@ verdict: null        # proven | disproven | unclear — stamped by `node scripts
 verdict_actual: null
 verdict_evidence: null   # https:// link · north-star:<input>@YYYY-MM-DD · ab:<experiment> (unclear: the reason)
 verdict_at: null
+persona: {{PERSONA}}   # for whom, doing which job — copied from the seed (grounded-bets D1)
+grounded: {{GROUNDED}}   # true = traced to a North Star input · false = funded anyway (reason below) · null = Bug/Chore or never asked
+grounded_reason: {{GROUNDED_REASON}}   # only with grounded: false
 flag_key: {{FLAG_KEY}}   # the epic's flag, decided at refine Stage 6b and copied from the seed; null = no flag. The epic page shows its state
 build_order: null    # integer position in the ONE global build sequence — the SSOT once the epic
                      # exists (the seed's value is only a fallback). Fill it in at the betting

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildRows, flagFields } from './roadmap-extract.mjs';
+import { buildRows, flagFields, groundedFields } from './roadmap-extract.mjs';
 import { validateFlagKey } from './lib/roadmap-contract.mjs';
 
 test('S2.3: flag_key is a flag key or null; the blank spellings this file’s reader yields are null, not a key', () => {
@@ -86,4 +86,15 @@ test('S2.3: buildRows puts flag_key and flag_note on the Epic row, read off a re
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('grounded-bets D9: the push carries the grounding as recorded, the reason only with false', () => {
+  assert.deepEqual(groundedFields({}), { grounded: null, grounded_reason: null });
+  assert.deepEqual(groundedFields({ grounded: 'true' }), { grounded: true, grounded_reason: null });
+  assert.deepEqual(groundedFields({ grounded: 'false', grounded_reason: ' launch blocker ' }), {
+    grounded: false,
+    grounded_reason: 'launch blocker',
+  });
+  assert.deepEqual(groundedFields({ grounded: 'true', grounded_reason: 'stray' }), { grounded: true, grounded_reason: null });
+  assert.deepEqual(groundedFields({ grounded: 'yes' }), { grounded: null, grounded_reason: null });
 });

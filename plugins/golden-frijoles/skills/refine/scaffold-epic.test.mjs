@@ -317,3 +317,26 @@ test('one-epic-page D11: a scaffolded epic carries the seed’s flag_key, and th
     }
   }
 });
+
+test('grounded-bets D1: a scaffolded epic carries the seed’s grounding and persona, and the contract accepts it', () => {
+  const seed = (lines) => ['---', 'slug: tmp-check', 'underwritten_by: wave-x', ...lines, '---', '# tmp', ''].join('\n');
+  for (const [s, want] of [
+    [seed(['grounded: true', 'persona: "solo founders, shipping weekly"']), { grounded: 'true', reason: null, persona: 'solo founders, shipping weekly' }],
+    [seed(['grounded: false', 'grounded_reason: "a launch blocker"']), { grounded: 'false', reason: 'a launch blocker', persona: null }],
+    // a reason without false is dropped, never copied into an invalid README; a typo is null, not forwarded
+    [seed(['grounded: yes', 'grounded_reason: "stray"']), { grounded: null, reason: null, persona: null }],
+    [null, { grounded: null, reason: null, persona: null }],
+  ]) {
+    const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One'], { seed: s });
+    try {
+      const parsed = parseDocFrontmatter(readFileSync(join(dir, 'README.md'), 'utf8'));
+      assert.equal(parsed.error, null);
+      assert.equal(parsed.data.grounded, want.grounded);
+      assert.equal(parsed.data.grounded_reason, want.reason);
+      assert.equal(parsed.data.persona, want.persona);
+      assert.deepEqual(validateEpicFrontmatter(parsed, { sprintCount: 1, storyCount: 1 }), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});

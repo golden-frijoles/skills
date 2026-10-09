@@ -74,6 +74,7 @@ import {
   RESULT_DAY_FIELDS,
   RESULT_FIELDS,
   FLAG_KEY_RE,
+  groundedValue,
   RESULT_NUMERIC_FIELDS,
   VERDICTS,
 } from './lib/roadmap-contract.mjs';
@@ -175,6 +176,16 @@ export function flagFields(fm, readme) {
   const line = /^\*\*Flag:\*\*[ \t]*(.+)$/m.exec(readme ?? '');
   const note = line ? line[1].replace(/[*`]/g, '').trim().slice(0, 280) : '';
   return { flag_key: !blank && FLAG_KEY_RE.test(raw) ? raw : null, flag_note: note || null };
+}
+
+/**
+ * grounded-bets D9 — the founder's grounding, as recorded at Stage 1.5: `grounded` true | false | null and, when false,
+ * `grounded_reason`. Anything else is null (the contract names it); the reason travels only with false.
+ */
+export function groundedFields(fm) {
+  const grounded = groundedValue(fm.grounded);
+  const reason = typeof fm.grounded_reason === 'string' ? fm.grounded_reason.trim().slice(0, 300) : '';
+  return { grounded, grounded_reason: grounded === false && reason ? reason : null };
 }
 
 function parseFrontmatter(md) {
@@ -636,6 +647,7 @@ export function buildRows({
       ...finopsFields(epicFm),
       ...resultFields(epicFm, stage === 'Shipped' ? statusDay : null),
       ...flagFields(epicFm, readme),
+      ...groundedFields(epicFm),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries

@@ -218,11 +218,26 @@ function flagKeyValue() {
   if (v == null) return 'null';
   return /^[a-z][a-z0-9_.-]{0,127}$/.test(v) ? v : yaml(v);
 }
+// grounded-bets D1 — the founder's grounding and the bet's persona travel the same way. `grounded` goes in bare as
+// true or false (anything else null, so the contract never sees a typo copied forward); the reason only with false.
+function groundedValue() {
+  const v = fromSeed('grounded');
+  return v === 'true' || v === 'false' ? v : 'null';
+}
+function groundedReasonValue() {
+  const v = fromSeed('grounded_reason');
+  return groundedValue() === 'false' && v != null ? yaml(v) : 'null';
+}
+function personaValue() {
+  const v = fromSeed('persona');
+  return v == null ? 'null' : yaml(v);
+}
 const baseVars = {
   QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
   HYPOTHESIS: targetValue('hypothesis'), TARGET_METRIC: targetValue('target_metric'),
   TARGET_FROM: targetValue('target_from'), TARGET_TO: targetValue('target_to'), READ_DATE: targetValue('read_date'),
   FLAG_KEY: flagKeyValue(),
+  GROUNDED: groundedValue(), GROUNDED_REASON: groundedReasonValue(), PERSONA: personaValue(),
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.
