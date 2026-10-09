@@ -67,7 +67,8 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    with the reason, and list it in the PR: never guess, and never put the ingest key in browser code.
 4. **Error capture**, from the place errors are handled while the process is still alive. `captureError` sends over
    the network, so it must run where the send can finish (verifier, #338):
-   - **Next.js:** `instrumentation.ts`. Next awaits this hook, so returning the promise lets the send complete:
+   - **Next.js:** `instrumentation.ts`. Next awaits this hook for route handlers and server actions; errors while a page
+     renders are reported without waiting, so on a serverless host a few of those may be lost (verifier, #338):
 
      ```ts
      export async function onRequestError(error: unknown) {
@@ -79,8 +80,20 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    - **Express:** an error middleware after the routes, which passes the error on unchanged:
      `app.use((err, req, res, next) => { void growthServer.captureError(err); next(err) })`.
    - **Fastify:** `app.addHook('onError', async (request, reply, error) => { await growthServer.captureError(error) })`.
-   - **Hono:** inside the existing `app.onError`, add `await growthServer.captureError(err)` before its response; with
-     none, `app.onError(async (err, c) => { await growthServer.captureError(err); return c.text('Internal Server Error', 500) })`.
+   - **Hono:** inside the existing `app.onError`, add `await growthServer.captureError(err)` before its response. With
+     none, add one that keeps Hono's own default (an `HTTPException` such as an auth 401 answers as itself and is not an
+     error; anything else is logged and answers 500), adding only the report:
+
+     ```ts
+     import { HTTPException } from 'hono/http-exception'
+
+     app.onError(async (err, c) => {
+       if (err instanceof HTTPException) return err.getResponse()
+       await growthServer.captureError(err)
+       console.error(err)
+       return c.text('Internal Server Error', 500)
+     })
+     ```
    - **A crash cannot be reported.** When the process dies (an uncaught exception, or an unhandled rejection under
      Node's default), it exits before a network send can leave. Do not add `process.on` listeners for it: a
      `'uncaughtException'` or `'unhandledRejection'` listener replaces Node's crash and changes how the app fails, and
