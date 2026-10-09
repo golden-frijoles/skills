@@ -290,3 +290,16 @@ test('verifier round 2 #336: words containing sk- or sk_ are not keys; the join 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('verifier round 3 #336: a # comment is a comment in Python and Ruby, and a private field in JS is not', () => {
+  const root = project({
+    'a.py': "#posthog.capture('py_hash_nospace')\n    #posthog.capture('uid', 'py_indented')\nposthog.capture('uid', 'py_real')\n",
+    'b.rb': "#analytics.track('rb_comment')\nanalytics.track('uid', 'rb_real')\n",
+    'c.ts': "class C { #x = 1 }\nposthog.capture('ts_real')\n",
+  });
+  try {
+    assert.deepEqual(readProduct(root).analytics.map((a) => a.name), ['py_real', 'rb_real', 'ts_real']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

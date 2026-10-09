@@ -66,6 +66,8 @@ export const FLAGS = [
 // Only true secret stores: a `keys/`, `private/` or `credentials/` folder is as often a route or an i18n table (this
 // repo's own /app/keys), and the key files such folders hold are caught by SECRET_PATH's file names (verifier, #336).
 export const SECRET_DIR = /^(?:secrets?|\.ssh|\.aws|\.gnupg|\.kube|\.docker)$/i;
+/** Languages whose comments start with `#`. */
+const HASH_COMMENT = /\.(?:py|rb)$/;
 const posix = (p) => p.split(sep).join('/');
 /** A file read by name (README, package.json) only when it is a plain file: a symlink could point outside the repo. */
 const plainFile = (path) => {
@@ -235,7 +237,9 @@ export function scanCalls(root, files, table, limit = 60) {
     for (let i = 0; i < lines.length && out.length < limit; i++) {
       if (!safe(lines[i]) || (i + 1 < lines.length && /\(\s*$/.test(lines[i]) && !safe(lines[i + 1]))) continue;
       // A call whose arguments start on the next line (`capture(\n  'event',`) is read with that line joined on.
-      const COMMENT = /^\s*(?:\/\/|\/?\*|#(?![!\w]))/;
+      // The comment rule depends on the language (verifier round 3, #336): in Python and Ruby any leading `#` is a comment
+      // (a shebang is line 1 and calls nothing); in JS-family files `#` is a private field, never a comment.
+      const COMMENT = HASH_COMMENT.test(rel) ? /^\s*#/ : /^\s*(?:\/\/|\/?\*)/;
       const opensCall = i + 1 < lines.length && /\(\s*$/.test(lines[i]) && table.some(([, re]) => new RegExp(re.source).test(lines[i]));
       const line = opensCall && !COMMENT.test(lines[i + 1]) ? `${lines[i]} ${lines[i + 1].trim()}` : lines[i];
       // A comment line is documentation, not a call the product makes (verifier, #336).
