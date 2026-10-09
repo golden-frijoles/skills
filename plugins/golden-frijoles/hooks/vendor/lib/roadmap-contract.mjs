@@ -162,7 +162,6 @@ export function validateFlagKey(fm) {
 // grounded-bets D1 — `grounded:` is the founder's word at Stage 1.5: true (traced to a North Star input), false (funded
 // anyway, and `grounded_reason` says why), or absent/null (a Bug, a Chore, or an epic refined before it existed).
 // Whether a bet COUNTS as grounded is derived from its target (bets-grounded.mjs, D2), never from this field alone.
-/** `grounded:` and `grounded_reason:` → offenses (`contract-grounded-invalid`). Absent or null is fine. */
 /** `grounded:` as a boolean: the frontmatter readers keep a bare `true` as the string "true". Null when absent or neither. */
 export function groundedValue(v) {
   if (v === true || v === 'true') return true;
@@ -170,6 +169,7 @@ export function groundedValue(v) {
   return null;
 }
 
+/** `grounded:` and `grounded_reason:` → offenses (`contract-grounded-invalid`). Absent or null is fine. */
 export function validateGrounded(fm) {
   const offenses = [];
   const bad = (detail) => offenses.push({ rule: 'contract-grounded-invalid', detail });
