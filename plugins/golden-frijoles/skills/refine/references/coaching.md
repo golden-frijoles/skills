@@ -21,6 +21,18 @@ strategy file is `agreed` yet, offer it in the first message, after the play-bac
 first, written without your answers? It takes one agent run and none of your time (the `cold-read` chapter of `strategy`)." If they decline,
 don't offer it again this session.
 
+**Over your own file: go deeper, never restart.** When the file this coach writes already exists (setup drafts all
+three, by its `references/draft.md`), the workshop is a way to go deeper over it, not a fresh start:
+- Open each step on what the file already says for it, with its sources, and ask whether it is still true; never
+  re-ask a question the file answers.
+- Revise section by section, in place. Keep every source you do not change; when the person answers what a line marked
+  `(assumed)` guessed, replace the marker with `(your words)`.
+- In `north-star.md`, a `## Candidates` section means the choice is still open: the workshop builds on A and B (or a
+  third the person brings) and ends by writing the chosen one into the file's own sections, as the Strategy gate's
+  Approve does.
+- An `agreed` file keeps its status rule (each coach's *Status* line: show what would change and ask before
+  overwriting). Never copy the template over a file that has content.
+
 ## 2. Show where they are, on every message
 
 Every coach message starts with `Step N of X · <step name>`, where X is fixed per coach and stated in its chapter
