@@ -92,6 +92,9 @@ requires_scripts:
   - lib/prose-writer.mjs
   - prose/cpo-persona.md
   - prose/internal.task.md
+  # setup-drafts-strategy: the draft keeps strategy private on a public repo (references/draft.md §3).
+  - strategy-private.mjs
+  - lib/strategy-files.mjs
 ---
 
 # golden-frijoles — start here
@@ -209,20 +212,25 @@ needs a flag. Ask Q4 last, after the route below has finished.
      generators, and checks them; a non-zero exit names what failed: show it and stop. Then `node scripts/build-order.mjs`
      (the run rule applies), then show `node scripts/build-order.mjs --live`: what shipped, what's building, the
      backlog. Say once that nothing reaches Golden Frijoles until they push the roadmap.
-  4. Then: **1 Yes, review the strategy (about 10 minutes)** · **2 Later: help me plan a first epic now**. 1 is the
-     strategy step: write the three strategy files from the conversation and the repo, then show the **Strategy gate**
-     (refine's `references/gates.md`, the one home of every gate and its words). 2 hands off to `refine`.
+  4. Then: **1 Yes, draft the strategy (about 10 minutes)** · **2 Later: help me plan a first epic now**. 1 is the
+     strategy step, by `references/draft.md`: the one-sentence question first, then `read-product.mjs`, then the three
+     files drafted with a source on every line and two North Star candidates, then the **Strategy gate** (refine's
+     `references/gates.md`, the one home of every gate and its words). 2 hands off to `refine`.
 - **2 A new idea**: one question, in these words:
   > A new idea. In a sentence or two: what is it, and who is it for?
 
   Then:
-  > **1 Strategy first** (about 45 minutes with the coaches: your narrative, a North Star and the riskiest
-  > assumption; saved as you go) · **2 A first epic now** (strategy can come later; until then the epic is marked as
-  > not grounded)
+  > **1 Draft it now** (about 5 minutes: a draft strategy from your sentence, with two North Stars to choose
+  > between) · **2 Coach me through it** (about 45 minutes with the coaches: your narrative, a North Star and the
+  > riskiest assumption; saved as you go) · **3 A first epic now** (strategy can come later; until then the epic is
+  > marked as not grounded)
 
-  1 (`config set project.startPoint idea`): run the `strategy` skill's chapters PMF narrative, then North Star, then risk validation, each from
-  the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the **Strategy
-  gate**. 2 (`config set project.startPoint plan`): hand off to `refine` with the sentence as the ask, word for word.
+  1 (`config set project.startPoint idea`): draft the three files from the sentence by `references/draft.md` (no
+  reads: every line cites `(your words)` or `(assumed)`), then show the **Strategy gate**. 2 (`config set
+  project.startPoint idea`): run the `strategy` skill's chapters PMF narrative, then North Star, then risk validation,
+  each from the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the
+  **Strategy gate**. 3 (`config set project.startPoint plan`): hand off to `refine` with the sentence as the ask, word
+  for word.
   With no strategy, refine marks the epic not grounded without asking again (its `references/strategy.md`; the Plan
   gate's *Not grounded*).
 - **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `refine`.
