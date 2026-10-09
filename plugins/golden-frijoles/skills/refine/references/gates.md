@@ -104,7 +104,8 @@ Answer them here, or:
   `references/coaching.md` §5) is a decision only the person can make: list it under *Decisions only you can make*
   as "<file> · <heading>: the coach's proposal. Keep it?", ahead of the others. **List every one**, however many: the
   three-decision limit counts the other decisions, never these, because Approve accepts each proposal it removes.
-- **1 Approve the strategy** writes the chosen candidate into `north-star.md`'s own sections (the game, the metric, the
+- **1 Approve the strategy** before decision a is answered asks a first (and then b), in the gate's words, and never
+  picks a candidate for the person; with both answered it writes the chosen candidate into `north-star.md`'s own sections (the game, the metric, the
   input table) and its `## Sync payload`, and removes `## Candidates`; sets `status: agreed` in each strategy file's
   frontmatter (Approve is agreement: bets against these inputs are grounded); removes the proposed line from every
   section the gate listed (approving accepts those proposals); and writes the **first bet** as a seed from refine's

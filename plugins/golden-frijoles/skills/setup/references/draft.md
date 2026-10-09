@@ -62,7 +62,8 @@ so a public repo keeps them private.
   build* lines are how the founder tells them apart. Leave the file's own North Star sections and its `## Sync payload`
   as the template's placeholders until one is chosen, so `strategy.mjs` reports no inputs from a draft.
 - **An input already measured** names the event `read-product` found (`posthog: order_placed (lib/track.ts:1)`); the
-  Strategy gate's measurement plan lists which inputs still need one.
+  Strategy
+  gate shows each candidate's inputs with that event, or "needs an event".
 - **The riskiest assumption:** the risk-validation file's highest domino, from the evidence where it can, `(assumed)`
   where it cannot.
 
