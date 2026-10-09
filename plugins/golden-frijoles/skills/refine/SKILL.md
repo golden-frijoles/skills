@@ -38,6 +38,9 @@ requires_scripts:
   - lib/work-branch.mjs
   - lib/board-text.mjs
   - roadmap-push.mjs
+  # grounded-bets D4: the grounded_bets_share count and its push, run beside roadmap-push.
+  - bets-grounded.mjs
+  - lib/strategy-files.mjs
   # compiled-prompts D9: the Jev questions are data the guards read (not an import edge, so declared by hand).
   - lib/jev-questions.mjs
   - lib/jev-questions/intent.json
