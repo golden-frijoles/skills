@@ -195,6 +195,9 @@ test('the label shapes an agreed narrative uses: **Outcome.** text, **Now: text*
   assert.equal(leadSentence(body, 'Now'), 'one persona across the range, from solo to mid-size.');
   assert.equal(leadSentence('**Outcome.** The founder wants\nproof of what worked. More.', 'Outcome'), 'The founder wants proof of what worked.');
   assert.equal(leadSentence(body, 'Later'), null);
+  // verifier, #334: a list straight after the label line ends the value; the colon may sit outside the bold
+  assert.equal(leadSentence('**Now:** Founders who ship\n- solo\n- mid-size', 'Now'), 'Founders who ship');
+  assert.equal(leadSentence('**Now**: Founders who ship.', 'Now'), 'Founders who ship.');
   const both = parsePmfNarrative(`## Target audience\n\n${body}\n\n## Problem to solve\n\n**Outcome.** Proof.\n`);
   assert.equal(both.persona, 'Startup founders who own the product: usually the CEO. Now: one persona across the range, from solo to mid-size.');
 });

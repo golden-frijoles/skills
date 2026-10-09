@@ -137,15 +137,17 @@ export function parseRiskValidation(text) {
 export function leadSentence(body, label) {
   if (!body) return null;
   const lines = body.split('\n');
-  const at = lines.findIndex((line) => new RegExp(`^\\*\\*${label}[:.]`).test(line.trim()));
+  // `**Now:**`, `**Now.**`, `**Now: text**` and `**Now**:` (the colon outside the bold) all name the label.
+  const at = lines.findIndex((line) => new RegExp(`^\\*\\*${label}(?:[:.]|\\*\\*:)`).test(line.trim()));
   if (at === -1) return null;
   const para = [];
   for (const line of lines.slice(at)) {
-    if (line.trim() === '' || (para.length && /^\*\*[^*]+[:.]/.test(line.trim()))) break;
+    // A blank line, the next bold label or a list item ends the paragraph (verifier, #334: a list ran into the value).
+    if (line.trim() === '' || (para.length && /^(\*\*[^*]+[:.]|[-*+] |\d+[.)] )/.test(line.trim()))) break;
     para.push(line.trim());
   }
   const joined = para.join(' ');
-  const closed = joined.match(new RegExp(`^\\*\\*${label}[:.]\\*\\*\\s*(.*)$`));
+  const closed = joined.match(new RegExp(`^\\*\\*${label}(?:[:.]\\*\\*|\\*\\*:)\\s*(.*)$`));
   // `**Now: one persona …** more`: the bold run itself is the value; `**Now:** text`: the text after it.
   const open = closed ? null : joined.match(new RegExp(`^\\*\\*${label}:\\s*([^*]+?)\\*\\*`));
   const value = (closed ? closed[1] : open ? open[1] : '').trim();
