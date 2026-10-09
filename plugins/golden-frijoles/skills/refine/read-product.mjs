@@ -27,35 +27,46 @@ export const MAX_BYTES = 256 * 1024;
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'out', 'vendor', 'coverage', '.turbo', '.vercel', 'Roadmap']);
 const SOURCE_EXT = /\.(?:[cm]?[jt]sx?|vue|svelte|astro|py|rb|html)$/;
 /** A file never opened: environment files, keys and certificates, anything named for a secret. */
-export const SECRET_PATH = /(?:^|[\\/])(?:\.env(?:\..*)?|.*\.(?:pem|key|p12|pfx|crt)|.*(?:secret|credential|private[-_]?key).*)$/i;
+// Matched against the FILE NAME only: a folder named for credentials (a `flag-credentials/` route) is not a secret file.
+export const SECRET_PATH = /(?:^|[\\/])(?:\.env(?:\..*)?|\.npmrc|\.netrc|id_[a-z0-9]+|[^\\/]*\.(?:pem|key|p8|p12|pfx|crt|tfstate)|[^\\/]*(?:secret|credential|private[-_]?key)[^\\/]*)$/i;
 // The token prefixes `scripts/lib/config.mjs` refuses (TOKEN_PREFIXES), plus a long opaque string after `key =`: a
 // line matching either is never printed. Copied, not imported: refine's scripts ship inside the plugin.
 const KEYISH = /(?:sk-|sk_|ghp_|gho_|ghs_|github_pat_|xox[abpr]-|AKIA|npm_|glpat-|tsk_|gf_pat_|gk_)[A-Za-z0-9_-]{8,}|(?:key|token|secret|password)\s*[:=]\s*['"][^'"]{16,}['"]/i;
 
-/** Analytics calls: [vendor, pattern whose group 1, when present, is the event name]. */
+// A string literal: the same quote opens and closes it (group `q`), and it is not the start of a concatenation.
+const LIT = "(?<q>['\"\\x60])(?<lit>(?:(?!\\k<q>).)*)\\k<q>(?!\\s*\\+)";
+const ARG2 = "(?:\\s*,\\s*(?<q2>['\"\\x60])(?<lit2>(?:(?!\\k<q2>).)*)\\k<q2>(?!\\s*\\+))?";
+const call = (callee) => new RegExp(`\\b${callee}\\(\\s*(?:${LIT}${ARG2})?`, 'g');
+
+/**
+ * Analytics calls: [vendor, pattern, idFirst]. The pattern's `lit` is the first string argument and `lit2` the second.
+ * `idFirst` marks the server libraries whose first argument is the user id (PostHog's and Segment's Python and Node
+ * server clients: `capture(distinct_id, event)`): there the event is the second literal, never the first.
+ */
 export const ANALYTICS = [
-  ['PostHog', /\bposthog\.capture\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Segment', /\banalytics\.track\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Google Analytics', /\bgtag\(\s*['"]event['"]\s*,\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Mixpanel', /\bmixpanel\.track\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Amplitude', /\b(?:amplitude|ampli)\.(?:track|logEvent)\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Plausible', /\bplausible\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Golden Frijoles', /\b(?:engine|growth|client|gf)\.track(?:Adoption)?\(\s*(?:['"`]([^'"`]+)['"`])?/],
+  ['PostHog', call(String.raw`posthog\??\.capture`), true],
+  ['Segment', call(String.raw`analytics\??\.track`), true],
+  ['Google Analytics', new RegExp(`\\bgtag\\(\\s*['"]event['"]\\s*,\\s*(?:${LIT})?`, 'g'), false],
+  ['Mixpanel', call(String.raw`mixpanel\??\.track`), false],
+  ['Amplitude', call(String.raw`(?:amplitude|ampli)\??\.(?:track|logEvent)`), false],
+  ['Plausible', call('plausible'), false],
+  ['Golden Frijoles', call(String.raw`(?:engine|growth|gf)\??\.track(?:Adoption)?`), false],
 ];
-/** Feature flag reads: [provider, pattern whose group 1, when present, is the flag key]. */
+/** Feature flag reads: [provider, pattern]; `lit` is the flag key when it is a plain literal. */
 export const FLAGS = [
-  ['LaunchDarkly', /\.variation\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['PostHog', /\bposthog\.(?:isFeatureEnabled|getFeatureFlag)\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Unleash', /\bunleash\.isEnabled\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['GrowthBook', /\bgrowthbook\.(?:isOn|getFeatureValue)\(\s*(?:['"`]([^'"`]+)['"`])?/],
-  ['Golden Frijoles', /\b(?:flags|provider)\.(?:getBooleanValue|isEnabled|evaluate)\(\s*(?:['"`]([^'"`]+)['"`])?/],
+  ['LaunchDarkly', call(String.raw`(?:ld|ldClient|launchDarkly|launchdarkly)\??\.variation`), false],
+  ['PostHog', call(String.raw`posthog\??\.(?:isFeatureEnabled|getFeatureFlag|feature_enabled|get_feature_flag)`), false],
+  ['Unleash', call(String.raw`unleash\??\.isEnabled`), false],
+  ['GrowthBook', call(String.raw`growthbook\??\.(?:isOn|getFeatureValue)`), false],
+  ['Golden Frijoles', call(String.raw`(?:flags|provider)\??\.(?:getBooleanValue|isEnabled|evaluate)`), false],
 ];
 
 const posix = (p) => p.split(sep).join('/');
 /** A file read by name (README, package.json) only when it is a plain file: a symlink could point outside the repo. */
 const plainFile = (path) => {
   try {
-    return lstatSync(path).isFile();
+    const st = lstatSync(path);
+    return st.isFile() && st.size <= MAX_BYTES;
   } catch {
     return false;
   }
@@ -66,7 +77,7 @@ const safe = (line) => !KEYISH.test(line);
 /** Walk the project's source files: bounded, never into SKIP_DIRS, never a secret path. */
 export function walk(root, { maxFiles = MAX_FILES, maxBytes = MAX_BYTES } = {}) {
   const files = [];
-  const skipped = { dirs: new Set(), large: 0, secret: 0, overCap: 0 };
+  const skipped = { dirs: new Set(), large: 0, secret: 0, overCap: 0, symlinks: 0 };
   const stack = [root];
   while (stack.length) {
     const dir = stack.pop();
@@ -82,6 +93,10 @@ export function walk(root, { maxFiles = MAX_FILES, maxBytes = MAX_BYTES } = {}) 
       if (e.isDirectory()) {
         if (SKIP_DIRS.has(e.name) || e.name.startsWith('.')) skipped.dirs.add(e.name);
         else stack.push(full);
+        continue;
+      }
+      if (e.isSymbolicLink()) {
+        skipped.symlinks++;
         continue;
       }
       if (!e.isFile()) continue;
@@ -149,7 +164,7 @@ export function readPackage(root) {
   }
 }
 
-const ROOT_PAGES = [/^(?:apps\/[^/]+\/|src\/)?app\/(?:page|layout)\.[jt]sx?$/, /^(?:apps\/[^/]+\/|src\/)?pages\/index\.[jt]sx?$/, /^(?:public\/)?index\.html$/, /^src\/routes\/\+page\.svelte$/];
+const ROOT_PAGES = [/^(?:apps\/[^/]+\/)?(?:src\/)?app\/(?:page|layout)\.[jt]sx?$/, /^(?:apps\/[^/]+\/)?(?:src\/)?pages\/index\.[jt]sx?$/, /^(?:public\/)?index\.html$/, /^src\/routes\/\+page\.svelte$/];
 
 /** The landing copy: title, h1/h2 text and the metadata description in the root page(s). */
 export function readLanding(root, files) {
@@ -177,13 +192,13 @@ export function readLanding(root, files) {
 export function readRoutes(files) {
   const routes = new Map();
   for (const f of files) {
-    let m = /^(?:apps\/[^/]+\/|src\/)?app\/(.*?)\/?page\.[jt]sx?$/.exec(f);
+    let m = /^(?:apps\/[^/]+\/)?(?:src\/)?app\/(.*?)\/?page\.[jt]sx?$/.exec(f);
     if (m) {
       const path = `/${m[1]}`.replace(/\/\([^)]+\)/g, '').replace(/\/$/, '') || '/';
       if (!routes.has(path)) routes.set(path, f);
       continue;
     }
-    m = /^(?:apps\/[^/]+\/|src\/)?pages\/(?!api\/|_)(.*?)\.[jt]sx?$/.exec(f);
+    m = /^(?:apps\/[^/]+\/)?(?:src\/)?pages\/(?!api\/|_)(.*?)\.[jt]sx?$/.exec(f);
     if (m) {
       const path = `/${m[1].replace(/(^|\/)index$/, '')}`.replace(/\/$/, '') || '/';
       if (!routes.has(path)) routes.set(path, f);
@@ -207,11 +222,18 @@ export function scanCalls(root, files, table, limit = 60) {
     const lines = text.split(/\r?\n/);
     for (let i = 0; i < lines.length && out.length < limit; i++) {
       if (!safe(lines[i])) continue;
-      for (const [vendor, re] of table) {
-        // Every call on the line, not just the first (codex, #336).
-        for (const m of lines[i].matchAll(new RegExp(re.source, 'g'))) {
+      const line = lines[i];
+      // A comment line is documentation, not a call the product makes (verifier, #336).
+      if (/^\s*(?:\/\/|\/?\*|#(?!!))/.test(line)) continue;
+      const py = rel.endsWith('.py');
+      for (const [vendor, re, idFirst] of table) {
+        for (const m of line.matchAll(re)) {
+          const g = m.groups ?? {};
+          // Server clients put the user id first: the event is the second literal (verifier, #336). In Python those
+          // are the only clients; in JS a two-literal capture is the server form too.
+          let name = idFirst && (py || g.lit2 !== undefined) ? (g.lit2 ?? null) : (g.lit ?? null);
           // A template literal with a placeholder (`${EVENT}`) is not a name the draft can cite.
-          const name = m[1] && !m[1].includes('${') ? m[1] : null;
+          if (name !== null && (name.includes('${') || name === '')) name = null;
           const key = `${vendor}\u0000${name ?? `${rel}:${i + 1}`}`;
           if (seen.has(key)) continue;
           seen.add(key);
@@ -264,6 +286,7 @@ export function formatProduct(p) {
       s.secret ? `${s.secret} secret-looking files (never opened)` : null,
       s.large ? `${s.large} files over ${MAX_BYTES / 1024} KB` : null,
       s.overCap ? `${s.overCap} files past the ${MAX_FILES}-file cap` : null,
+      s.symlinks ? `${s.symlinks} symlinks (never followed)` : null,
     ]
       .filter(Boolean)
       .join('; ') || 'nothing'}.`
