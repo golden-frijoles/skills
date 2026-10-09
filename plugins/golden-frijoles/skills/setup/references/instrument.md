@@ -67,8 +67,8 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    with the reason, and list it in the PR: never guess, and never put the ingest key in browser code.
 4. **Error capture**, from the place errors are handled while the process is still alive. `captureError` sends over
    the network, so it must run where the send can finish (verifier, #338):
-   - **Next.js:** `instrumentation.ts`. Next awaits this hook for route handlers and server actions; errors while a page
-     renders are reported without waiting, so on a serverless host a few of those may be lost (verifier, #338):
+   - **Next.js:** `instrumentation.ts`. Next awaits this hook for route handlers; errors in a page render or a server action
+     are reported without waiting, so on a serverless host a few of those may be lost (verifier, #338):
 
      ```ts
      export async function onRequestError(error: unknown) {
@@ -88,7 +88,10 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
      import { HTTPException } from 'hono/http-exception'
 
      app.onError(async (err, c) => {
-       if (err instanceof HTTPException) return err.getResponse()
+       if (err instanceof HTTPException) {
+         const res = err.getResponse()
+         return c.newResponse(res.body, res) // as Hono's default: keeps headers already set on the context
+       }
        await growthServer.captureError(err)
        console.error(err)
        return c.text('Internal Server Error', 500)
