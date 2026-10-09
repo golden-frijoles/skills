@@ -10,7 +10,9 @@ Loaded on demand from `SKILL.md` Stage 3. Moved here verbatim (ways-of-work-lean
 
 Core bank (adapt):
 - **Role & job:** which of the project's roles is this for? What job are they hiring it to do?
-- **Outcome & signal:** what's true after this ships that isn't now? How will *the product owner* test it?
+- **Outcome & signal:** what's true after this ships that isn't now? How will *the product owner* test it? Which
+  North Star input does it move, and why do we think so? (Stage 1.5 traces it; `result-record.md` → *The challenge* when
+  nothing fits.)
 - **Scope boundary:** what's explicitly *in* v1 and *out*? (Write the "out" list — it prevents creep.)
 - **Granularity heuristic:** at which level does the thing attach (per-account vs per-entity vs
   per-item)? Always ask it for anything configurable — the wrong level is an expensive re-shape.
