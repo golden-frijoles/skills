@@ -12,8 +12,8 @@
 // analytics calls already in the code, with the event name when it is a string literal; feature flags in the code.
 //
 // ── What it never does (D3) ───────────────────────────────────────────────────────────────────────────────────────
-// Read-only: it writes nothing, uses no network and never reads stdin. It never opens `.env*`, `*.pem`, `*.key` or a
-// path naming a secret, and never prints a line that looks like a key. It is bounded (MAX_FILES, MAX_BYTES) and says
+// Read-only: it writes nothing, uses no network and never reads stdin. It never opens `.env*`, `*.pem`, `*.key`, a file
+// named for a secret, or anything inside a folder that is one (`secrets/`, `.ssh/`), and never prints a line that looks like a key. It is bounded (MAX_FILES, MAX_BYTES) and says
 // what it skipped.
 //
 // Zero deps — Node 18+.
@@ -27,7 +27,8 @@ export const MAX_BYTES = 256 * 1024;
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'out', 'vendor', 'coverage', '.turbo', '.vercel', 'Roadmap']);
 const SOURCE_EXT = /\.(?:[cm]?[jt]sx?|vue|svelte|astro|py|rb|html)$/;
 /** A file never opened: environment files, keys and certificates, anything named for a secret. */
-// Matched against the FILE NAME only: a folder named for credentials (a `flag-credentials/` route) is not a secret file.
+// Matched against the FILE NAME; folders are SECRET_DIR's. A route folder that merely mentions credentials
+// (`flag-credentials/`) is read; a folder that IS a secret store (`secrets/`, `.ssh/`) never is (codex, #336).
 export const SECRET_PATH = /(?:^|[\\/])(?:\.env(?:\..*)?|\.npmrc|\.netrc|id_[a-z0-9]+|[^\\/]*\.(?:pem|key|p8|p12|pfx|crt|tfstate)|[^\\/]*(?:secret|credential|private[-_]?key)[^\\/]*)$/i;
 // The token prefixes `scripts/lib/config.mjs` refuses (TOKEN_PREFIXES), plus a long opaque string after `key =`: a
 // line matching either is never printed. Copied, not imported: refine's scripts ship inside the plugin.
@@ -61,6 +62,8 @@ export const FLAGS = [
   ['Golden Frijoles', call(String.raw`(?:flags|provider)\??\.(?:getBooleanValue|isEnabled|evaluate)`), false],
 ];
 
+/** A folder that holds secrets as a whole: never entered. */
+export const SECRET_DIR = /^(?:secrets?|credentials?|private|keys|certs|\.ssh|\.aws|\.gnupg|\.kube|\.docker)$/i;
 const posix = (p) => p.split(sep).join('/');
 /** A file read by name (README, package.json) only when it is a plain file: a symlink could point outside the repo. */
 const plainFile = (path) => {
@@ -91,7 +94,8 @@ export function walk(root, { maxFiles = MAX_FILES, maxBytes = MAX_BYTES } = {}) 
       const full = join(dir, e.name);
       const rel = posix(relative(root, full));
       if (e.isDirectory()) {
-        if (SKIP_DIRS.has(e.name) || e.name.startsWith('.')) skipped.dirs.add(e.name);
+        if (SECRET_DIR.test(e.name)) skipped.secret++;
+        else if (SKIP_DIRS.has(e.name) || e.name.startsWith('.')) skipped.dirs.add(e.name);
         else stack.push(full);
         continue;
       }
@@ -153,10 +157,16 @@ export function readPackage(root) {
   const path = join(root, 'package.json');
   if (!plainFile(path)) return null;
   try {
-    const pkg = JSON.parse(readFileSync(path, 'utf8'));
+    const text = readFileSync(path, 'utf8');
+    const pkg = JSON.parse(text);
+    const lineOf = (key) => {
+      const i = text.split(/\r?\n/).findIndex((l) => l.includes(`"${key}"`));
+      return i === -1 ? 'package.json' : `package.json:${i + 1}`;
+    };
     return {
       name: typeof pkg.name === 'string' && safe(pkg.name) ? pkg.name : null,
       description: typeof pkg.description === 'string' && safe(pkg.description) ? clip(pkg.description) : null,
+      at: { name: lineOf('name'), description: lineOf('description'), keywords: lineOf('keywords') },
       keywords: Array.isArray(pkg.keywords) ? pkg.keywords.filter((k) => typeof k === 'string' && safe(k)).slice(0, 12) : [],
     };
   } catch {
@@ -221,8 +231,9 @@ export function scanCalls(root, files, table, limit = 60) {
     }
     const lines = text.split(/\r?\n/);
     for (let i = 0; i < lines.length && out.length < limit; i++) {
-      if (!safe(lines[i])) continue;
-      const line = lines[i];
+      if (!safe(lines[i]) || (i + 1 < lines.length && /\(\s*$/.test(lines[i]) && !safe(lines[i + 1]))) continue;
+      // A call whose arguments start on the next line (`capture(\n  'event',`) is read with that line joined on.
+      const line = /\(\s*$/.test(lines[i]) && i + 1 < lines.length ? `${lines[i]} ${lines[i + 1].trim()}` : lines[i];
       // A comment line is documentation, not a call the product makes (verifier, #336).
       if (/^\s*(?:\/\/|\/?\*|#(?!!))/.test(line)) continue;
       const py = rel.endsWith('.py');
@@ -266,9 +277,9 @@ export function formatProduct(p) {
   out.push(`  Stack .......... ${p.stack.length ? p.stack.join(', ') : 'no manifest file found'}`);
   if (p.readme?.title) out.push(`  README ......... ${p.readme.title.text} (${p.readme.title.at})`);
   if (p.readme?.paragraph) out.push(`                   ${p.readme.paragraph.text} (${p.readme.paragraph.at})`);
-  if (p.package?.name || p.package?.description)
-    out.push(`  package.json ... ${[p.package.name, p.package.description].filter(Boolean).join(': ')} (package.json)`);
-  if (p.package?.keywords?.length) out.push(`  Keywords ....... ${p.package.keywords.join(', ')} (package.json)`);
+  if (p.package?.name) out.push(`  Package ........ ${p.package.name} (${p.package.at.name})`);
+  if (p.package?.description) out.push(`  Description .... ${p.package.description} (${p.package.at.description})`);
+  if (p.package?.keywords?.length) out.push(`  Keywords ....... ${p.package.keywords.join(', ')} (${p.package.at.keywords})`);
   for (const l of p.landing.slice(0, 8)) out.push(`  Landing ${l.kind.padEnd(8, '.')} ${l.text} (${l.at})`);
   out.push(`  Routes ......... ${p.routes.length ? p.routes.length : 'none found'}`);
   for (const r of p.routes.slice(0, 15)) out.push(`    ${r.path} (${r.at})`);

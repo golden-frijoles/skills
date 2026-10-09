@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { SECRET_PATH, formatProduct, readProduct, readRoutes, walk } from './read-product.mjs';
+import { SECRET_DIR, SECRET_PATH, formatProduct, readProduct, readRoutes, walk } from './read-product.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Fake secrets are assembled at runtime: a key-shaped literal in this file is quoted back by reviewers and trips the
@@ -136,7 +136,7 @@ test('D1: the CLI reads, writes nothing, and --json is the same facts', () => {
     const json = spawnSync(process.execPath, [join(HERE, 'read-product.mjs'), '--root', root, '--json'], { encoding: 'utf8' });
     assert.equal(JSON.parse(json.stdout).routes.length, 3);
     assert.match(human.stdout, /\/checkout \(app\/\(shop\)\/checkout\/page\.tsx\)/);
-    assert.match(human.stdout, /package\.json \.+ tiendas: Online shops for small sellers/);
+    assert.match(human.stdout, /Description \.+ Online shops for small sellers \(package\.json:1\)/);
     assert.equal(spawnSync(process.execPath, [join(HERE, 'read-product.mjs'), '--root'], { encoding: 'utf8' }).status, 1);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -234,5 +234,28 @@ test('verifier #336: a README that is a folder or too big is not read; symlinks 
     assert.match(formatProduct(p), /1 symlinks \(never followed\)/);
   } finally {
     rmSync(big, { recursive: true, force: true });
+  }
+});
+
+test('codex round 2 #336: a folder that is a secret store is never entered; a multiline call is read; package facts cite their line', () => {
+  const root = project({
+    'secrets/tracking.ts': "posthog.capture('inside_secrets')\n",
+    '.ssh/config.ts': "posthog.capture('inside_ssh')\n",
+    'app/flag-credentials/page.tsx': "posthog.capture('route_kept')\n",
+    'lib/multi.ts': "posthog.capture(\n  'signed_up',\n  { plan },\n)\n",
+    'package.json': '{\n  "name": "tiendas",\n  "description": "Online shops"\n}\n',
+  });
+  try {
+    const p = readProduct(root);
+    const names = p.analytics.map((a) => a.name);
+    assert.ok(!names.includes('inside_secrets') && !names.includes('inside_ssh'), names.join());
+    assert.ok(names.includes('route_kept') && names.includes('signed_up'), names.join());
+    assert.equal(p.skipped.secret, 2, 'secrets/ and .ssh/ are both secret folders, counted and never entered');
+    assert.deepEqual(p.package.at, { name: 'package.json:2', description: 'package.json:3', keywords: 'package.json' });
+    assert.match(formatProduct(p), /Description \.+ Online shops \(package\.json:3\)/);
+    for (const dir of ['secrets', 'Credentials', '.ssh', '.aws', 'keys']) assert.match(dir, SECRET_DIR, dir);
+    for (const dir of ['flag-credentials', 'secret-santa-app', 'keyboard']) assert.doesNotMatch(dir, SECRET_DIR, dir);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
