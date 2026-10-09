@@ -253,8 +253,39 @@ test('codex round 2 #336: a folder that is a secret store is never entered; a mu
     assert.equal(p.skipped.secret, 2, 'secrets/ and .ssh/ are both secret folders, counted and never entered');
     assert.deepEqual(p.package.at, { name: 'package.json:2', description: 'package.json:3', keywords: 'package.json' });
     assert.match(formatProduct(p), /Description \.+ Online shops \(package\.json:3\)/);
-    for (const dir of ['secrets', 'Credentials', '.ssh', '.aws', 'keys']) assert.match(dir, SECRET_DIR, dir);
-    for (const dir of ['flag-credentials', 'secret-santa-app', 'keyboard']) assert.doesNotMatch(dir, SECRET_DIR, dir);
+    for (const dir of ['secrets', 'Secret', '.ssh', '.aws']) assert.match(dir, SECRET_DIR, dir);
+    for (const dir of ['keys', 'private', 'credentials', 'certs', 'flag-credentials', 'secret-santa-app']) assert.doesNotMatch(dir, SECRET_DIR, dir);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('verifier round 2 #336: words containing sk- or sk_ are not keys; the join only follows a call, never a comment', () => {
+  const root = project({
+    'README.md': '# Task-management for small teams\n\nA desk-reservation tool.\n',
+    'app/keys/page.tsx': 'export default function K() { return null }\n',
+    'src/i18n/keys/en.ts': "posthog.capture('i18n_folder_read')\n",
+    'lib/a.ts': [
+      "posthog.capture('task_completed')",
+      "analytics.track('risk_assessment_viewed')",
+      'bar(',
+      "  // posthog.capture('commented_next_line')",
+      ')',
+      'foo(',
+      '  posthog.capture(dyn)',
+      ')',
+      'class C { #private = 1 }',
+    ].join('\n'),
+  });
+  try {
+    const p = readProduct(root);
+    assert.equal(p.readme.title.text, 'Task-management for small teams');
+    assert.equal(p.readme.paragraph.text, 'A desk-reservation tool.');
+    assert.ok(p.routes.some((r) => r.path === '/keys'), 'a keys/ route is read');
+    assert.deepEqual(
+      p.analytics.map((a) => `${a.name}@${a.at}`),
+      ['task_completed@lib/a.ts:1', 'risk_assessment_viewed@lib/a.ts:2', 'null@lib/a.ts:7', 'i18n_folder_read@src/i18n/keys/en.ts:1']
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

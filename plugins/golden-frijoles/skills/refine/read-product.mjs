@@ -32,7 +32,7 @@ const SOURCE_EXT = /\.(?:[cm]?[jt]sx?|vue|svelte|astro|py|rb|html)$/;
 export const SECRET_PATH = /(?:^|[\\/])(?:\.env(?:\..*)?|\.npmrc|\.netrc|id_[a-z0-9]+|[^\\/]*\.(?:pem|key|p8|p12|pfx|crt|tfstate)|[^\\/]*(?:secret|credential|private[-_]?key)[^\\/]*)$/i;
 // The token prefixes `scripts/lib/config.mjs` refuses (TOKEN_PREFIXES), plus a long opaque string after `key =`: a
 // line matching either is never printed. Copied, not imported: refine's scripts ship inside the plugin.
-const KEYISH = /(?:sk-|sk_|ghp_|gho_|ghs_|github_pat_|xox[abpr]-|AKIA|npm_|glpat-|tsk_|gf_pat_|gk_)[A-Za-z0-9_-]{8,}|(?:key|token|secret|password)\s*[:=]\s*['"][^'"]{16,}['"]/i;
+const KEYISH = /(?<![A-Za-z0-9])(?:sk-|sk_|ghp_|gho_|ghs_|github_pat_|xox[abpr]-|AKIA|npm_|glpat-|tsk_|gf_pat_|gk_)[A-Za-z0-9_-]{8,}|(?:key|token|secret|password)\s*[:=]\s*['"][^'"]{16,}['"]/i;
 
 // A string literal: the same quote opens and closes it (group `q`), and it is not the start of a concatenation.
 const LIT = "(?<q>['\"\\x60])(?<lit>(?:(?!\\k<q>).)*)\\k<q>(?!\\s*\\+)";
@@ -63,7 +63,9 @@ export const FLAGS = [
 ];
 
 /** A folder that holds secrets as a whole: never entered. */
-export const SECRET_DIR = /^(?:secrets?|credentials?|private|keys|certs|\.ssh|\.aws|\.gnupg|\.kube|\.docker)$/i;
+// Only true secret stores: a `keys/`, `private/` or `credentials/` folder is as often a route or an i18n table (this
+// repo's own /app/keys), and the key files such folders hold are caught by SECRET_PATH's file names (verifier, #336).
+export const SECRET_DIR = /^(?:secrets?|\.ssh|\.aws|\.gnupg|\.kube|\.docker)$/i;
 const posix = (p) => p.split(sep).join('/');
 /** A file read by name (README, package.json) only when it is a plain file: a symlink could point outside the repo. */
 const plainFile = (path) => {
@@ -233,9 +235,11 @@ export function scanCalls(root, files, table, limit = 60) {
     for (let i = 0; i < lines.length && out.length < limit; i++) {
       if (!safe(lines[i]) || (i + 1 < lines.length && /\(\s*$/.test(lines[i]) && !safe(lines[i + 1]))) continue;
       // A call whose arguments start on the next line (`capture(\n  'event',`) is read with that line joined on.
-      const line = /\(\s*$/.test(lines[i]) && i + 1 < lines.length ? `${lines[i]} ${lines[i + 1].trim()}` : lines[i];
+      const COMMENT = /^\s*(?:\/\/|\/?\*|#(?![!\w]))/;
+      const opensCall = i + 1 < lines.length && /\(\s*$/.test(lines[i]) && table.some(([, re]) => new RegExp(re.source).test(lines[i]));
+      const line = opensCall && !COMMENT.test(lines[i + 1]) ? `${lines[i]} ${lines[i + 1].trim()}` : lines[i];
       // A comment line is documentation, not a call the product makes (verifier, #336).
-      if (/^\s*(?:\/\/|\/?\*|#(?!!))/.test(line)) continue;
+      if (COMMENT.test(line)) continue;
       const py = rel.endsWith('.py');
       for (const [vendor, re, idFirst] of table) {
         for (const m of line.matchAll(re)) {
