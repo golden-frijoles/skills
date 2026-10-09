@@ -233,6 +233,9 @@ needs a flag. Ask Q4 last, after the route below has finished.
   for word.
   With no strategy, refine marks the epic not grounded without asking again (its `references/strategy.md`; the Plan
   gate's *Not grounded*).
+- **After the Strategy gate's Approve** (routes 1 and 2): offer the measuring code by `references/instrument.md`
+  (route 1 only: a pull request the founder reviews), then connecting by `references/connect.md`, which replaces Q4's
+  sign-in question for this run, then the ending it describes.
 - **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `refine`.
 
 Keep this stage to the steps above — don't re-explain the registry or restate `lib/config-registry.mjs` here.
