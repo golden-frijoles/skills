@@ -159,6 +159,31 @@ export function validateFlagKey(fm) {
   ];
 }
 
+// grounded-bets D1 — `grounded:` is the founder's word at Stage 1.5: true (traced to a North Star input), false (funded
+// anyway, and `grounded_reason` says why), or absent/null (a Bug, a Chore, or an epic refined before it existed).
+// Whether a bet COUNTS as grounded is derived from its target (bets-grounded.mjs, D2), never from this field alone.
+/** `grounded:` as a boolean: the frontmatter readers keep a bare `true` as the string "true". Null when absent or neither. */
+export function groundedValue(v) {
+  if (v === true || v === 'true') return true;
+  if (v === false || v === 'false') return false;
+  return null;
+}
+
+/** `grounded:` and `grounded_reason:` → offenses (`contract-grounded-invalid`). Absent or null is fine. */
+export function validateGrounded(fm) {
+  const offenses = [];
+  const bad = (detail) => offenses.push({ rule: 'contract-grounded-invalid', detail });
+  const raw = fm.grounded;
+  const g = groundedValue(raw);
+  const reason = fm.grounded_reason;
+  const hasReason = reason !== undefined && reason !== null;
+  if (raw !== undefined && raw !== null && g === null) bad(`grounded: "${raw}" is not true, false or null`);
+  if (hasReason && (typeof reason !== 'string' || !reason.trim())) bad(`grounded_reason: "${reason}" is not text (or null)`);
+  if (g === false && !hasReason) bad('grounded: false needs grounded_reason (why it was funded anyway, one sentence)');
+  if (g !== false && hasReason) bad('grounded_reason is set but grounded is not false');
+  return offenses;
+}
+
 // live-build-view D10 — `locked_at:` is stamped by `scripts/epic-phase.mjs lock` when the architecture lock is written;
 // the build view reads its absence as "Locking architecture". Optional (no epic before it has one), an ISO date-time
 // string when present: the command writes `"2026-10-03T20:34:34Z"` (quoted, so the frontmatter parser keeps the colons).
@@ -375,6 +400,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
   offenses.push(...validateFinopsFields(fm));
   offenses.push(...validateResultFields(fm));
   offenses.push(...validateFlagKey(fm));
+  offenses.push(...validateGrounded(fm));
   offenses.push(...validateLockedAt(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({
