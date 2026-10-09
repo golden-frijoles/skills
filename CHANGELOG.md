@@ -18,9 +18,11 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 - Setup asks *"In one sentence: what is this for, and who is it for?"* before it drafts anything, then drafts the three
   strategy files with a source on every claim line (`(README.md:3)`, `(your words)`, `(assumed)`) and **two** North
   Star candidates to choose between (`setup/references/draft.md`).
-- The new-idea route offers *Draft it now* (about 5 minutes) before the 45-minute coaching.
-- The Strategy gate shows five blocks: product and persona, North Star A or B, a measurement plan, the roadmap, and a
-  first bet. Approve writes the chosen North Star, agrees the files, and writes the first bet as a grounded seed.
+- The new-idea route offers *Write it now* (about 5 minutes) before the 45-minute coaching.
+- The Strategy gate shows product and persona, the two North Star candidates side by side (each with its inputs and
+  whether each is already tracked), the roadmap, and, once you choose, a first idea as a bet sentence whose target you
+  give ("not known yet" is an answer). Approve writes the chosen North Star, agrees the files, and writes the first
+  idea into the backlog, grounded when it has a target.
 
 ### Changed
 - The coaches open on an existing draft and go deeper over it, keeping its sources; they never start from a blank
