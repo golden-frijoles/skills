@@ -67,10 +67,14 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    with the reason, and list it in the PR: never guess, and never put the ingest key in browser code.
 4. **Error capture**, once, at the server entry. `captureGlobalErrors()` is the browser's hook and does nothing on a
    server (verifier, #338), so a server reports through `captureError`:
-   - **Next.js:** in `instrumentation.ts`, `export const onRequestError = (error: unknown) => growthServer.captureError(error)`.
+   - **Next.js:** in `instrumentation.ts`, `export const onRequestError = (error: unknown) => growthServer.captureError(error)`
+     (import the client only in the Node runtime: `if (process.env.NEXT_RUNTIME === 'nodejs')`).
    - **A long-running Node server** (Express, Fastify, Hono): at startup,
-     `process.on('unhandledRejection', (e) => growthServer.captureError(e))` and the same for `'uncaughtException'`,
-     keeping whatever the app already does on those events (log, exit): add the report, never replace the handling.
+     `process.on('uncaughtExceptionMonitor', (e) => growthServer.captureError(e))`. It only observes: the process
+     still crashes as it did. Never add an `'uncaughtException'` or `'unhandledRejection'` listener just to report:
+     registering one replaces Node's default (print and exit), which changes how the app fails (verifier, #338). When
+     the app already has an `'unhandledRejection'` handler, report from inside it; otherwise skip rejections and say so
+     in the PR.
    - **Anything else:** skip it and say so in the PR, rather than force it.
 5. **Flags:** only when `read-product.mjs` found flag reads. Do not migrate a flag provider here; note it in the PR as
    a later step.
