@@ -62,20 +62,21 @@ Product & persona (from the repo, no need to check unless you disagree)
                The promise: <the value proposition, one line>
                How you charge: <the business model, one line>
 
-North Star     A · <name>: <metric, one line>. Builds: <what it would make you build>
-               B · <name>: <metric, one line>. Builds: <what it would make you build>
-
-Measurement    <input>: tracked as <event> (<file>) | needs an event
-plan           … one line per input of the candidate you lean to
+North Star     A · <name> (<game>, counts <unit>): <metric, one line>
+                   Inputs: <input> (tracked as <event> | needs an event) · <input> (…) · <input> (…)
+                   Builds: <what it would make you build>
+               B · <name> (<game>, counts <unit>): <metric, one line>
+                   Inputs: <input> (…) · <input> (…) · <input> (…)
+                   Builds: <what it would make you build>
 
 Roadmap        <n> shipped, <n> being built, <n> ideas (from the repo)
 
-First bet      We believe that <the change> for <persona> will <move the input from a to b by the read date>,
-               because <the insight>. Grounded on <input>.
+First idea     <after a: We believe that <the change> for <persona> will <move the input>, because <the insight>.
+               We'll know when <the signal>. | before a: written once you choose A or B>
 
 Decisions only you can make:
   a. North Star: A or B?
-  b. First bet: <input> from <a> to <b> by <date>. Right?
+  b. <after a: The first idea's target: <input> from what number, to what, by when? "Not known yet" is an answer.>
   c. <one more question the repo leaves open, if any>
 
 Answer them here, or:
@@ -87,13 +88,17 @@ Answer them here, or:
 
 - **Product & persona** comes from what the files say; a line the repo cannot answer becomes a decision instead (never
   more than three) or is left out. Never invent a fact about the business. *Read them* counts the `(assumed)` lines.
-- **North Star** shows the two candidates from `## Candidates`, each with its *what it would make you build* line.
-  **Measurement plan** lists the inputs of the candidate the person leans to (A until they say), each with the event
-  `read-product` found or "needs an event". **Roadmap** is one line from `read-repo` (left out on route 2). **First bet**
-  is a bet sentence (`result-record.md`) on one input of that candidate, with the target the person confirms in
-  decision b. Decisions a and b always come first; the three-decision limit counts them.
-- **A strategy written before candidates existed** (no `## Candidates`) shows its one North Star as before: "North Star:
-  <metric>. Keep it?" in place of a.
+- **North Star** shows the two candidates from `## Candidates` **alike**: each with its game and what it counts, its
+  inputs (each marked with the event `read-product` found, or "needs an event") and its *what it would make you build*
+  line. Neither is shown first as the default, and nothing about the first idea appears until the person picks.
+  **Roadmap** is one line from `read-repo` (left out on route 2).
+- **First idea** appears once decision a is answered (show the gate again with it): a bet sentence
+  (`result-record.md`, *We'll know when* included) on one input of the chosen candidate. Its target is decision b, asked
+  as a question: never propose the numbers. "Not known yet" is a full answer.
+- **Decision order:** a coach's proposals first (the rule below), then a, then b once a is answered, then at most one
+  more; the three-decision limit counts a, b and that one.
+- **A strategy with one North Star** (written before candidates existed, or by the North Star coach, which settles
+  the choice in its workshop) shows it as before: "North Star: <metric>. Keep it?" in place of a.
 - **Answers to the decisions** are written into the files before anything else, then the gate is shown again.
 - **A section the coach proposed** (its first line is `_Proposed by the coach, not decided yet._`, refine's
   `references/coaching.md` §5) is a decision only the person can make: list it under *Decisions only you can make*
@@ -103,9 +108,13 @@ Answer them here, or:
   input table) and its `## Sync payload`, and removes `## Candidates`; sets `status: agreed` in each strategy file's
   frontmatter (Approve is agreement: bets against these inputs are grounded); removes the proposed line from every
   section the gate listed (approving accepts those proposals); and writes the **first bet** as a seed from refine's
-  `templates/scope-seed.md` in `Roadmap/00-ideas/seeds/` with `status: raw`, the sentence as `hypothesis`, `persona`,
-  `grounded: true` and the target from decision b. A target the person could not give writes `grounded: false` with
-  `grounded_reason: no baseline yet`, never an invented number. It changes nothing else. Then render the
+  `templates/scope-seed.md` in `Roadmap/00-ideas/seeds/`, every `{{…}}` filled: `title` (the change, a few words),
+  `slug` (from the title), `area` (where `read-repo` puts ideas; `01` on a new project), `type: feature`, `appetite: null`
+  (refine sets it), `risk: low`, `status: raw`, `intent_ask: proxy` with the founder's one sentence as the ask; the
+  sentence as `hypothesis`; `persona`; `target_metric` (the input's key), `target_from`, `target_to` and `read_date`
+  (null = 30 days after shipping) from decision b, with `grounded: true`. "Not known yet" leaves the four target fields
+  null with `grounded: false` and `grounded_reason: no baseline yet`, never an invented number. Then run
+  `node scripts/build-order.mjs` (the run rule applies) so the board shows it. It changes nothing else. Then render the
   one-pagers from the approved files (`node scripts/one-pagers.mjs`, run as the coaches' kit rule says), tell the
   person where they are in one line, and offer refining (`refine`). The North Star's sync to the engine stays the person's own step (the North Star chapter of `strategy`).
 - **2 Change something** revises the files in place; they stay `status: draft`. Show the gate again.
