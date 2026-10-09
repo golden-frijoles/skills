@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-09
+
+### Fixed
+- `bets-grounded.mjs` rounds the share to two decimals, as the engine stores input values (`NUMERIC(14,2)`), so a
+  same-day re-push is not reported as a different value. The first production reading was 0.0667 sent, 0.07 stored.
+
 ## [1.1.0] - 2026-10-09
 
 **Grounded bets: every Why is a hypothesis traced from the North Star.**

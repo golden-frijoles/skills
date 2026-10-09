@@ -63,7 +63,7 @@ test('D3: a month counts features and spikes, leaves out bugs, chores and the ba
   assert.deepEqual(oct.grounded, ['a']);
   assert.deepEqual(oct.excluded, ['c', 'd']);
   assert.deepEqual(oct.unbacked, ['e']);
-  assert.equal(oct.share, 0.3333);
+  assert.equal(oct.share, 0.33, 'two decimals, as the engine stores it');
   assert.deepEqual(
     shareByMonth({ docs, inputKeys: KEYS, month: '2026-09' }).map((r) => r.share),
     [0]
@@ -107,7 +107,7 @@ test('northStarInputKeys: no payload, or one that does not parse, is no inputs',
   assert.deepEqual(northStarInputKeys('## Sync payload\n\n```json\n{oops\n```\n'), []);
 });
 
-const row = { month: '2026-10', total: 15, grounded: ['a'], excluded: [], unbacked: [], share: 0.0667 };
+const row = { month: '2026-10', total: 15, grounded: ['a'], excluded: [], unbacked: [], share: 0.07 };
 function fakeFetch(reply, status = 200) {
   const calls = [];
   const fetchImpl = async (url, init) => {
@@ -132,11 +132,11 @@ test('D4: the push posts today’s share for this month, with the project’s ow
     today: '2026-10-09',
   });
   assert.equal(r.ok, true);
-  assert.equal(r.line, `pushed ${INPUT_KEY} = 0.0667 for 2026-10-09`);
+  assert.equal(r.line, `pushed ${INPUT_KEY} = 0.07 for 2026-10-09`);
   assert.equal(f.calls[0].url, 'https://e.test/api/v1/inputs/grounded_bets_share/values');
   assert.equal(f.calls[0].init.headers.Authorization, 'Bearer gk_self');
   assert.deepEqual(JSON.parse(f.calls[0].init.body), {
-    values: [{ occurredOn: '2026-10-09', value: 0.0667 }],
+    values: [{ occurredOn: '2026-10-09', value: 0.07 }],
   });
 });
 

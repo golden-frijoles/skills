@@ -96,7 +96,9 @@ export function shareByMonth({ docs, inputKeys, month = null }) {
       else if (recordedTrue(fm.grounded)) unbacked.push(slug);
     }
     const total = counted.length;
-    const share = total ? Math.round((grounded.length / total) * 10000) / 10000 : null;
+    // Two decimals: the engine stores input values as NUMERIC(14,2), so a finer value would read back rounded and a
+    // same-day re-push would look like a different value.
+    const share = total ? Math.round((grounded.length / total) * 100) / 100 : null;
     return { month: m, total, grounded, excluded, unbacked, share };
   });
 }
