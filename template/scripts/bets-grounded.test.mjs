@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
   INPUT_KEY,
   engineInputKeys,
@@ -15,6 +17,7 @@ import {
   shareByMonth,
 } from './bets-grounded.mjs';
 
+const HERE = dirname(fileURLToPath(import.meta.url));
 const KEYS = ['grounded_bets_share', 'proving_workspaces'];
 const target = { target_metric: 'grounded_bets_share', target_from: 0, target_to: 0.6 };
 
@@ -177,20 +180,46 @@ test('D4: a second push the same day is reported, never an error; a refusal is a
   assert.equal(r2.line, 'push failed (404): unknown input');
 });
 
-test('verifier #334: with the strategy private, the engine names the input keys (same key), and anything else is null', async () => {
+test('verifier #334: with the strategy private, the engine names the input keys; no key is a skip, a failure an error', async () => {
   const env = { SELF_PROJECT_API_KEY: 'gk_self', GROWTH_ENGINE_URL: 'https://e.test' };
   const ok = fakeFetch({
     ok: true,
     metrics: [{ key: 'proven_bets', inputs: [{ key: 'grounded_bets_share' }, { key: 'x' }] }],
   });
-  assert.deepEqual(await engineInputKeys({ env, fetchImpl: ok.fetchImpl }), ['grounded_bets_share', 'x']);
+  assert.deepEqual(await engineInputKeys({ env, fetchImpl: ok.fetchImpl }), {
+    keys: ['grounded_bets_share', 'x'],
+  });
   assert.equal(ok.calls[0].url, 'https://e.test/api/v1/north-star');
   assert.equal(ok.calls[0].init.headers.Authorization, 'Bearer gk_self');
-  assert.equal(await engineInputKeys({ env: {}, fetchImpl: ok.fetchImpl }), null, 'no key: no request');
-  assert.equal(ok.calls.length, 1);
-  assert.equal(await engineInputKeys({ env, fetchImpl: fakeFetch({ ok: false }, 401).fetchImpl }), null);
+  assert.match((await engineInputKeys({ env: {}, fetchImpl: ok.fetchImpl })).skip, /no SELF_PROJECT_API_KEY/);
+  assert.equal(ok.calls.length, 1, 'no key: no request');
+  assert.match(
+    (await engineInputKeys({ env, fetchImpl: fakeFetch({ ok: false }, 500).fetchImpl })).error,
+    /could not be read \(500\)/
+  );
   const boom = async () => {
-    throw new Error('fetch failed');
+    throw new Error('fetch failed gk_self');
   };
-  assert.equal(await engineInputKeys({ env, fetchImpl: boom }), null);
+  const failed = await engineInputKeys({ env, fetchImpl: boom });
+  assert.match(failed.error, /network error/);
+  assert.doesNotMatch(JSON.stringify(failed), /gk_self/);
+});
+
+test('verifier #334: --push exits 1 naming the cause when the engine cannot be read, and 0 when there is no key', () => {
+  const root = mkdtempSync(join(tmpdir(), 'bets-grounded-cli-'));
+  try {
+    const run = (env) =>
+      spawnSync(process.execPath, [join(HERE, 'bets-grounded.mjs'), '--root', root, '--push'], {
+        encoding: 'utf8',
+        env: { PATH: process.env.PATH, ...env },
+      });
+    const down = run({ SELF_PROJECT_API_KEY: 'k', GROWTH_ENGINE_URL: 'http://127.0.0.1:9' });
+    assert.equal(down.status, 1);
+    assert.match(down.stderr, /push failed: the engine's North Star could not be read/);
+    const nokey = run({});
+    assert.equal(nokey.status, 0);
+    assert.match(nokey.stderr, /push skipped: no SELF_PROJECT_API_KEY/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

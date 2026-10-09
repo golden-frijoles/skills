@@ -157,22 +157,30 @@ export function formatShares(rows, inputKeys) {
   return out.join('\n');
 }
 
-/** The project's North Star input keys from the engine; null when it cannot say (no key, a refusal, a network error). */
+/**
+ * The project's North Star input keys from the engine: `{ keys }`, `{ skip }` when there is no key to ask with, or
+ * `{ error }` when the engine could not say (a refusal, a 5xx, a network error). Never throws; the key goes only into
+ * the Authorization header. The engine lists every input of every metric it holds, so when it is asked, it — not a
+ * local file — decides what counts as grounded for the pushed value (verifier, #334).
+ */
 export async function engineInputKeys({ env = process.env, fetchImpl = fetch } = {}) {
   const apiKey = apiKeyFrom(env);
-  if (!apiKey) return null;
+  if (!apiKey) return { skip: 'no SELF_PROJECT_API_KEY or GROWTH_ENGINE_API_KEY' };
   const base = (env.GROWTH_ENGINE_URL || 'http://localhost:3000').replace(/\/+$/, '');
   try {
     const res = await fetchImpl(`${base}/api/v1/north-star`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.ok || !Array.isArray(body.metrics)) return null;
-    return body.metrics.flatMap((m) =>
-      Array.isArray(m?.inputs) ? m.inputs.map((i) => i?.key).filter((k) => typeof k === 'string') : []
-    );
+    if (!res.ok || !body?.ok || !Array.isArray(body.metrics))
+      return { error: `the engine's North Star could not be read (${res.status})` };
+    return {
+      keys: body.metrics.flatMap((m) =>
+        Array.isArray(m?.inputs) ? m.inputs.map((i) => i?.key).filter((k) => typeof k === 'string') : []
+      ),
+    };
   } catch {
-    return null;
+    return { error: "the engine's North Star could not be read (network error)" };
   }
 }
 
@@ -229,17 +237,25 @@ async function main(argv) {
   const project = readProject(root);
   const { docs } = project;
   let { inputKeys } = project;
-  if (!inputKeys.length && argv.includes('--push')) {
+  // No local strategy (it is often private and untracked, as in CI): ask the engine when there is a key, for the
+  // printed count as well as the push. A failure to read it is a failed push, never a "no input" skip (verifier, #334).
+  const push = argv.includes('--push');
+  if (!inputKeys.length) {
     const fromEngine = await engineInputKeys();
-    if (fromEngine) {
-      inputKeys = fromEngine;
-      console.log('North Star inputs read from the engine (no local Roadmap/00-strategy/north-star.md).');
+    if (fromEngine.keys) {
+      inputKeys = fromEngine.keys;
+      console.error('North Star inputs read from the engine (no local Roadmap/00-strategy/north-star.md).');
+    } else if (push) {
+      console.error(
+        fromEngine.error ? `push failed: ${fromEngine.error}` : `push skipped: ${fromEngine.skip}`
+      );
+      return fromEngine.error ? 1 : 0;
     }
   }
   const rows = shareByMonth({ docs, inputKeys, month });
   if (argv.includes('--json')) console.log(JSON.stringify({ inputKeys, months: rows }, null, 2));
   else console.log(formatShares(rows, inputKeys));
-  if (!argv.includes('--push')) return 0;
+  if (!push) return 0;
   const all = month ? shareByMonth({ docs, inputKeys }) : rows;
   const result = await pushShare({ rows: all, inputKeys });
   console.log(result.line);
