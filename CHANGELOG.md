@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-09
+
+**Grounded bets: every Why is a hypothesis traced from the North Star.**
+
+### Added
+- `refine` Stage 1.5 writes the bet as one sentence (*We believe that … for … will … because … We'll know when …*),
+  traced from the strategy: which North Star input, for whom and doing which job, by what mechanism, on what evidence.
+- When no input fits, `refine` challenges once with two or three reframes (another input, a smaller cut on the highest
+  domino, a chore). An override is always allowed and recorded as `grounded: false` with its reason.
+- `strategy.mjs` prints `persona:` and `job:` from the PMF narrative.
+- The Plan gate opens with the bet sentence and shows `Grounded ..... yes | no — <reason>`.
+- Seeds and epics carry `persona`, `grounded` and `grounded_reason`; the scaffold copies them, the contract checks them,
+  and the roadmap push sends `grounded` and `grounded_reason`.
+- `bets-grounded.mjs` (in the kit) computes `grounded_bets_share` per month from the funded bets, and `--push` posts it
+  as that North Star input's value.
+- A flag created at Stage 6b carries the bet's hypothesis as its description.
+
+### Changed
+- With no strategy, `refine` offers the North Star chapter once per seed instead of never asking; a decline records
+  `grounded: false — no strategy yet`.
+
 ## [1.0.1] - 2026-10-09
 
 ### Changed

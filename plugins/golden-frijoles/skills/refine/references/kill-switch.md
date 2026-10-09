@@ -19,8 +19,12 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      *never build a parallel flag store*). The taxonomy lives in the provider, not in docs and not in
      a checked-in default map.
      ```
-     frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs
+     frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs \
+       --description "<the seed's hypothesis, up to about 400 characters> (epic <slug>)"
      ```
+     The description is the bet's Why, so the console says why the flag exists (grounded-bets D9). Clip a long
+     hypothesis at a word boundary with `…` (the provider takes 500 characters); leave out `--description` only when
+     the seed has no hypothesis.
   2. **Polarity** (pick the fail-open default to match intent):
      - **Kill-switch** (ship live, instantly killable) → default **`true`**, **create it ENABLED in
        every env** (switch *armed*; disabling is the deliberate kill) → `--kill-switch`.
