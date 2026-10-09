@@ -65,16 +65,26 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    `track` never throws; do not wrap it in a try/catch that changes the product's behaviour. When there is no clear
    server code point (the action happens only in the browser), add a `TODO(golden-frijoles)` comment where it belongs,
    with the reason, and list it in the PR: never guess, and never put the ingest key in browser code.
-4. **Error capture**, once, at the server entry. `captureGlobalErrors()` is the browser's hook and does nothing on a
-   server (verifier, #338), so a server reports through `captureError`:
-   - **Next.js:** in `instrumentation.ts`, `export const onRequestError = (error: unknown) => growthServer.captureError(error)`
-     (import the client only in the Node runtime: `if (process.env.NEXT_RUNTIME === 'nodejs')`).
-   - **A long-running Node server** (Express, Fastify, Hono): at startup,
-     `process.on('uncaughtExceptionMonitor', (e) => growthServer.captureError(e))`. It only observes: the process
-     still crashes as it did. Never add an `'uncaughtException'` or `'unhandledRejection'` listener just to report:
-     registering one replaces Node's default (print and exit), which changes how the app fails (verifier, #338). When
-     the app already has an `'unhandledRejection'` handler, report from inside it; otherwise skip rejections and say so
-     in the PR.
+4. **Error capture**, from the place errors are handled while the process is still alive. `captureError` sends over
+   the network, so it must run where the send can finish (verifier, #338):
+   - **Next.js:** `instrumentation.ts`. Next awaits this hook, so returning the promise lets the send complete:
+
+     ```ts
+     export async function onRequestError(error: unknown) {
+       if (process.env.NEXT_RUNTIME !== 'nodejs') return
+       const { growthServer } = await import('./lib/golden-frijoles')
+       await growthServer.captureError(error)
+     }
+     ```
+   - **Express:** an error middleware after the routes, which passes the error on unchanged:
+     `app.use((err, req, res, next) => { void growthServer.captureError(err); next(err) })`.
+   - **Fastify:** `app.addHook('onError', async (request, reply, error) => { await growthServer.captureError(error) })`.
+   - **Hono:** inside the existing `app.onError`, add `await growthServer.captureError(err)` before its response; with
+     none, `app.onError(async (err, c) => { await growthServer.captureError(err); return c.text('Internal Server Error', 500) })`.
+   - **A crash cannot be reported.** When the process dies (an uncaught exception, or an unhandled rejection under
+     Node's default), it exits before a network send can leave. Do not add `process.on` listeners for it: a
+     `'uncaughtException'` or `'unhandledRejection'` listener replaces Node's crash and changes how the app fails, and
+     `'uncaughtExceptionMonitor'` runs too late to send anything. Say in the PR that crashes are not reported.
    - **Anything else:** skip it and say so in the PR, rather than force it.
 5. **Flags:** only when `read-product.mjs` found flag reads. Do not migrate a flag provider here; note it in the PR as
    a later step.
