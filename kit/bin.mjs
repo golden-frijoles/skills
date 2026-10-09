@@ -53,17 +53,6 @@ export function parseArgs(argv) {
 
 const USAGE = 'usage: frijoles-kit [--root <dir>] <script> [args…]   ·   frijoles-kit --list   ·   frijoles-kit --version';
 
-/**
- * plugin-1-0 D2 — started as the old name `gf-kit`? One line on stderr (stdout is a script's own output, often parsed),
- * until the date `scripts/check-deprecations.mjs` enforces. Pure, so the test pins it.
- */
-export function deprecatedNameNotice(invokedPath) {
-  const name = String(invokedPath ?? '').split(/[\\/]/).pop() ?? '';
-  // Unix only: npm's Windows shims start `node …\\bin.mjs`, so argv[1] is the entry file there (verifier, #324).
-  if (name !== 'gf-kit') return null;
-  return 'gf-kit is now frijoles-kit. gf-kit stops working on 2026-12-31 (or in kit 1.1.0).\n';
-}
-
 function main(argv) {
   const args = parseArgs(argv);
   const scripts = listScripts();
@@ -117,7 +106,5 @@ const isMain = (() => {
   }
 })();
 if (isMain) {
-  const notice = deprecatedNameNotice(process.argv[1]);
-  if (notice) process.stderr.write(notice);
   process.exitCode = main(process.argv.slice(2));
 }

@@ -24,6 +24,11 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   as that North Star input's value.
 - A flag created at Stage 6b carries the bet's hypothesis as its description.
 
+### Removed
+- **`gf-kit`**, as 1.0 promised ("until 2026-12-31 or kit 1.1.0"): the kit publishes `frijoles-kit` only. Replace
+  `gf-kit <script>` with `frijoles-kit <script>` (or `npx -y @golden-frijoles/kit <script>`). The `gf` CLI alias is a
+  separate package and keeps its own date.
+
 ### Changed
 - With no strategy, `refine` offers the North Star chapter once per seed instead of never asking; a decline records
   `grounded: false — no strategy yet`.

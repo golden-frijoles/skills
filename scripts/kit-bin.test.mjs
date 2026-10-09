@@ -6,10 +6,10 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, realpathSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { stageKit } from './build-kit.mjs';
-import { parseArgs, deprecatedNameNotice } from '../kit/bin.mjs';
+import { parseArgs } from '../kit/bin.mjs';
 
 // A private staged kit: specs run in parallel, and the shared kit/dist/ must not be rebuilt under another one.
 const STAGE = realpathSync(mkdtempSync(join(tmpdir(), 'kit-bin-')));
@@ -51,11 +51,7 @@ test("a script's exit code passes through unchanged", () => {
   assert.notEqual(r.status, 2, 'a script failure is not a usage error');
 });
 
-test('started as gf-kit: one stderr notice naming frijoles-kit and the date; frijoles-kit and the entry: none', () => {
-  for (const path of ['/usr/local/bin/gf-kit', '/x/node_modules/.bin/gf-kit']) {
-    assert.match(deprecatedNameNotice(path), /^gf-kit is now frijoles-kit\. .*2026-12-31.*\n$/);
-  }
-  for (const path of ['/usr/local/bin/frijoles-kit', '/x/kit/bin.mjs', '/x/gf', undefined]) {
-    assert.equal(deprecatedNameNotice(path), null, String(path));
-  }
+test('the kit publishes frijoles-kit only: the old kit name retired in 1.1.0, as plugin-1-0 promised', () => {
+  const pkg = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'kit', 'package.json'), 'utf8'));
+  assert.deepEqual(Object.keys(pkg.bin), ['frijoles-kit']);
 });
