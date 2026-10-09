@@ -230,7 +230,8 @@ async function main() {
     fromFile.GROWTH_ENGINE_URL ||
     process.env.GROWTH_ENGINE_URL ||
     'http://localhost:3000';
-  const apiKey = apiKeyFrom({ ...process.env, ...fromFile });
+  // A key in the file wins over the shell's, so the key and the URL come from the same place (verifier, #338).
+  const apiKey = apiKeyFrom(fromFile) ?? apiKeyFrom(process.env);
   const items = readExtract();
   if (args.includes('--dry-run')) {
     writeSync(1, `${JSON.stringify(envelopeFor(items), null, 2)}\n`);

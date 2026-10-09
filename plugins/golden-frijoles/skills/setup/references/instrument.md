@@ -39,13 +39,17 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    // lib/golden-frijoles.ts: Golden Frijoles clients. Server-only: the ingest key must never reach a browser.
    import { createGrowthEngineClient } from '@golden-frijoles/sdk'
 
-   const apiKey = process.env.GROWTH_ENGINE_API_KEY
+   // Both written by `frijoles init --ingest`. A missing key makes every call return an error result (the SDK never
+   // throws); a missing URL means the hosted engine, goldenfrijoles.com.
+   const apiKey = process.env.GROWTH_ENGINE_API_KEY ?? ''
+   const url = process.env.GROWTH_ENGINE_URL
+   const options = url ? { apiKey, baseUrl: url } : { apiKey }
 
    /** A client for one request's user. Cheap: it holds no connection. */
-   export const growthFor = (userId: string) => createGrowthEngineClient({ apiKey, userId })
+   export const growthFor = (userId: string) => createGrowthEngineClient({ ...options, userId })
 
    /** The server itself, for errors that belong to no one person. */
-   export const growthServer = createGrowthEngineClient({ apiKey, userId: 'system:server' })
+   export const growthServer = createGrowthEngineClient({ ...options, userId: 'system:server' })
    ```
 
    In a Next.js app add `import 'server-only'` first when the project already uses it. Never write a key into code:
@@ -61,9 +65,13 @@ has the snippet. On route 2 (a new idea, nothing built yet) skip this step: ther
    `track` never throws; do not wrap it in a try/catch that changes the product's behaviour. When there is no clear
    server code point (the action happens only in the browser), add a `TODO(golden-frijoles)` comment where it belongs,
    with the reason, and list it in the PR: never guess, and never put the ingest key in browser code.
-4. **Error capture**, once, at the server entry (`instrumentation.ts` in Next.js, the app's bootstrap elsewhere):
-   `growthServer.captureGlobalErrors()` when the stack has a long-running server process; skip it rather than force it
-   (a serverless function has no global error hook worth registering).
+4. **Error capture**, once, at the server entry. `captureGlobalErrors()` is the browser's hook and does nothing on a
+   server (verifier, #338), so a server reports through `captureError`:
+   - **Next.js:** in `instrumentation.ts`, `export const onRequestError = (error: unknown) => growthServer.captureError(error)`.
+   - **A long-running Node server** (Express, Fastify, Hono): at startup,
+     `process.on('unhandledRejection', (e) => growthServer.captureError(e))` and the same for `'uncaughtException'`,
+     keeping whatever the app already does on those events (log, exit): add the report, never replace the handling.
+   - **Anything else:** skip it and say so in the PR, rather than force it.
 5. **Flags:** only when `read-product.mjs` found flag reads. Do not migrate a flag provider here; note it in the PR as
    a later step.
 6. **The ignore rule:** `.env.local` must be in `.gitignore` (`frijoles init` refuses otherwise). Never add an env file
