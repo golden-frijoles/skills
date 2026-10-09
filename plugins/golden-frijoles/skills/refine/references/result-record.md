@@ -43,8 +43,9 @@ input"). A grounded bet records `grounded: true`. Never repeat the challenge for
 it, and never rewrite a recorded reason. `grounded_bets_share` counts exactly this record (`scripts/bets-grounded.mjs`):
 a bet is grounded when its target is a North Star input with a from and a to, whatever the field says.
 
-**Bugs and Chores** (Stage 2) skip the bet: their `hypothesis` is `Why: keeps <X> working`, `grounded` stays null, and
-they are not counted.
+**A Bug or a Chore** skips the bet: its `hypothesis` is `Why: keeps <X> working`, `grounded` stays null, and it is not
+counted. The class is confirmed at Stage 2; when the ask is plainly one already (a defect, a dependency bump), skip the
+bet here, and if Stage 2 classifies it otherwise, come back and write the bet.
 
 Write the answers into the seed's frontmatter: `hypothesis` (the sentence), `persona`, `grounded` and
 `grounded_reason`, `target_metric`, `target_from`, `target_to`, `read_date`. The Plan gate shows them as Target and Read date (`references/gates.md`). `scaffold-epic`
