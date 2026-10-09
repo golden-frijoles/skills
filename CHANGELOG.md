@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-09
+
+### Changed
+- The cross-review rail accepts agy 1.3.2 (`AGY_PINNED`), after `cross-agent-doctor --fix` re-verified its help contract
+  and live-probed both models.
+
 ## [1.0.0] - 2026-10-08
 
 **Golden Frijoles 1.0: five plain skills, the `frijoles` CLI, and Refining.** One breaking release, so a renamed

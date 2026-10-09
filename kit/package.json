@@ -1,6 +1,6 @@
 {
   "name": "@golden-frijoles/kit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The scripts the Golden Frijoles skills run, packaged so they work in any repo: planning, build-order, reporting and verification rails. Zero dependencies.",
   "type": "module",
   "bin": {
