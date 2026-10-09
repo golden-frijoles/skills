@@ -5,7 +5,7 @@ funds it, so nothing leaves refining scaffolded but unfunded, and nobody has a f
 
 ## What the product owner sees
 
-The **Plan gate** in `gates.md`: plain words, with the bet in it ("We bet that …", Moves, Target, Read date, Size,
+The **Plan gate** in `gates.md`: plain words, with the bet in it ("We believe that …", Moves, Grounded, Target, Read date, Size,
 Flag) and "What this pushes back". This file is what its answers write. You propose the position and what the epic
 pushes back from the month's `Roadmap/bets/wave-YYYY-MM.md` and *Ready to build* in `BUILD-ORDER.md`; the product
 owner edits either. **Approve the plan** runs `fund.mjs` then `scaffold-epic.mjs`; **Park it** runs neither.

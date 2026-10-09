@@ -223,7 +223,8 @@ needs a flag. Ask Q4 last, after the route below has finished.
   1 (`config set project.startPoint idea`): run the `strategy` skill's chapters PMF narrative, then North Star, then risk validation, each from
   the sentence, one after the other, as the Strategy gate's *Coach me through it* does; it ends at the **Strategy
   gate**. 2 (`config set project.startPoint plan`): hand off to `refine` with the sentence as the ask, word for word.
-  With no strategy, refine marks the epic not grounded (its `references/strategy.md`; the Plan gate's *Not grounded*).
+  With no strategy, refine marks the epic not grounded without asking again (its `references/strategy.md`; the Plan
+  gate's *Not grounded*).
 - **3 Just planning**: write nothing but the config file. No `frijoles-kit init`. Then offer `refine`.
 
 Keep this stage to the steps above — don't re-explain the registry or restate `lib/config-registry.mjs` here.

@@ -90,7 +90,7 @@ needs it (each stage names its file).
 Read, in order: `Roadmap/README.md` (the poster — **overlap check lives here**), `Roadmap/WAYS-OF-WORKING.md`
 (cadence, DoR/DoD, review, escalate triggers), `Roadmap/LEARNINGS.md`, the relevant macro-section README
 once the domain is known, and team memory if the project keeps one. State in one line what you loaded.
-Run `node "$REFINE/strategy.mjs"` for the pitch's Moves · Tests line (`references/strategy.md`); with no strategy it prints nothing, which the line states as not grounded.
+Run `node "$REFINE/strategy.mjs"` for the pitch's Moves · Tests line (`references/strategy.md`); with no strategy it prints nothing: offer the North Star chapter once for the seed, and on a decline the line states it as not grounded.
 
 ## Stage 1 — Capture
 Take the brain-dump as given (or read it from `seeds/`). Mirror it back in one sentence — *"You want \<X\>

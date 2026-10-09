@@ -37,7 +37,8 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | Proven · Disproven · Unclear | `verdict:` in the epic README | — |
 | Flag | `flag_key:`, a flag in Golden Frijoles | — |
 
-"Bet" is the idea behind an epic and appears only as "We bet that …", never as a stage, a button or a status.
+"Bet" is the idea behind an epic and appears only as its sentence ("We believe that … for … will … because … We'll
+know when …"), never as a stage, a button or a status.
 
 | Was | Now |
 |---|---|
@@ -97,9 +98,11 @@ Answer them here, or:
 ```gate plan
 The plan is ready: <path to the seed>
 
-We bet that <the seed's hypothesis, or the problem in one sentence>.
+We believe that <the change> for <persona> will <move the input>, because <the insight>.
+We'll know when <the signal>.
 
   Moves ........ <the target metric's name> (your North Star input)
+  Grounded ..... yes | no — <the reason the product owner gave>
   Target ....... <from> → <to>
   Read date .... <read date, or: 30 days after it ships>
   Size ......... <appetite>, about $<lo>–<hi> of agent time
@@ -118,6 +121,11 @@ Decisions only you can make:
 What this pushes back: <what waits>. It builds next | It builds after <title>.
 ```
 
+- **The bet** is the seed's `hypothesis`, the sentence Stage 1.5 wrote (`result-record.md`), shown as written. A seed
+  refined before the sentence existed shows its hypothesis, or the problem in one sentence, as it is. A Bug or Chore
+  shows `Why: keeps <X> working` and no Grounded line.
+- **Grounded** shows the seed's `grounded`: `yes` when true; `no — <grounded_reason>` when false. Left out when
+  `grounded` is null (a Bug, a Chore, or a seed refined before it existed).
 - **The values** come from the seed's frontmatter and pitch: `hypothesis`, `target_metric` / `target_from` /
   `target_to` / `read_date` (`result-record.md`), `appetite` and `quote`, the slices, `flag_key` and its polarity or
   the Stage 6b carve-out. "(your North Star input)" only when the target metric is one of the keys `strategy.mjs` printed; no
