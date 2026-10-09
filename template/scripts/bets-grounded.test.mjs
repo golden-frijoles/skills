@@ -216,6 +216,15 @@ test('verifier #334: --push exits 1 naming the cause when the engine cannot be r
     const down = run({ SELF_PROJECT_API_KEY: 'k', GROWTH_ENGINE_URL: 'http://127.0.0.1:9' });
     assert.equal(down.status, 1);
     assert.match(down.stderr, /push failed: the engine's North Star could not be read/);
+    const printOnly = spawnSync(process.execPath, [join(HERE, 'bets-grounded.mjs'), '--root', root], {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, SELF_PROJECT_API_KEY: 'k', GROWTH_ENGINE_URL: 'http://127.0.0.1:9' },
+    });
+    assert.equal(printOnly.status, 0);
+    assert.match(
+      printOnly.stderr,
+      /note: the engine's North Star could not be read .*counting with no North Star inputs/
+    );
     const nokey = run({});
     assert.equal(nokey.status, 0);
     assert.match(nokey.stderr, /push skipped: no SELF_PROJECT_API_KEY/);

@@ -250,6 +250,9 @@ async function main(argv) {
         fromEngine.error ? `push failed: ${fromEngine.error}` : `push skipped: ${fromEngine.skip}`
       );
       return fromEngine.error ? 1 : 0;
+    } else if (fromEngine.error) {
+      // Printing only: still count, but never let a down engine pass for "no strategy" (verifier round 3, #334).
+      console.error(`note: ${fromEngine.error}; counting with no North Star inputs`);
     }
   }
   const rows = shareByMonth({ docs, inputKeys, month });
