@@ -89,6 +89,7 @@ jobs:
         run: |
           node --test \
             plugins/golden-frijoles/skills/refine/fund.test.mjs \
+            plugins/golden-frijoles/skills/refine/read-product.test.mjs \
             plugins/golden-frijoles/skills/refine/read-repo.test.mjs \
             plugins/golden-frijoles/skills/refine/scaffold-epic.test.mjs \
             plugins/golden-frijoles/skills/refine/session-budget.test.mjs \
