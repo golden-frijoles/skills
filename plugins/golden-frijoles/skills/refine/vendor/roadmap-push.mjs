@@ -12,13 +12,14 @@
 //   node scripts/roadmap-push.mjs                       # push to $GROWTH_ENGINE_URL
 //   node scripts/roadmap-push.mjs --dry-run             # print the envelope, send nothing
 //   node scripts/roadmap-push.mjs --url http://localhost:3000
+//   node scripts/roadmap-push.mjs --env-file .env.local   # the key and URL `frijoles init --ingest` wrote
 //
 // Env: GROWTH_ENGINE_URL (default http://localhost:3000) and the project's ingest key: SELF_PROJECT_API_KEY FIRST (it only
 // ever means this project's own key), else the SDK's GROWTH_ENGINE_API_KEY. Not the other way round — see apiKeyFrom.
 // A missing key is a CLEAN SKIP (exit 0), not a failure — see the note in the CI step.
 
 import { spawnSync } from 'node:child_process';
-import { writeSync } from 'node:fs';
+import { readFileSync, writeSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getKey } from './lib/config.mjs';
@@ -166,6 +167,23 @@ export async function pushRoadmap(
   return { ok: res.ok, skipped: false, status: res.status, text: await res.text() };
 }
 
+/**
+ * setup-instruments-connects D8 — the push's own variables from a dotenv file (`frijoles init --ingest` writes them to
+ * `.env.local`). Pure, and it reads ONLY these names: nothing is evaluated (a shell `source` would run whatever the file
+ * holds), and the last assignment wins, as dotenv does. Quotes are stripped; `export ` is allowed.
+ */
+export const ENV_FILE_NAMES = ['GROWTH_ENGINE_URL', 'GROWTH_ENGINE_API_KEY', 'SELF_PROJECT_API_KEY'];
+export function readEnvFile(text) {
+  const out = {};
+  for (const line of String(text).split(/\r?\n/)) {
+    const m = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!m || !ENV_FILE_NAMES.includes(m[1])) continue;
+    const value = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
+    if (value) out[m[1]] = value;
+  }
+  return out;
+}
+
 /** The CLI's report for one push result. Exported so `roadmap-extract --sink hub` says it the same way. */
 export function reportPush(result, count) {
   if (result.skipped) {
@@ -189,16 +207,36 @@ export function reportPush(result, count) {
 async function main() {
   const args = process.argv.slice(2);
   const urlFlag = args.indexOf('--url');
+  const envFlag = args.indexOf('--env-file');
+  let fromFile = {};
+  if (envFlag !== -1) {
+    const path = args[envFlag + 1];
+    if (!path) {
+      process.stderr.write('--env-file needs a path, for example --env-file .env.local\n');
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      fromFile = readEnvFile(readFileSync(resolve(REPO_ROOT, path), 'utf8'));
+    } catch (err) {
+      process.stderr.write(`could not read ${path}: ${err.message}\n`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  // An explicit --url wins, then the file, then the shell's environment.
   const baseUrl =
     (urlFlag !== -1 ? args[urlFlag + 1] : undefined) ||
+    fromFile.GROWTH_ENGINE_URL ||
     process.env.GROWTH_ENGINE_URL ||
     'http://localhost:3000';
+  const apiKey = apiKeyFrom({ ...process.env, ...fromFile });
   const items = readExtract();
   if (args.includes('--dry-run')) {
     writeSync(1, `${JSON.stringify(envelopeFor(items), null, 2)}\n`);
     return;
   }
-  process.exitCode = reportPush(await pushRoadmap(items, { baseUrl }), items.length);
+  process.exitCode = reportPush(await pushRoadmap(items, { baseUrl, apiKey }), items.length);
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

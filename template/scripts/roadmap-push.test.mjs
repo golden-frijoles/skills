@@ -21,6 +21,7 @@ import {
   readExtract,
   repoBlobBase,
   ROADMAP_SCHEMA_VERSION,
+  readEnvFile,
 } from './roadmap-push.mjs';
 
 const rows = [
@@ -230,4 +231,22 @@ test('pushRoadmap: an unreachable engine is a failed push with its reason, never
   });
   assert.deepEqual([r.ok, r.skipped, r.status], [false, false, null]);
   assert.match(r.text, /could not reach https:\/\/nowhere\.example: fetch failed/);
+});
+
+// setup-instruments-connects D8 — `--env-file`: the push's own variables from `.env.local`, nothing evaluated.
+test('readEnvFile reads only the push variables, last assignment wins, quotes and export allowed, nothing evaluated', () => {
+  const text = [
+    'GROWTH_ENGINE_URL=https://first.test',
+    'export GROWTH_ENGINE_URL="https://goldenfrijoles.com"',
+    "GROWTH_ENGINE_API_KEY='gk_from_file'",
+    'GOLDEN_FRIJOLES_FLAG_READ_KEY=not_read',
+    'SELF_PROJECT_API_KEY=$(touch /tmp/should-not-run)',
+    '# GROWTH_ENGINE_API_KEY=commented',
+    'GROWTH_ENGINE_API_KEY=',
+  ].join('\n');
+  const env = readEnvFile(text);
+  assert.deepEqual(Object.keys(env).sort(), ['GROWTH_ENGINE_API_KEY', 'GROWTH_ENGINE_URL', 'SELF_PROJECT_API_KEY']);
+  assert.equal(env.GROWTH_ENGINE_URL, 'https://goldenfrijoles.com');
+  assert.equal(env.GROWTH_ENGINE_API_KEY, 'gk_from_file', 'an empty later line does not erase the key');
+  assert.equal(env.SELF_PROJECT_API_KEY, '$(touch /tmp/should-not-run)', 'kept as text, never run');
 });
