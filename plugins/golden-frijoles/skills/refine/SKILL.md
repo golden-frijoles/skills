@@ -160,8 +160,8 @@ migrations, shared infra; **low** = docs/copy, non-commerce UI, additive agent t
 rest; unsure means high. The tier selects the review scope (WAYS-OF-WORKING → *Review & merge*). The builder's
 escalate triggers are the ONE list in WAYS-OF-WORKING → *Escalate, don't guess* — reference it, never restate it here.
 
-### Stage 6b — Flag decision for a `risk: high` epic
-**Does the product owner want a flag? Default no.** Record the answer in the seed — when it is yes, also its key in the seed's frontmatter (`flag_key:`, which the scaffold copies and the epic page reads); if yes, follow `references/kill-switch.md` — the mechanism is **Golden Frijoles** (`frijoles flags create`), with polarity · seam · **activation** · runtime placement. If the project has no provider linked, `node scripts/preflight.mjs` prints the two commands that fix it.
+### Stage 6b — Flags: Measure, then Safety
+**Two questions, in this order** (`references/kill-switch.md`): **Measure**, "Do you want to know if this worked?" (suggested yes for every Feature epic: an enablement flag you roll out, with the bet's adoption, retention and optional satisfaction events in the seed), then **Safety**, "Do you need to be able to switch it off fast?" (by risk: a kill switch, as before). Record `flag_key:` and the measurement in the seed's frontmatter; the mechanism is **Golden Frijoles**, and when the founder is not signed in, Measure is where an account is suggested (`kill-switch.md` → *Measure*), once per project.
 
 ## Locate the generators — do this once, before Stage 7
 

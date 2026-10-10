@@ -1,8 +1,38 @@
-# Refine reference — the kill-switch decision (Stage 6b)
+# Refine reference — the flag decisions (Stage 6b): Measure, then Safety
 
 Loaded on demand from `SKILL.md` Stage 6b. **This file is the ONE home of the kill-switch polarity rule** — the seed template, the epic DoD and any project flag tooling reference it rather than restating it (ways-of-work-lean-pass S3.4). Moved here verbatim (S3.2); the **mechanism** was rewritten to the Golden Frijoles contract (golden-flags-by-default S1.1), and the **polarity doctrine below is unchanged** — it was already correct and already matches the SDK's semantics.
 
 > **Operating default:** most projects here build with **no new flag unless the product owner asks for one** — see the consuming project's WAYS-OF-WORKING. When one IS asked for, this is how it is decided.
+
+### Measure — "Do you want to know if this worked?" (one-bet-wired D5, D6)
+
+Ask it first, for **every Feature epic**, and suggest yes: a flag is how a bet gets read. "Measure" is an
+**enablement** flag the founder rolls out (you → 10% → 50% → everyone), so the funnel compares the people who got it
+with nothing guessed. On yes, write the bet's measurement into the seed's frontmatter beside `flag_key:`:
+
+- `target_segment: everyone`: who the bet is for (TARS's Targeted: a strategy choice, the share of the user base with
+  the problem; named segments such as "power users" come with `tars-segments`).
+- `adopted_event:`: the event that means the feature was really used (not a view of it). Ask; never guess a name.
+- `retained_event:` (leave null for "the adoption event again") and `retention_days:` (default 7): what repeating looks
+  like, and within how long.
+- `satisfied_event:` (optional): a rating or survey event; null means satisfaction is "not measured", never zero.
+
+**When the founder is not signed in**, this is the one place an account is suggested, because here it pays off. Say,
+once per project:
+
+> Measuring needs a Golden Frijoles account: it serves the flag and counts who used it. **Sign in now** (opens your
+> browser once) · **Later** (the bet is saved here either way).
+
+"Sign in now" runs `frijoles login`. "Later" keeps the bet, never asks again in this project, and the Plan gate's Flag
+line says "measured once you sign in" (`gates.md`). Once signed in, the agent runs `frijoles bet sync
+Roadmap/<area>/<slug>/README.md` at the Build gate: it creates the Measure flag (off until rolled out) and leaves an
+existing one alone; the funnel arrives with the roadmap push.
+
+A Bug or Chore skips Measure (nothing to read), and so does an epic with no runtime seam a flag could gate.
+
+### Safety — "Do you need to be able to switch it off fast?"
+
+Asked second, by risk. Everything below is the Safety decision, unchanged.
 
 ### Stage 6b — Kill-switch decision for `risk: high` (recommend, don't auto-inject)
 A high-risk epic should ship behind a kill-switch — but that's **decided here at refining**, sliced as
