@@ -212,7 +212,10 @@ Setup is done. Optional, only if you want them:
 ```
 
 - **The flag line** only when the seed has a `flag_key`, on or off as the Plan gate said (left out when it did not say). Refine never creates a flag;
-  its user story does (`kill-switch.md`).
+  its user story does (`kill-switch.md`), with one exception: **a measured bet** (the epic has an `adopted_event`) when
+  the founder is signed in. Then, before showing this gate, run `frijoles bet sync <epic README>` and end the line with
+  what it said: "created, off until you roll it out" or "already there". Signed out, end it with "(measured once you
+  sign in)".
 - **`/build <slug>`** is the line in Claude Code with the plugin. Anywhere else it is Stage 8's generator command (or
   `npx -y @golden-frijoles/kit emit-epic-kickoff --epic <slug>` from the project root), shown as a command; its output
   is the prompt to paste into the building session.

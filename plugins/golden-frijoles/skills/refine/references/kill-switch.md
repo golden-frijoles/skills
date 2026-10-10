@@ -2,7 +2,8 @@
 
 Loaded on demand from `SKILL.md` Stage 6b. **This file is the ONE home of the kill-switch polarity rule** — the seed template, the epic DoD and any project flag tooling reference it rather than restating it (ways-of-work-lean-pass S3.4). Moved here verbatim (S3.2); the **mechanism** was rewritten to the Golden Frijoles contract (golden-flags-by-default S1.1), and the **polarity doctrine below is unchanged** — it was already correct and already matches the SDK's semantics.
 
-> **Operating default:** most projects here build with **no new flag unless the product owner asks for one** — see the consuming project's WAYS-OF-WORKING. When one IS asked for, this is how it is decided.
+> **Operating default** (one-bet-wired, decided by the product owner 2026-10-08): **suggest a Measure flag for every Feature epic**, and a
+> Safety flag by risk. Nothing else gets a flag unless the product owner asks for one.
 
 ### Measure — "Do you want to know if this worked?" (one-bet-wired D5, D6)
 
@@ -17,18 +18,29 @@ with nothing guessed. On yes, write the bet's measurement into the seed's frontm
   like, and within how long.
 - `satisfied_event:` (optional): a rating or survey event; null means satisfaction is "not measured", never zero.
 
-**When the founder is not signed in**, this is the one place an account is suggested, because here it pays off. Say,
-once per project:
+**Report each evaluation, or the funnel stays empty.** The flag is read through the SDK's flag provider, which does not
+report on its own: the code that reads it calls `trackFlagEvaluation` (the SDK README's *Flag evaluation telemetry*),
+with `subject: { type: 'user', id }` set to **the same id the app tracks its events with** (`growthFor(user.id)`). The
+funnel counts the person in `subject`, so a server client's own user (`system:server`) never stands in for the people
+it evaluates for. Write this into the story that puts the feature behind the flag.
+
+**When the founder is not signed in** (`npx -y @golden-frijoles/cli@<version> whoami --json` does not exit 0), this is
+the one place an account is suggested, because here it pays off. First read the kit's `config get measure.signIn`: a
+value means it was already asked in this project, so do not ask again. Otherwise say, once:
 
 > Measuring needs a Golden Frijoles account: it serves the flag and counts who used it. **Sign in now** (opens your
 > browser once) · **Later** (the bet is saved here either way).
 
-"Sign in now" runs `frijoles login`. "Later" keeps the bet, never asks again in this project, and the Plan gate's Flag
-line says "measured once you sign in" (`gates.md`). Once signed in, the agent runs `frijoles bet sync
+"Sign in now" runs `frijoles login`. Either answer is saved with the kit's `config set measure.signIn now|later`, so it
+is never asked again in this project. "Later" keeps the bet, and the Plan gate's Flag line says "measured once you sign
+in" (`gates.md`). Once signed in, the agent runs `frijoles bet sync
 Roadmap/<area>/<slug>/README.md` at the Build gate: it creates the Measure flag (off until rolled out) and leaves an
 existing one alone; the funnel arrives with the roadmap push.
 
 A Bug or Chore skips Measure (nothing to read), and so does an epic with no runtime seam a flag could gate.
+
+**Yes to both Measure and Safety is one flag:** the Measure flag. An enablement flag rolled out is also switched off by
+rolling it back, so it is the Safety switch too; write one `flag_key`, polarity enablement.
 
 ### Safety — "Do you need to be able to switch it off fast?"
 
