@@ -251,6 +251,12 @@ export function whyProblems(text) {
   const why = String(text ?? '').trim();
   if (!why) return ['the Why is empty'];
   const problems = [];
+  if (/^[>|][+-]?$/.test(why))
+    return ['it is a folded YAML block the readers cannot see: write the Why on one line, in quotes'];
+  // A word wider than a line is cut mid-word in the view, so it fails here too (verifier #343).
+  const wide = why.split(/\s+/).find((w) => w.length > WHY_ROOM);
+  if (wide)
+    problems.push(`one word is wider than a line ("${wide.slice(0, 24)}…"): shorten it or leave it out`);
   const lines = wrapWords(why, WHY_ROOM, Infinity).length;
   if (lines > WHY_LINES_MAX)
     problems.push(
@@ -258,11 +264,15 @@ export function whyProblems(text) {
     );
   if (why.includes('`')) problems.push('it has a backtick: write the words, not code');
   const path = why.match(
-    /\b[\w-]+\.(?:mjs|cjs|js|tsx?|md|json|sql|ya?ml)\b|(?:^|\s)\.{0,2}\/?[\w-]+\/[\w-]+\/[\w./-]+/
+    // A file with a code extension (not `.js`: Next.js and Node.js are product names), or a path rooted at `/`, `./` or
+    // `../`. A bare `reader/writer/editor` or `and/or` is prose (verifier #343).
+    /\b[\w-]+\.(?:mjs|cjs|tsx?|md|json|sql|ya?ml)\b|(?:^|\s)\.{0,2}\/[\w.-]+(?:\/[\w.-]+)+/
   );
   if (path) problems.push(`it names a file or path ("${path[0].trim()}")`);
   const ident = why.match(
-    /\b[a-z][a-z0-9]*(?:[._][a-z0-9]+)*_[a-z0-9]+\b|\b[a-z]+\.[a-z0-9]+\.[a-z0-9_.]+\b|\b[a-z]+[A-Z][A-Za-z0-9]+\b/
+    // snake_case (and dotted keys holding one, `bets.flag_funnels_enabled`), or camelCase with a lowercase run of two or
+    // more before the hump and a lowercase after it, so iPhone, eBay, iOS and macOS stay prose (verifier #343).
+    /\b[a-z][a-z0-9]*(?:[._][a-z0-9]+)*_[a-z0-9]+\b|\b[a-z]{2,}[A-Z][a-z][A-Za-z0-9]*\b/
   );
   if (ident) problems.push(`it names a code identifier ("${ident[0]}")`);
   const words = why.toLowerCase().match(/[a-z]+/g) ?? [];

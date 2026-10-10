@@ -579,3 +579,17 @@ test('why-as-a-story D3: the Why is asked about on its own, reported outside the
   );
   assert.match(formatReport(without), /why story +— +\(could not look/);
 });
+
+test('verifier #343: a seed with no Why is never asked about it, and its report has no why-story line', () => {
+  const parsed = parseSeed(SEED);
+  const req = buildRequest(parsed);
+  const answers = Object.fromEntries(
+    Object.keys(req.questions).map((id) => [
+      id,
+      id.startsWith('clar_') ? { type: 'score', score: 3 } : { type: 'noul', noul: 0.9 },
+    ])
+  );
+  const result = scoreAnswers(parsed, answers);
+  assert.equal(result.whyStory, undefined);
+  assert.doesNotMatch(formatReport(result), /why story/);
+});

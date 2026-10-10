@@ -482,3 +482,24 @@ test('whyProblems: a story Why passes; one that does not fit or reads as code is
     'ordinary prose is not code'
   );
 });
+
+test('verifier #343: brand names and plain slashes are prose; code, an over-wide word and a folded block are not', async () => {
+  const { whyProblems } = await import('./roadmap-contract.mjs');
+  for (const prose of [
+    'Founders on iPhone, iOS, iCloud, eBay and macOS see it.',
+    'Teams on Next.js and node.js, at www.example.com or app.goldenfrijoles.com, a.k.a. builders.',
+    'Every reader/writer/editor sees the same page, 24/7, for $1.5k/month.',
+  ])
+    assert.deepEqual(whyProblems(prose), [], prose);
+  for (const code of [
+    'getWorkspaceProjects reads it',
+    'isConnectorEnabled decides',
+    'set measure.signIn first',
+    'see ./lib/gates for it',
+    'flip bets.flag_funnels_enabled',
+  ])
+    assert.notDeepEqual(whyProblems(code), [], code);
+  const url = 'Share https://goldenfrijoles.com/?ref=launch-week-founders-special-offer-for-early-adopters today.';
+  assert.match(whyProblems(url).join(' '), /wider than a line/, 'a word the view would cut mid-word fails');
+  assert.match(whyProblems('>-')[0], /folded YAML/);
+});

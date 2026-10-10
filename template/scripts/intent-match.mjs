@@ -328,7 +328,8 @@ export function scoreAnswers(parsed, answers) {
   // why-as-a-story D3: advisory and outside the total. A missing or malformed answer is "could not look", never a
   // failure of the whole score: the total's calibration must not move because this question exists.
   const w = answers?.why_story;
-  const whyStory = w?.type === 'noul' && isUnit(w.noul) ? w.noul : null;
+  // Not asked (no Why in the seed) is undefined, so the report leaves the line out (verifier #343).
+  const whyStory = !whyOf(parsed) ? undefined : w?.type === 'noul' && isUnit(w.noul) ? w.noul : null;
   return { ok: true, signals, total, present, band: band(total), claims, criteria, gaps, untraced, whyStory };
 }
 
