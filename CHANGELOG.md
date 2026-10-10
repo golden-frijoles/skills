@@ -23,6 +23,10 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   Journeys' From your flags, on the TARS model: targeted (everyone), got the flag on, adopted, retained, satisfied or
   "not measured", with adopters who never had the flag on shown beside it.
 
+### Changed
+- The cross-review rail accepts agy 1.3.3 (`AGY_PINNED`), after `cross-agent-doctor --fix` re-verified its contract and
+  live-probed both models.
+
 ## [1.4.0] - 2026-10-09
 
 **A golden welcome in the CLI.**
