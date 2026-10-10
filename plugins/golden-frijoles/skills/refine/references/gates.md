@@ -184,7 +184,7 @@ What this pushes back: <what waits>. It builds next | It builds after <title>.
 - **Crew** is who plans, builds, reviews and writes this epic. Fill it from the project's `WAYS-OF-WORKING.md` routing
   table and the kickoff's dispatch rule (`references/per-sprint-kickoff.md`). A story goes to a Sonnet-class builder
   when it has a clear acceptance check, touches no shared surface, is risk low or medium, and is not money, auth,
-  migrations or tenancy; every other story is the orchestrator's. Name each story by id. It says "may change" because a
+  migrations, tenancy or concurrency; every other story is the orchestrator's. Name each story by id. It says "may change" because a
   failed attempt returns a story to the orchestrator; the retrospective records the actual crew.
 - **What this pushes back** is what you propose stays waiting because of this epic (from the month's
   `Roadmap/bets/` file and *Ready* in `BUILD-ORDER.md`), and where it goes in the queue. The person edits either.
