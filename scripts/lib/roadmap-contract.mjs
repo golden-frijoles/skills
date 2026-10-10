@@ -110,14 +110,16 @@ export function validateResultFields(fm) {
   for (const key of RESULT_DAY_FIELDS)
     if (has(key) && !isDay(fm[key])) bad(`${key}: "${fm[key]}" is not a day written YYYY-MM-DD (or null)`);
   for (const key of RESULT_TEXT_FIELDS)
-    if (has(key) && (typeof fm[key] !== 'string' || !fm[key].trim())) bad(`${key}: "${fm[key]}" is not text (or null)`);
+    if (has(key) && (typeof fm[key] !== 'string' || !fm[key].trim()))
+      bad(`${key}: "${fm[key]}" is not text (or null)`);
   // A target is the three together — which number, from what, to what (fresh review, #290): from/to or a read date
   // with no metric would never come due (everything keys off target_metric), and a metric with no numbers has no
   // direction to judge. A hypothesis on its own is allowed: a sentence is not a target.
   const targetKeys = ['target_metric', 'target_from', 'target_to', 'read_date'];
   if (targetKeys.some(has)) {
     for (const key of ['target_metric', 'target_from', 'target_to'])
-      if (!has(key)) bad(`a target needs target_metric, target_from and target_to together — ${key} is missing`);
+      if (!has(key))
+        bad(`a target needs target_metric, target_from and target_to together — ${key} is missing`);
   }
   if (has('target_from') && has('target_to') && fm.target_from === fm.target_to)
     bad(`target_from and target_to are both ${fm.target_from}: a target has to move the number`);
@@ -127,9 +129,11 @@ export function validateResultFields(fm) {
     for (const key of VERDICT_FIELDS.slice(1)) if (has(key)) bad(`${key} is set but there is no verdict`);
   } else {
     if (!has('verdict_at')) bad('a verdict needs verdict_at (the day it was read)');
-    if (!has('verdict_evidence')) bad('a verdict needs verdict_evidence (a pointer, or for unclear, the reason)');
+    if (!has('verdict_evidence'))
+      bad('a verdict needs verdict_evidence (a pointer, or for unclear, the reason)');
     if (fm.verdict === 'proven' || fm.verdict === 'disproven') {
-      if (!has('verdict_actual')) bad(`verdict: ${fm.verdict} needs verdict_actual (the number that was read)`);
+      if (!has('verdict_actual'))
+        bad(`verdict: ${fm.verdict} needs verdict_actual (the number that was read)`);
       if (has('verdict_evidence') && !isEvidencePointer(fm.verdict_evidence))
         bad(
           `verdict: ${fm.verdict} needs evidence that points somewhere: an https:// link, ` +
@@ -165,7 +169,13 @@ export function validateFlagKey(fm) {
 // one-bet-wired D1 — a bet's measurement: what its flag funnel reads. Optional as a whole; once any field is set it
 // needs a flag and an adoption event, the only segment is `everyone` (named segments are tars-segments), and the window
 // is 1–90 whole days. Event names are tokens: what the SDK sends.
-export const BET_FIELDS = ['target_segment', 'adopted_event', 'retained_event', 'retention_days', 'satisfied_event'];
+export const BET_FIELDS = [
+  'target_segment',
+  'adopted_event',
+  'retained_event',
+  'retention_days',
+  'satisfied_event',
+];
 export const BET_SEGMENTS = ['everyone'];
 const EVENT_NAME = /^[A-Za-z0-9_.:$-]{1,200}$/;
 
@@ -178,13 +188,86 @@ export function validateBet(fm) {
   if (!has('flag_key')) bad('a bet with measurement needs a flag_key (the flag whose funnel it reads)');
   if (!has('adopted_event')) bad('a bet with measurement needs an adopted_event (what counts as adopting)');
   if (has('target_segment') && !BET_SEGMENTS.includes(fm.target_segment))
-    bad(`target_segment: "${fm.target_segment}" is not one of ${BET_SEGMENTS.join(' | ')} (named segments come with tars-segments)`);
+    bad(
+      `target_segment: "${fm.target_segment}" is not one of ${BET_SEGMENTS.join(' | ')} (named segments come with tars-segments)`
+    );
   for (const key of ['adopted_event', 'retained_event', 'satisfied_event'])
     if (has(key) && !(typeof fm[key] === 'string' && EVENT_NAME.test(fm[key])))
       bad(`${key}: "${fm[key]}" is not an event name (letters, digits, _ . : $ -)`);
-  if (has('retention_days') && !(Number.isInteger(fm.retention_days) && fm.retention_days >= 1 && fm.retention_days <= 90))
+  if (
+    has('retention_days') &&
+    !(Number.isInteger(fm.retention_days) && fm.retention_days >= 1 && fm.retention_days <= 90)
+  )
     bad(`retention_days: "${fm.retention_days}" is not a whole number of days from 1 to 90`);
   return offenses;
+}
+
+// why-as-a-story D2/D4 — the Why is read in full, so it must fit what shows it. The build view gives the Why WHY_ROOM
+// columns (80, less its 11-column label) and WHY_LINES_MAX lines; `wrapWords` is the ONE wrap both the view and the
+// guard use, so "passes the guard" and "shows in full" cannot drift apart. The rest of the guard keeps it plain words:
+// what a script can tell (a path, a backtick, a code name, a short list of internal words). Whether it reads as a story
+// is a judgment (intent-match's advisory question), never this.
+export const WHY_ROOM = 69;
+export const WHY_LINES_MAX = 5;
+export const WHY_INTERNAL_WORDS = Object.freeze([
+  'wiring',
+  'wired',
+  'seam',
+  'endpoint',
+  'frontmatter',
+  'schema',
+  'payload',
+  'middleware',
+  'refactor',
+]);
+
+/** Words into lines of at most `room` characters; past `max` lines, the last one ends in "…". Pure. */
+export function wrapWords(text, room = WHY_ROOM, max = WHY_LINES_MAX) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text ?? '')
+    .split(/\s+/)
+    .filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length <= room) line = next;
+    else {
+      if (line) lines.push(line);
+      // One word wider than the room is the only thing ever cut mid-word.
+      line = word.length > room ? `${word.slice(0, room - 1)}…` : word;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length <= max) return lines;
+  const kept = lines.slice(0, max);
+  const last = kept[max - 1];
+  kept[max - 1] = last.length < room ? `${last}…` : `${last.slice(0, room - 1)}…`;
+  return kept;
+}
+
+/** A Why (a Feature's `hypothesis`) → what keeps it from reading in full and in plain words. Empty = fine. Pure. */
+export function whyProblems(text) {
+  const why = String(text ?? '').trim();
+  if (!why) return ['the Why is empty'];
+  const problems = [];
+  const lines = wrapWords(why, WHY_ROOM, Infinity).length;
+  if (lines > WHY_LINES_MAX)
+    problems.push(
+      `it takes ${lines} lines on screen; the build view shows ${WHY_LINES_MAX} (about 320 characters)`
+    );
+  if (why.includes('`')) problems.push('it has a backtick: write the words, not code');
+  const path = why.match(
+    /\b[\w-]+\.(?:mjs|cjs|js|tsx?|md|json|sql|ya?ml)\b|(?:^|\s)\.{0,2}\/?[\w-]+\/[\w-]+\/[\w./-]+/
+  );
+  if (path) problems.push(`it names a file or path ("${path[0].trim()}")`);
+  const ident = why.match(
+    /\b[a-z][a-z0-9]*(?:[._][a-z0-9]+)*_[a-z0-9]+\b|\b[a-z]+\.[a-z0-9]+\.[a-z0-9_.]+\b|\b[a-z]+[A-Z][A-Za-z0-9]+\b/
+  );
+  if (ident) problems.push(`it names a code identifier ("${ident[0]}")`);
+  const words = why.toLowerCase().match(/[a-z]+/g) ?? [];
+  const internal = WHY_INTERNAL_WORDS.filter((w) => words.includes(w));
+  if (internal.length)
+    problems.push(`it uses internal words (${internal.join(', ')}): say what changes for the person`);
+  return problems;
 }
 
 /** `grounded:` as a boolean: the frontmatter readers keep a bare `true` as the string "true". Null when absent or neither. */
@@ -203,8 +286,10 @@ export function validateGrounded(fm) {
   const reason = fm.grounded_reason;
   const hasReason = reason !== undefined && reason !== null;
   if (raw !== undefined && raw !== null && g === null) bad(`grounded: "${raw}" is not true, false or null`);
-  if (hasReason && (typeof reason !== 'string' || !reason.trim())) bad(`grounded_reason: "${reason}" is not text (or null)`);
-  if (g === false && !hasReason) bad('grounded: false needs grounded_reason (why it was funded anyway, one sentence)');
+  if (hasReason && (typeof reason !== 'string' || !reason.trim()))
+    bad(`grounded_reason: "${reason}" is not text (or null)`);
+  if (g === false && !hasReason)
+    bad('grounded: false needs grounded_reason (why it was funded anyway, one sentence)');
   if (g !== false && hasReason) bad('grounded_reason is set but grounded is not false');
   return offenses;
 }
@@ -219,7 +304,12 @@ export function validateLockedAt(fm) {
   const v = fm.locked_at;
   if (v === undefined || v === null) return [];
   if (typeof v === 'string' && LOCKED_AT_RE.test(v) && !Number.isNaN(Date.parse(v))) return [];
-  return [{ rule: 'contract-locked-at-invalid', detail: `locked_at: "${v}" is not an ISO date-time (e.g. "2026-10-03T20:34:34Z")` }];
+  return [
+    {
+      rule: 'contract-locked-at-invalid',
+      detail: `locked_at: "${v}" is not an ISO date-time (e.g. "2026-10-03T20:34:34Z")`,
+    },
+  ];
 }
 
 /** The FinOps fields of an epic's frontmatter data → offenses (`contract-finops-invalid`). Absent/null is fine. */

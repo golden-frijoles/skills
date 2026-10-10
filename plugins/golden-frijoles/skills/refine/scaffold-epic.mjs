@@ -42,6 +42,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { readField, setField, yamlString } from './roadmap-fm.mjs';
+import { whyProblems } from './vendor/lib/roadmap-contract.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL = join(__dirname, 'templates');
@@ -151,6 +152,18 @@ if (!VALID_TYPES.includes(typeRaw)) {
   process.exit(1);
 }
 const type = typeRaw[0].toUpperCase() + typeRaw.slice(1); // rendered Capitalized in the header's Class: field
+// why-as-a-story D2 — a Feature's Why must read in full and in plain words before it becomes an epic. Only a seed's
+// hypothesis is checked (a hand-run scaffold with no seed has none); shipped epics are never re-checked.
+const seedWhy = seedText ? fromSeed('hypothesis') : null;
+if (typeRaw === 'feature' && seedWhy && seedWhy !== 'null') {
+  const problems = whyProblems(seedWhy);
+  if (problems.length) {
+    console.error(`scaffold-epic: the seed ${resolved.slug}'s Why needs another pass before it becomes an epic:`);
+    for (const p of problems) console.error(`  - ${p}`);
+    console.error("  Rewrite it as refine's bet step says (references/result-record.md), check it with the kit's `why-check`, then scaffold.");
+    process.exit(1);
+  }
+}
 const dryRun = !!args['dry-run'];
 const date = new Date().toISOString().slice(0, 10);
 const sprints = String(resolved.sprints).split(';').map((s) => s.trim()).filter(Boolean);

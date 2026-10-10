@@ -356,3 +356,24 @@ test('one-bet-wired D1: a scaffolded epic carries the seed’s bet measurement, 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('why-as-a-story D2: a Feature whose Why reads as code is refused before anything is written; a plain one scaffolds', () => {
+  const feature = (why) =>
+    SEED.replace('type: chore', 'type: feature').replace('risk: low', `risk: low\nhypothesis: "${why}"`);
+  const bad = scaffoldSeed(feature('We believe that wiring flag_key through lib/flag-funnel.ts helps.'));
+  try {
+    assert.equal(bad.r.status, 1);
+    assert.match(bad.r.stderr, /Why needs another pass/);
+    assert.match(bad.r.stderr, /internal words \(wiring\)/);
+    assert.match(bad.r.stderr, /why-check/);
+    assert.equal(existsSync(bad.dir), false);
+  } finally {
+    rmSync(bad.root, { recursive: true, force: true });
+  }
+  const good = scaffoldSeed(feature('Today a founder cannot tell if a feature worked. One page shows who it reached and who came back. We will know when they read it before the next bet.'));
+  try {
+    assert.equal(good.r.status, 0, good.r.stderr);
+  } finally {
+    rmSync(good.root, { recursive: true, force: true });
+  }
+});

@@ -321,16 +321,29 @@ test('result-record D1: a full record read off real frontmatter passes', () => {
 test('result-record D1: verdict: provn fails the contract, through validateEpicFrontmatter', () => {
   const md = `---\n${EPIC_HEAD}\nverdict: provn\nverdict_at: 2026-11-04\nverdict_evidence: "https://x.test/1"\n---\n`;
   const offenses = validateEpicFrontmatter(parseDocFrontmatter(md));
-  assert.deepEqual(offenses.map((o) => o.rule), ['contract-result-invalid']);
+  assert.deepEqual(
+    offenses.map((o) => o.rule),
+    ['contract-result-invalid']
+  );
   assert.match(offenses[0].detail, /verdict: "provn" is not one of proven \| disproven \| unclear/);
 });
 
 test('result-record D1: each bad value is named', () => {
-  const details = (fm) => validateResultFields(fm).map((o) => o.detail).join(' / ');
-  assert.match(details({ target_metric: 'x', target_from: '61%', target_to: 70 }), /target_from: "61%" is not a number/);
+  const details = (fm) =>
+    validateResultFields(fm)
+      .map((o) => o.detail)
+      .join(' / ');
+  assert.match(
+    details({ target_metric: 'x', target_from: '61%', target_to: 70 }),
+    /target_from: "61%" is not a number/
+  );
   const T = { target_metric: 'x', target_from: 1, target_to: 2 };
   assert.match(details({ target_metric: 'x', target_from: 61 }), /target_to is missing/);
-  assert.match(details({ target_from: 10, target_to: 20 }), /target_metric is missing/, 'never silently never due');
+  assert.match(
+    details({ target_from: 10, target_to: 20 }),
+    /target_metric is missing/,
+    'never silently never due'
+  );
   assert.match(details({ read_date: '2026-11-01' }), /target_metric is missing/);
   assert.match(details({ target_metric: 'x' }), /target_from is missing/, 'a metric alone has no direction');
   assert.deepEqual(validateResultFields({ hypothesis: 'a sentence is not a target' }), []);
@@ -342,26 +355,44 @@ test('result-record D1: each bad value is named', () => {
   assert.match(details({ verdict: 'unclear' }), /needs verdict_at/);
   assert.match(details({ verdict: 'unclear', verdict_at: '2026-11-04' }), /needs verdict_evidence/);
   assert.deepEqual(
-    validateResultFields({ verdict: 'unclear', verdict_at: '2026-11-04', verdict_evidence: 'traffic too low (n = 18)' }),
+    validateResultFields({
+      verdict: 'unclear',
+      verdict_at: '2026-11-04',
+      verdict_evidence: 'traffic too low (n = 18)',
+    }),
     [],
     'unclear takes a reason, not a pointer'
   );
-  assert.deepEqual(validateResultFields({ target_metric: 'x', target_from: 44, target_to: 30.5 }), [], 'a target may go down');
+  assert.deepEqual(
+    validateResultFields({ target_metric: 'x', target_from: 44, target_to: 30.5 }),
+    [],
+    'a target may go down'
+  );
 });
 
 test('result-record D2: proven or disproven without evidence that points somewhere is refused', () => {
   const base = { verdict: 'disproven', verdict_actual: 43, verdict_at: '2026-10-28' };
   assert.match(
-    validateResultFields({ ...base, verdict_evidence: 'it felt flat' }).map((o) => o.detail).join(),
+    validateResultFields({ ...base, verdict_evidence: 'it felt flat' })
+      .map((o) => o.detail)
+      .join(),
     /needs evidence that points somewhere/
   );
   assert.match(
-    validateResultFields({ verdict: 'proven', verdict_at: '2026-10-28', verdict_evidence: 'ab:smart-defaults' })
+    validateResultFields({
+      verdict: 'proven',
+      verdict_at: '2026-10-28',
+      verdict_evidence: 'ab:smart-defaults',
+    })
       .map((o) => o.detail)
       .join(),
     /needs verdict_actual/
   );
-  for (const ok of ['ab:smart-defaults', 'north-star:setup_completion@2026-10-28', 'https://example.com/r/12'])
+  for (const ok of [
+    'ab:smart-defaults',
+    'north-star:setup_completion@2026-10-28',
+    'https://example.com/r/12',
+  ])
     assert.deepEqual(validateResultFields({ ...base, verdict_evidence: ok }), [], ok);
 });
 
@@ -380,14 +411,20 @@ test('result-record D2: the pointer grammar, syntax only', () => {
 });
 
 test('grounded-bets D1: grounded is true, false or null; false needs its reason, and a reason needs false', () => {
-  const rules = (fm) => validateGrounded(fm).map((o) => o.detail).join(' / ');
+  const rules = (fm) =>
+    validateGrounded(fm)
+      .map((o) => o.detail)
+      .join(' / ');
   assert.equal(rules({}), '');
   assert.equal(rules({ grounded: 'true' }), '');
   assert.equal(rules({ grounded: true }), '');
   assert.equal(rules({ grounded: 'false', grounded_reason: 'a launch blocker' }), '');
   assert.match(rules({ grounded: 'false' }), /grounded: false needs grounded_reason/);
   assert.match(rules({ grounded: 'yes' }), /grounded: "yes" is not true, false or null/);
-  assert.match(rules({ grounded: 'true', grounded_reason: 'why' }), /grounded_reason is set but grounded is not false/);
+  assert.match(
+    rules({ grounded: 'true', grounded_reason: 'why' }),
+    /grounded_reason is set but grounded is not false/
+  );
   assert.match(rules({ grounded: 'false', grounded_reason: '  ' }), /grounded_reason: ".*" is not text/);
   assert.equal(groundedValue('true'), true);
   assert.equal(groundedValue('false'), false);
@@ -395,12 +432,53 @@ test('grounded-bets D1: grounded is true, false or null; false needs its reason,
 });
 
 test('one-bet-wired D1: a bet measures with a flag and an adoption event; everyone is the only segment; 1–90 days', () => {
-  const rules = (fm) => validateBet(fm).map((o) => o.detail).join(' / ');
+  const rules = (fm) =>
+    validateBet(fm)
+      .map((o) => o.detail)
+      .join(' / ');
   assert.equal(rules({}), '', 'no measurement is fine');
-  assert.equal(rules({ flag_key: 'a.b_enabled', adopted_event: 'order_placed', target_segment: 'everyone', retention_days: 7 }), '');
+  assert.equal(
+    rules({
+      flag_key: 'a.b_enabled',
+      adopted_event: 'order_placed',
+      target_segment: 'everyone',
+      retention_days: 7,
+    }),
+    ''
+  );
   assert.match(rules({ adopted_event: 'order_placed' }), /needs a flag_key/);
   assert.match(rules({ flag_key: 'a.b_enabled', retention_days: 7 }), /needs an adopted_event/);
-  assert.match(rules({ flag_key: 'a', adopted_event: 'x', target_segment: 'power_users' }), /named segments come with tars-segments/);
+  assert.match(
+    rules({ flag_key: 'a', adopted_event: 'x', target_segment: 'power_users' }),
+    /named segments come with tars-segments/
+  );
   assert.match(rules({ flag_key: 'a', adopted_event: 'x', retention_days: 0 }), /from 1 to 90/);
-  assert.match(rules({ flag_key: 'a', adopted_event: 'has space' }), /adopted_event: "has space" is not an event name/);
+  assert.match(
+    rules({ flag_key: 'a', adopted_event: 'has space' }),
+    /adopted_event: "has space" is not an event name/
+  );
+});
+
+// why-as-a-story D2/D4 — the guard and the build view share one wrap, so "passes" means "shows in full".
+test('whyProblems: a story Why passes; one that does not fit or reads as code is told why', async () => {
+  const { whyProblems, wrapWords, WHY_ROOM, WHY_LINES_MAX } = await import('./roadmap-contract.mjs');
+  const story =
+    'Today a founder ships a feature and cannot tell if anyone used it, because the switch that turned it on and the numbers that would show it live apart. Put them on one page and every bet shows who it reached, who used it and who came back. We will know when a founder reads that funnel before deciding the next bet.';
+  assert.deepEqual(whyProblems(story), []);
+  assert.ok(wrapWords(story, WHY_ROOM, Infinity).length <= WHY_LINES_MAX, 'a passing Why shows in full');
+  assert.match(whyProblems(`${story} ${story}`)[0], /lines on screen/);
+  assert.deepEqual(whyProblems(''), ['the Why is empty']);
+  const code = whyProblems(
+    'We believe that wiring each `flag` via lib/flag-funnel.ts and getFlagFunnel moves bets.flag_funnels_enabled.'
+  );
+  for (const re of [/backtick/, /file or path/, /code identifier/, /internal words \(wiring\)/])
+    assert.ok(
+      code.some((p) => re.test(p)),
+      `${re}: ${code.join(' | ')}`
+    );
+  assert.deepEqual(
+    whyProblems('Sellers and/or buyers on goldenfrijoles.com, e.g. a bakery, stop losing orders.'),
+    [],
+    'ordinary prose is not code'
+  );
 });

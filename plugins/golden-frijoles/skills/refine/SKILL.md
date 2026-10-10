@@ -24,6 +24,7 @@ requires_scripts:
   - lib/golden-onboarding.mjs
   - lib/project-root.mjs
   - intent-match.mjs
+  - why-check.mjs
   - lib/jev.mjs
   - lib/epic-kickoff.mjs
   # kickoff-generator-path: the kickoff generators ship in the kit (`frijoles-kit emit-epic-kickoff`), so every host can run

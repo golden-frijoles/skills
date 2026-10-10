@@ -226,7 +226,15 @@ export function stateOf(parsed) {
     pitch: parsed.pitch,
     claims: Object.fromEntries(parsed.claims.map((c, i) => [claimKey(i), c])),
     criteria: Object.fromEntries(parsed.criteria.map((a, j) => [criterionKey(j), a])),
+    // why-as-a-story D3: the Why, asked about on its own (advisory, outside the total). Only when the seed has one.
+    ...(whyOf(parsed) ? { why: whyOf(parsed) } : {}),
   };
+}
+
+/** The seed's Why (`hypothesis`), or null when it has none. Pure. */
+export function whyOf(parsed) {
+  const v = parsed.frontmatter?.hypothesis;
+  return typeof v === 'string' && v.trim() && v.trim() !== 'null' ? v.trim() : null;
 }
 
 /**
@@ -242,6 +250,7 @@ export function buildRequest(parsed) {
     questions[`out_${criterionKey(j)}`] = itemQuestion('coverage_out', `criteria.${criterionKey(j)}`);
     questions[`clar_${criterionKey(j)}`] = itemQuestion('clarity', `criteria.${criterionKey(j)}`);
   });
+  if (whyOf(parsed)) questions.why_story = itemQuestion('why_story', 'why');
   return { state: stateOf(parsed), questions };
 }
 
@@ -316,7 +325,11 @@ export function scoreAnswers(parsed, answers) {
   const untraced = criteria
     .filter((a) => a.traced < 0.5)
     .map((a) => ({ id: a.id, value: a.traced, text: a.text }));
-  return { ok: true, signals, total, present, band: band(total), claims, criteria, gaps, untraced };
+  // why-as-a-story D3: advisory and outside the total. A missing or malformed answer is "could not look", never a
+  // failure of the whole score: the total's calibration must not move because this question exists.
+  const w = answers?.why_story;
+  const whyStory = w?.type === 'noul' && isUnit(w.noul) ? w.noul : null;
+  return { ok: true, signals, total, present, band: band(total), claims, criteria, gaps, untraced, whyStory };
 }
 
 const GAP_WORDS = {
@@ -377,6 +390,17 @@ export function formatReport(result, { source = 'the seed', agreement, reader } 
     agreement == null
       ? '  agreement     pending  (the optional reader at the architecture lock)'
       : row('agreement', agreement, reader ? `(reader: ${reader})` : ''),
+    ...(result.whyStory === undefined
+      ? []
+      : [
+          result.whyStory === null
+            ? '  why story     —     (could not look; advisory, not in the total)'
+            : row(
+                'why story',
+                result.whyStory,
+                `(advisory, not in the total${result.whyStory < 0.5 ? ': rewrite the Why as a story' : ''})`
+              ),
+        ]),
     `Total ${result.total} / 100 — uncalibrated · signals: ${result.present.map((k) => SIGNAL_NAMES[k]).join(', ')}`,
     `Band: ${result.band} (placeholder bands: 80 build · 60 resolve follow-ups · below 60 sketch or spike)`,
   ];

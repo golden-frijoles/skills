@@ -11,6 +11,7 @@ import {
   band,
   frontmatterOf,
   FENCE_RE,
+  formatReport,
   buildRequest,
   buildRouteRequest,
   judgeItem,
@@ -193,6 +194,7 @@ test('INTENT_QUESTIONS: every question set in one object, in the shapes Jev take
     'coverage_in',
     'coverage_out',
     'route',
+    'why_story',
   ]);
   assert.equal(INTENT_QUESTIONS.agreement.type, 'noul');
   for (const id of ['coverage_in', 'coverage_out']) {
@@ -511,7 +513,17 @@ test('the refine seed template parses: placeholder teach-back is unanswered, Vis
   // This spec runs from skills/template/scripts/ and from this repo's scripts/ copy; a kit consumer has neither path.
   const tpl = [
     join(here, '..', '..', 'plugins', 'golden-frijoles', 'skills', 'refine', 'templates', 'scope-seed.md'),
-    join(here, '..', 'skills', 'plugins', 'golden-frijoles', 'skills', 'refine', 'templates', 'scope-seed.md'),
+    join(
+      here,
+      '..',
+      'skills',
+      'plugins',
+      'golden-frijoles',
+      'skills',
+      'refine',
+      'templates',
+      'scope-seed.md'
+    ),
   ].find((p) => existsSync(p));
   if (!tpl) return t.skip('refine template not in this checkout');
   const text = readFileSync(tpl, 'utf8').replace(
@@ -539,4 +551,31 @@ test('the think-chain route names the strategy coaches', () => {
   assert.match(ROUTES.think_chain, /`pmf-narrative`/);
   assert.match(ROUTES.think_chain, /`risk-validation`/);
   assert.doesNotMatch(ROUTES.think_chain, /answer by hand/);
+});
+
+test('why-as-a-story D3: the Why is asked about on its own, reported outside the total, and a bad answer is could-not-look', () => {
+  const parsed = parseSeed(
+    SEED.replace(/^---\n/, '---\nhypothesis: "Today a founder cannot tell if a feature worked."\n')
+  );
+  const req = buildRequest(parsed);
+  assert.equal(req.state.why, 'Today a founder cannot tell if a feature worked.');
+  assert.match(req.questions.why_story.instructions, /`why`/);
+  assert.equal(buildRequest(parseSeed(SEED)).questions.why_story, undefined, 'no Why, no question');
+  const yes = (n) => ({ type: 'noul', noul: n });
+  const answers = Object.fromEntries(
+    Object.keys(req.questions).map((id) => [
+      id,
+      id.startsWith('clar_') ? { type: 'score', score: 3 } : yes(0.9),
+    ])
+  );
+  const withStory = scoreAnswers(parsed, { ...answers, why_story: yes(0.2) });
+  const without = scoreAnswers(parsed, { ...answers, why_story: { type: 'noul', noul: 'high' } });
+  assert.equal(withStory.total, without.total, 'the story answer never moves the total');
+  assert.equal(withStory.whyStory, 0.2);
+  assert.equal(without.whyStory, null);
+  assert.match(
+    formatReport(withStory),
+    /why story +0\.20 +\(advisory, not in the total: rewrite the Why as a story\)/
+  );
+  assert.match(formatReport(without), /why story +— +\(could not look/);
 });

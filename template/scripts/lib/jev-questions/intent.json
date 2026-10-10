@@ -82,6 +82,17 @@
       },
       "measured": null,
       "unmeasured": "A route is a suggestion for the next artifact and never part of the score, so it has no labels (intent-match D15)."
+    },
+    {
+      "id": "why_story",
+      "type": "noul",
+      "instructions": "{item} is the Why of a planned change, written for a founder to approve. Would a stranger with no technical background follow it as a short story: who has a problem today, what changes for them, and why that matters?",
+      "criteria": {
+        "true": "Yes: it tells who has the problem, what changes for them and why it matters, in plain words a stranger could follow.",
+        "false": "No: it lists parts, components or mechanics, leans on internal or technical terms, or leaves out who it is for or why it matters."
+      },
+      "measured": null,
+      "unmeasured": "why-as-a-story D3, 2026-10-10: no labelled Whys yet; advisory, reported outside the total."
     }
   ]
 }
