@@ -45,6 +45,7 @@ export const SECTIONS = Object.freeze([
   'routines',
   'intent',
   'lint',
+  'measure', // one-bet-wired D6: refine's Measure step (measure.signIn)
 ]);
 
 /**

@@ -19,6 +19,7 @@ import {
   needSetting,
   readSection,
   setKey,
+  SECTIONS,
 } from './config.mjs';
 
 const project = (files = {}) => {
@@ -381,4 +382,16 @@ test('redactSecrets: under a secret-named key, only an env-var NAME with an unde
   assert.equal(redactSecrets('reporting.telegram.botToken', 'ABCDEF1234567890'), REDACTED);
   assert.equal(redactSecrets('reporting.telegram.botToken', 'TELEGRAM_BOT_TOKEN'), 'TELEGRAM_BOT_TOKEN');
   assert.equal(redactSecrets('reporting.chatId', 'ABCDEF1234567890'), 'ABCDEF1234567890', 'not a secret-named key');
+});
+
+// one-bet-wired, verifier #341: a registry key whose section is not in SECTIONS can never be set.
+test('every registry key lives in a section config set accepts', async () => {
+  const { REGISTRY } = await import('./config-registry.mjs');
+  for (const row of REGISTRY) assert.ok(SECTIONS.includes(row.key.split('.')[0]), `${row.key}: section not in SECTIONS`);
+});
+
+test('measure.signIn round-trips: set later, get later', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cfg-measure-'));
+  setKey('measure.signIn', 'later', { root });
+  assert.equal(getKey('measure.signIn', { root }), 'later');
 });

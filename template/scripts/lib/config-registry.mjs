@@ -49,7 +49,9 @@ export const REGISTRY = Object.freeze([
     // founder wants to know if a feature worked and is not signed in. Asked once per project; the answer is kept here.
     key: 'measure.signIn',
     module: 'Measure',
-    askWhen: 'first-refine',
+    // Asked by refine's Measure step, never by setup, and only when the founder is signed out: `never-yet` keeps
+    // `frijoles doctor` from reporting Measure as unconfigured for everyone (verifier, #341).
+    askWhen: 'never-yet',
     default: null,
     choices: ['later', 'now'],
     question:

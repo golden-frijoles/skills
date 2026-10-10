@@ -24,7 +24,7 @@ with `subject: { type: 'user', id }` set to **the same id the app tracks its eve
 funnel counts the person in `subject`, so a server client's own user (`system:server`) never stands in for the people
 it evaluates for. Write this into the story that puts the feature behind the flag.
 
-**When the founder is not signed in** (`npx -y @golden-frijoles/cli@<version> whoami --json` does not exit 0), this is
+**When the founder is not signed in** (`whoami --json`, run as setup's Stage 2.1 runs it, does not exit 0), this is
 the one place an account is suggested, because here it pays off. First read the kit's `config get measure.signIn`: a
 value means it was already asked in this project, so do not ask again. Otherwise say, once:
 
