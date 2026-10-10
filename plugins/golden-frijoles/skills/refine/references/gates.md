@@ -71,7 +71,7 @@ North Star     A · <name> (<game>, counts <unit>): <metric, one line>
 
 Roadmap        <n> shipped, <n> being built, <n> ideas (from the repo)
 
-First idea     <after a: We believe that <the change> for <persona> will <move the input>, because <the insight>.
+First idea     <after a: <what is wrong today and for whom>. <what changes>, <why it matters to them>.
                We'll know when <the signal>. | before a: written once you choose A or B>
 
 Decisions only you can make:
@@ -134,7 +134,7 @@ Answer them here, or:
 ```gate plan
 The plan is ready: <path to the seed>
 
-We believe that <the change> for <persona> will <move the input>, because <the insight>.
+<what is wrong today and for whom>. <what changes>, <why it matters to them>.
 We'll know when <the signal>.
 
   Moves ........ <the target metric's name> (your North Star input)
