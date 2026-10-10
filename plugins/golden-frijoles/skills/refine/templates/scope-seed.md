@@ -20,6 +20,11 @@ target_from: null      # from what (a number)
 target_to: null        # to what (a number)
 read_date: null        # when we read it, YYYY-MM-DD; null = 30 days after shipping
 flag_key: null         # the flag, if Stage 6b decided one (`<domain>.<feature>_enabled`); the scaffold copies it
+target_segment: null   # the bet's TARS target segment: `everyone` (the only one until tars-segments) · null = not measured
+adopted_event: null    # the event that means "adopted" (Stage 6b, Measure) · null = not measured
+retained_event: null   # the repeat that means "retained" · null = the adoption event again
+retention_days: null   # the retention window in days (1–90) · null = 7
+satisfied_event: null  # optional: the event that means "satisfied" (a rating) · null = not measured
 intent_match: null     # written by `node scripts/intent-match.mjs <this seed> --write` (refine Stage 3.5) — advisory
 ---
 

@@ -26,6 +26,11 @@ persona: {{PERSONA}}   # for whom, doing which job — copied from the seed (gro
 grounded: {{GROUNDED}}   # true = traced to a North Star input · false = funded anyway (reason below) · null = Bug/Chore or never asked
 grounded_reason: {{GROUNDED_REASON}}   # only with grounded: false
 flag_key: {{FLAG_KEY}}   # the epic's flag, decided at refine Stage 6b and copied from the seed; null = no flag. The epic page shows its state
+target_segment: {{TARGET_SEGMENT}}   # the bet's measurement (one-bet-wired D1), copied from the seed: TARS target segment
+adopted_event: {{ADOPTED_EVENT}}
+retained_event: {{RETAINED_EVENT}}
+retention_days: {{RETENTION_DAYS}}
+satisfied_event: {{SATISFIED_EVENT}}
 build_order: null    # integer position in the ONE global build sequence — the SSOT once the epic
                      # exists (the seed's value is only a fallback). Fill it in at the betting
                      # table; plain integers, no "#2a" suffixes. See 00-ideas/README.md → Ordering.

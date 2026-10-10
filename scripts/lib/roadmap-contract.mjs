@@ -162,6 +162,31 @@ export function validateFlagKey(fm) {
 // grounded-bets D1 — `grounded:` is the founder's word at Stage 1.5: true (traced to a North Star input), false (funded
 // anyway, and `grounded_reason` says why), or absent/null (a Bug, a Chore, or an epic refined before it existed).
 // Whether a bet COUNTS as grounded is derived from its target (bets-grounded.mjs, D2), never from this field alone.
+// one-bet-wired D1 — a bet's measurement: what its flag funnel reads. Optional as a whole; once any field is set it
+// needs a flag and an adoption event, the only segment is `everyone` (named segments are tars-segments), and the window
+// is 1–90 whole days. Event names are tokens: what the SDK sends.
+export const BET_FIELDS = ['target_segment', 'adopted_event', 'retained_event', 'retention_days', 'satisfied_event'];
+export const BET_SEGMENTS = ['everyone'];
+const EVENT_NAME = /^[A-Za-z0-9_.:$-]{1,200}$/;
+
+/** The bet's measurement fields → offenses (`contract-bet-invalid`). All absent is fine. */
+export function validateBet(fm) {
+  const offenses = [];
+  const bad = (detail) => offenses.push({ rule: 'contract-bet-invalid', detail });
+  const has = (key) => fm[key] !== undefined && fm[key] !== null;
+  if (!BET_FIELDS.some(has)) return offenses;
+  if (!has('flag_key')) bad('a bet with measurement needs a flag_key (the flag whose funnel it reads)');
+  if (!has('adopted_event')) bad('a bet with measurement needs an adopted_event (what counts as adopting)');
+  if (has('target_segment') && !BET_SEGMENTS.includes(fm.target_segment))
+    bad(`target_segment: "${fm.target_segment}" is not one of ${BET_SEGMENTS.join(' | ')} (named segments come with tars-segments)`);
+  for (const key of ['adopted_event', 'retained_event', 'satisfied_event'])
+    if (has(key) && !(typeof fm[key] === 'string' && EVENT_NAME.test(fm[key])))
+      bad(`${key}: "${fm[key]}" is not an event name (letters, digits, _ . : $ -)`);
+  if (has('retention_days') && !(Number.isInteger(fm.retention_days) && fm.retention_days >= 1 && fm.retention_days <= 90))
+    bad(`retention_days: "${fm.retention_days}" is not a whole number of days from 1 to 90`);
+  return offenses;
+}
+
 /** `grounded:` as a boolean: the frontmatter readers keep a bare `true` as the string "true". Null when absent or neither. */
 export function groundedValue(v) {
   if (v === true || v === 'true') return true;
@@ -401,6 +426,7 @@ export function validateEpicFrontmatter(parsed, ctx = {}) {
   offenses.push(...validateResultFields(fm));
   offenses.push(...validateFlagKey(fm));
   offenses.push(...validateGrounded(fm));
+  offenses.push(...validateBet(fm));
   offenses.push(...validateLockedAt(fm));
   if (isInt(fm.sprints_total) && isInt(ctx.sprintCount) && fm.sprints_total !== ctx.sprintCount)
     offenses.push({

@@ -232,12 +232,23 @@ function personaValue() {
   const v = fromSeed('persona');
   return v == null ? 'null' : yaml(v);
 }
+// one-bet-wired D1 — the bet's measurement travels the same way: a token-shaped event name or a whole number of days is
+// copied bare; anything else is copied quoted, so the contract names it rather than the scaffold guessing.
+function betValue(key) {
+  const v = fromSeed(key);
+  if (v == null) return 'null';
+  if (key === 'retention_days') return /^\d+$/.test(v) ? v : yaml(v);
+  return /^[A-Za-z0-9_.:$-]{1,200}$/.test(v) ? v : yaml(v);
+}
 const baseVars = {
   QUOTE_LOW: quote.low, QUOTE_HIGH: quote.high, QUOTE_BASIS: quote.basis,
   HYPOTHESIS: targetValue('hypothesis'), TARGET_METRIC: targetValue('target_metric'),
   TARGET_FROM: targetValue('target_from'), TARGET_TO: targetValue('target_to'), READ_DATE: targetValue('read_date'),
   FLAG_KEY: flagKeyValue(),
   GROUNDED: groundedValue(), GROUNDED_REASON: groundedReasonValue(), PERSONA: personaValue(),
+  TARGET_SEGMENT: betValue('target_segment'), ADOPTED_EVENT: betValue('adopted_event'),
+  RETAINED_EVENT: betValue('retained_event'), RETENTION_DAYS: betValue('retention_days'),
+  SATISFIED_EVENT: betValue('satisfied_event'),
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.

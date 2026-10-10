@@ -15,6 +15,7 @@ import {
   validateResultFields,
   isEvidencePointer,
   validateGrounded,
+  validateBet,
   groundedValue,
 } from './roadmap-contract.mjs';
 
@@ -391,4 +392,15 @@ test('grounded-bets D1: grounded is true, false or null; false needs its reason,
   assert.equal(groundedValue('true'), true);
   assert.equal(groundedValue('false'), false);
   assert.equal(groundedValue('maybe'), null);
+});
+
+test('one-bet-wired D1: a bet measures with a flag and an adoption event; everyone is the only segment; 1–90 days', () => {
+  const rules = (fm) => validateBet(fm).map((o) => o.detail).join(' / ');
+  assert.equal(rules({}), '', 'no measurement is fine');
+  assert.equal(rules({ flag_key: 'a.b_enabled', adopted_event: 'order_placed', target_segment: 'everyone', retention_days: 7 }), '');
+  assert.match(rules({ adopted_event: 'order_placed' }), /needs a flag_key/);
+  assert.match(rules({ flag_key: 'a.b_enabled', retention_days: 7 }), /needs an adopted_event/);
+  assert.match(rules({ flag_key: 'a', adopted_event: 'x', target_segment: 'power_users' }), /named segments come with tars-segments/);
+  assert.match(rules({ flag_key: 'a', adopted_event: 'x', retention_days: 0 }), /from 1 to 90/);
+  assert.match(rules({ flag_key: 'a', adopted_event: 'has space' }), /adopted_event: "has space" is not an event name/);
 });

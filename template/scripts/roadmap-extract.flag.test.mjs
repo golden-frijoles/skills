@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildRows, flagFields, groundedFields } from './roadmap-extract.mjs';
+import { betFields, buildRows, flagFields, groundedFields } from './roadmap-extract.mjs';
 import { validateFlagKey } from './lib/roadmap-contract.mjs';
 
 test('S2.3: flag_key is a flag key or null; the blank spellings this file’s reader yields are null, not a key', () => {
@@ -97,4 +97,16 @@ test('grounded-bets D9: the push carries the grounding as recorded, the reason o
   });
   assert.deepEqual(groundedFields({ grounded: 'true', grounded_reason: 'stray' }), { grounded: true, grounded_reason: null });
   assert.deepEqual(groundedFields({ grounded: 'yes' }), { grounded: null, grounded_reason: null });
+});
+
+test('one-bet-wired D1: the push carries the bet as written when well-formed, else null', () => {
+  assert.deepEqual(betFields({}), { target_segment: null, adopted_event: null, retained_event: null, retention_days: null, satisfied_event: null });
+  assert.deepEqual(betFields({ target_segment: 'everyone', adopted_event: 'order_placed', retention_days: '14', satisfied_event: 'rated_5' }), {
+    target_segment: 'everyone',
+    adopted_event: 'order_placed',
+    retained_event: null,
+    retention_days: 14,
+    satisfied_event: 'rated_5',
+  });
+  assert.deepEqual(betFields({ target_segment: 'power', adopted_event: 'has space', retention_days: 400 }).retention_days, null);
 });

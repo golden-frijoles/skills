@@ -340,3 +340,19 @@ test('grounded-bets D1: a scaffolded epic carries the seed’s grounding and per
     }
   }
 });
+
+test('one-bet-wired D1: a scaffolded epic carries the seed’s bet measurement, and the contract accepts it', () => {
+  const seed = ['---', 'slug: tmp-check', 'underwritten_by: wave-x', 'flag_key: shop.one_step_enabled', 'target_segment: everyone', 'adopted_event: order_placed', 'retention_days: 14', '---', '# tmp', ''].join('\n');
+  const { root, dir } = scaffold(['--risk', 'low', '--sprints', 'One'], { seed });
+  try {
+    const parsed = parseDocFrontmatter(readFileSync(join(dir, 'README.md'), 'utf8'));
+    assert.equal(parsed.error, null);
+    assert.deepEqual(
+      [parsed.data.target_segment, parsed.data.adopted_event, parsed.data.retained_event, parsed.data.retention_days, parsed.data.satisfied_event],
+      ['everyone', 'order_placed', null, 14, null]
+    );
+    assert.deepEqual(validateEpicFrontmatter(parsed, { sprintCount: 1, storyCount: 1 }), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

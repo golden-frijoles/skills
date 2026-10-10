@@ -179,6 +179,22 @@ export function flagFields(fm, readme) {
 }
 
 /**
+ * one-bet-wired D1 — the bet's measurement as pushed: each field as written when it is well-formed, else null (the
+ * contract names a bad one). Defaults are the reader's (an absent window is 7 days), never written here.
+ */
+export function betFields(fm) {
+  const token = (v) => (typeof v === 'string' && /^[A-Za-z0-9_.:$-]{1,200}$/.test(v.trim()) ? v.trim() : null);
+  const days = Number(fm.retention_days);
+  return {
+    target_segment: fm.target_segment === 'everyone' ? 'everyone' : null,
+    adopted_event: token(fm.adopted_event),
+    retained_event: token(fm.retained_event),
+    retention_days: Number.isInteger(days) && days >= 1 && days <= 90 ? days : null,
+    satisfied_event: token(fm.satisfied_event),
+  };
+}
+
+/**
  * grounded-bets D9 — the founder's grounding, as recorded at Stage 1.5: `grounded` true | false | null and, when false,
  * `grounded_reason`. Anything else is null (the contract names it); the reason travels only with false.
  */
@@ -648,6 +664,7 @@ export function buildRows({
       ...resultFields(epicFm, stage === 'Shipped' ? statusDay : null),
       ...flagFields(epicFm, readme),
       ...groundedFields(epicFm),
+      ...betFields(epicFm),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries
