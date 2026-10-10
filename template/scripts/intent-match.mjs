@@ -234,7 +234,10 @@ export function stateOf(parsed) {
 /** The seed's Why (`hypothesis`), or null when it has none. Pure. */
 export function whyOf(parsed) {
   const v = parsed.frontmatter?.hypothesis;
-  return typeof v === 'string' && v.trim() && v.trim() !== 'null' ? v.trim() : null;
+  // A folded YAML block (`>-`, `|`) is not a Why the flat reader can see: never send its indicator to Jev as one.
+  return typeof v === 'string' && v.trim() && v.trim() !== 'null' && !/^[>|][1-9]?[+-]?[1-9]?$/.test(v.trim())
+    ? v.trim()
+    : null;
 }
 
 /**

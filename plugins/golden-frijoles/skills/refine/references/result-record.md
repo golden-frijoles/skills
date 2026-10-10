@@ -16,7 +16,7 @@ alone and say so.
 4. **We'll know when** <the signal: the event the target counts>.
 
 **Keep it to what the build view shows in full: five lines, about 320 characters.** No file names or paths, no
-backticks, no code names (snake_case, dotted or camelCase), and none of the internal words: wiring, seam, endpoint,
+backticks, no code names (snake_case or camelCase), and none of the internal words: wiring, wired, seam, endpoint,
 frontmatter, schema, payload, middleware, refactor. Check it with the kit's `why-check "<the Why>"`, which uses the
 build view's own wrap; scaffolding refuses a Feature whose Why fails it. The product owner still edits the draft. The target numbers
 go in the target fields below, not necessarily in the prose.

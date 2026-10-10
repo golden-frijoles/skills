@@ -251,7 +251,7 @@ export function whyProblems(text) {
   const why = String(text ?? '').trim();
   if (!why) return ['the Why is empty'];
   const problems = [];
-  if (/^[>|][+-]?$/.test(why))
+  if (/^[>|][1-9]?[+-]?[1-9]?$/.test(why))
     return ['it is a folded YAML block the readers cannot see: write the Why on one line, in quotes'];
   // A word wider than a line is cut mid-word in the view, so it fails here too (verifier #343).
   const wide = why.split(/\s+/).find((w) => w.length > WHY_ROOM);

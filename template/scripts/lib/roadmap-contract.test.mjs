@@ -499,7 +499,19 @@ test('verifier #343: brand names and plain slashes are prose; code, an over-wide
     'flip bets.flag_funnels_enabled',
   ])
     assert.notDeepEqual(whyProblems(code), [], code);
-  const url = 'Share https://goldenfrijoles.com/?ref=launch-week-founders-special-offer-for-early-adopters today.';
+  const url =
+    'Share https://goldenfrijoles.com/?ref=launch-week-founders-special-offer-for-early-adopters today.';
   assert.match(whyProblems(url).join(' '), /wider than a line/, 'a word the view would cut mid-word fails');
   assert.match(whyProblems('>-')[0], /folded YAML/);
+});
+
+test('verifier #343 round 2: a word of exactly one line passes; an indented folded block is still named', async () => {
+  const { whyProblems, WHY_ROOM } = await import('./roadmap-contract.mjs');
+  assert.deepEqual(
+    whyProblems(`Share ${'a'.repeat(WHY_ROOM)} today.`),
+    [],
+    'a word exactly as wide as a line fits'
+  );
+  assert.match(whyProblems(`Share ${'a'.repeat(WHY_ROOM + 1)} today.`)[0], /wider than a line/);
+  for (const folded of ['>2', '|+', '>-']) assert.match(whyProblems(folded)[0], /folded YAML/, folded);
 });
