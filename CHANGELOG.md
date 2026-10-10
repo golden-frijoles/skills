@@ -7,6 +7,22 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-10
+
+**One bet, wired: the flag knows its epic, its funnel and its read.**
+
+### Added
+- Refine's Stage 6b asks **Measure** first, "Do you want to know if this worked?", suggested for every feature: an
+  enablement flag you roll out, with the bet's measurement in the seed (`target_segment`, `adopted_event`,
+  `retained_event`, `retention_days`, an optional `satisfied_event`). **Safety** (a kill switch, by risk) follows.
+- When you are not signed in, Measure is where an account is suggested, once per project, with "Later" always there:
+  the bet is saved either way, and the Plan gate says "measured once you sign in".
+- The bet's measurement travels from the seed through the scaffold, the roadmap contract and the roadmap push.
+- Pairs with CLI 1.3.0: `frijoles bet sync <epic README>` creates the bet's Measure flag (off until you roll it out)
+  and leaves an existing flag as it is. The console shows each measured flag's funnel on its epic page and in
+  Journeys' From your flags, on the TARS model: targeted (everyone), got the flag on, adopted, retained, satisfied or
+  "not measured", with adopters who never had the flag on shown beside it.
+
 ## [1.4.0] - 2026-10-09
 
 **A golden welcome in the CLI.**
