@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-09
+
+**A golden welcome in the CLI.**
+
+### Changed
+- Setup now points to CLI 1.2.0. Interactive `frijoles setup` ripens a green bean to gold and reveals FRIJOLES with a gold sweep. `--no-motion`, `NO_COLOR`, narrow terminals and machine output remain readable.
+- The kit and plugin advance together to 1.4.0; the kit's behavior is unchanged in this release.
+
 ## [1.3.0] - 2026-10-09
 
 **Setup instruments and connects: the events the North Star needs, in a pull request, and the first one seen.**
