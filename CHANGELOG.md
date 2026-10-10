@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-10
+
+**The Why reads as a story, in full, and the plan names its crew.**
+
+### Added
+- Refine writes a feature's **Why as a short story** in plain words: what is wrong today and for whom, what changes,
+  why it matters to them, and how we will know. It reads the strategy you already have first (the persona, the value
+  proposition, the business model), with a worked before and after.
+- **`why-check`** (kit): checks that a Why fits the build view in full (five lines, about 320 characters) and reads as
+  plain words: no file names, code names or internal words. Scaffolding refuses a feature whose Why fails it.
+- Intent match asks one more, advisory question: does the Why read as a story a stranger could follow? It has its own
+  line and never changes the total.
+- The Plan gate shows the **Crew (planned, may change)**: who plans and orchestrates, which stories a Sonnet-class
+  builder takes, who reviews and who writes the prose. The kickoff carries the **dispatch rule** that makes it happen,
+  and takes a story back after one failed attempt.
+- `epic-actuals --write` stamps **`actual_models`** (each model and its spend), and the retrospective has a
+  *Crew (actual)* line beside the quote.
+- `references/checkpoint.md`: the checkpoint shape refine and the kickoff use when you ask where things stand.
+
+### Changed
+- The build view shows the **whole Why**, wrapped at word boundaries, instead of cutting it off at one line.
+
 ## [1.5.0] - 2026-10-10
 
 **One bet, wired: the flag knows its epic, its funnel and its read.**
