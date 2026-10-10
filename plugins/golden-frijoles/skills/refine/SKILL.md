@@ -243,7 +243,7 @@ For a **spike**: a short investigation prompt ending in a written decision — n
 ## Stage 9 — Close the loop
 The build order was persisted at the gate (`fund.mjs`); to reorder the queue later, run it on a queued bet with
 `--next` / `--after <slug>` (a reorder: the funding record stays). **Regenerate the board** (`node scripts/build-order.mjs`, never hand-tick it), and deep-refine the next ⬜ item while the budget line says keep
-going; on hand off, emit its next-session prompt instead. Cadence + template: `references/backlog-cadence.md`.
+going; on hand off, emit its next-session prompt instead. Cadence + template: `references/backlog-cadence.md`. "Where are we" and epic close: `references/checkpoint.md`.
 
 ## Guardrails
 - **Planning only.** Never edit code or `tasks/`. Only `Roadmap/` docs.
