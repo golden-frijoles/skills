@@ -12,7 +12,7 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 **A golden welcome in the CLI.**
 
 ### Changed
-- Setup now points to CLI 1.2.0. Interactive `frijoles setup` ripens a green bean to gold and reveals FRIJOLES with a gold sweep. `--no-motion`, `NO_COLOR`, narrow terminals and machine output remain readable.
+- Setup now points to CLI 1.2.0 (which pins the latest published kit, 1.3.0, until this release publishes kit 1.4.0). Interactive `frijoles setup` ripens a green bean to gold and reveals FRIJOLES with a gold sweep. `--no-motion`, `NO_COLOR`, narrow terminals and machine output remain readable.
 - The kit and plugin advance together to 1.4.0; the kit's behavior is unchanged in this release.
 
 ## [1.3.0] - 2026-10-09
