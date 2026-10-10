@@ -34,3 +34,5 @@ sprint-<N>.md before you call the sprint done.
 The invariant preamble (line 1 of the prompt — the orientation reads + skim memory) is the same every
 session; it stays in the prompt so a *fresh* builder session re-orients with zero prior context. Keep
 the sprint-specific delta (this epic, this sprint, its reuse list, its risk) as the part that actually varies.
+
+**Dispatch.** The kickoff carries a dispatch rule: the orchestrator keeps the plan, the shared surface, money, auth, migrations, tenancy, high-risk stories and merges; a well-specified low- or medium-risk story with no shared surface goes to a Sonnet-class builder in its own worktree, is re-derived by the orchestrator (never trusted from the final message), and is taken back after one failed attempt. The rule's text is in the kickoff template (`vendor/templates/kickoff.md`, vendored from the kit's `templates/kickoff.md`).

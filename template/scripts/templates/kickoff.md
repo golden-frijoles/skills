@@ -22,5 +22,13 @@ the scope `scripts/review-config.json` sets. A family never reviews its own diff
 by hand; a capped family is routed past with `--exclude <family>`, and if only one can run it runs both
 prompts and you say so in the PR body. You merge your own PR on a green gate once findings are resolved.
 
+Dispatch (the strongest model, this session, is the orchestrator): keep the plan, the shared surface (CI,
+`package.json`, lint config, a lib module many stories import), money, auth, migrations, tenancy, high-risk
+stories and every merge. A story with a clear acceptance check, no shared surface and risk low or medium goes to
+a Sonnet-class builder in its own worktree, with a brief naming the story, the files, the checks to run and
+"commit, do not push". Re-derive the result yourself (the diff, the tests); never trust the builder's final
+message. After one failed attempt, take the story back. The Plan gate's Crew block is the plan; the
+retrospective records what happened. Where things stand, at any time: `refine/references/checkpoint.md`.
+
 Sprint {{N}} of "{{EPIC_TITLE}}" — "{{SPRINT_TITLE}}" — stories:
 {{STORY_LIST}}
