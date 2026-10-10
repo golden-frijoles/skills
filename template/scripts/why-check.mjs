@@ -9,7 +9,13 @@
 
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { parseDocFrontmatter, whyProblems, wrapWords, WHY_LINES_MAX, WHY_ROOM } from './lib/roadmap-contract.mjs';
+import {
+  parseDocFrontmatter,
+  whyProblems,
+  wrapWords,
+  WHY_LINES_MAX,
+  WHY_ROOM,
+} from './lib/roadmap-contract.mjs';
 
 const USAGE = 'usage: why-check "<the Why>" | why-check --seed <seed.md>';
 
@@ -25,7 +31,8 @@ export function whyFromArgs(argv, read = (p) => readFileSync(p, 'utf8')) {
     }
     const { data } = parseDocFrontmatter(md);
     const text = data?.hypothesis;
-    if (text === undefined || text === null || text === 'null') return { error: `why-check: ${argv[1]} has no hypothesis` };
+    if (text === undefined || text === null || text === 'null')
+      return { error: `why-check: ${argv[1]} has no hypothesis` };
     return { text: String(text) };
   }
   if (argv.length !== 1 || argv[0].startsWith('--')) return { error: USAGE };
@@ -50,7 +57,9 @@ export function main(argv, out = process.stdout, err = process.stderr) {
 
 const isMain = (() => {
   try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+    return (
+      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    );
   } catch {
     return false;
   }

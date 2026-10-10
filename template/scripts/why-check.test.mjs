@@ -23,7 +23,8 @@ test('why-as-a-story D2: a plain Why passes; one with code is told why; usage is
 });
 
 test('why-as-a-story D2: --seed reads the hypothesis, and says when there is none', () => {
-  const read = (p) => (p === 'with.md' ? `---\nhypothesis: "${STORY}"\n---\n# x\n` : '---\nhypothesis: null\n---\n');
+  const read = (p) =>
+    p === 'with.md' ? `---\nhypothesis: "${STORY}"\n---\n# x\n` : '---\nhypothesis: null\n---\n';
   assert.deepEqual(whyFromArgs(['--seed', 'with.md'], read), { text: STORY });
   assert.match(whyFromArgs(['--seed', 'without.md'], read).error, /has no hypothesis/);
   assert.match(whyFromArgs(['--seed'], read).error, /usage/);
