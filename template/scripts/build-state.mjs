@@ -56,7 +56,7 @@ function repoEnv() {
 import { readFileSync, readdirSync, existsSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { PHASES, isDay, parseDocFrontmatter } from './lib/roadmap-contract.mjs';
+import { PHASES, isDay, parseDocFrontmatter, wrapWords, WHY_LINES_MAX } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
 import { buildRows } from './roadmap-extract.mjs';
@@ -120,7 +120,8 @@ export function storyCheck({ root, branch, subject, env = {} }) {
   if (EXEMPT_SUBJECT_RE.test(s)) return { ok: true, why: 'merge, revert or fixup' };
   const type = CONVENTIONAL_RE.exec(s)?.[1]?.toLowerCase() ?? null;
   // An untyped subject is gated: an untyped commit must not be a silent way around the check (D8).
-  if (type !== null && !STORY_GATED_TYPES.includes(type)) return { ok: true, why: `type ${type} is not gated` };
+  if (type !== null && !STORY_GATED_TYPES.includes(type))
+    return { ok: true, why: `type ${type} is not gated` };
   if (!branch) return { ok: true, why: 'detached HEAD' };
   let target;
   try {
@@ -134,16 +135,28 @@ export function storyCheck({ root, branch, subject, env = {} }) {
   const stories = epic.sprints.flatMap((sp) => sp.stories.map((st) => ({ ...st, sprint: sp.n })));
   const valid = stories.filter((st) => sprint === null || st.sprint === sprint);
   const scope = sprint === null ? `epic ${epic.slug}` : `epic ${epic.slug}, sprint ${sprint}`;
-  const refuse = (why) => ({ ok: false, why, valid: valid.map((st) => ({ id: st.id, title: st.title ?? '' })), scope, epic: epic.slug });
+  const refuse = (why) => ({
+    ok: false,
+    why,
+    valid: valid.map((st) => ({ id: st.id, title: st.title ?? '' })),
+    scope,
+    epic: epic.slug,
+  });
   if (!valid.length) return { ok: true, why: `${scope} lists no stories` };
   // A bare continuation (`1.2` after `S1.1/`) counts only when this epic lists it: `S2.1, 3.4 GB` is one story. An id
   // spelled with its own `S` always counts, listed or not — naming a stranger is the mistake this check exists for.
   const listed = new Set(stories.map((st) => st.id));
-  const ids = [...new Set(storyIdsWithKind(s).filter((x) => !x.bare || listed.has(x.id)).map((x) => x.id))];
+  const ids = [
+    ...new Set(
+      storyIdsWithKind(s)
+        .filter((x) => !x.bare || listed.has(x.id))
+        .map((x) => x.id)
+    ),
+  ];
   if (ids.length === 0) return refuse('it names no story');
-  if (ids.length > 1) return refuse(`it names ${ids.length} stories (${ids.join(', ')}) — one commit, one story`);
-  if (!valid.some((st) => st.id === ids[0]))
-    return refuse(`${ids[0]} is not a story of ${scope}`);
+  if (ids.length > 1)
+    return refuse(`it names ${ids.length} stories (${ids.join(', ')}) — one commit, one story`);
+  if (!valid.some((st) => st.id === ids[0])) return refuse(`${ids[0]} is not a story of ${scope}`);
   return { ok: true, why: `names ${ids[0]}` };
 }
 
@@ -921,8 +934,7 @@ function stageParts(state) {
       : state.facts_mode === 'snapshot'
         ? `snapshot, ${state.stage_age ?? 'age unknown'}`
         : 'docs only, no snapshot yet';
-  const phase =
-    state.phase_written && state.phase_written !== stage ? ` · phase ${state.phase_written}` : '';
+  const phase = state.phase_written && state.phase_written !== stage ? ` · phase ${state.phase_written}` : '';
   return { stage, locking, source, age, phase };
 }
 
@@ -960,20 +972,24 @@ export function shortDay(day, now = new Date()) {
 // Four significant digits, so a small target (0.004 → 0.006) never rounds to 0 (#312 review).
 const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Number(n.toPrecision(4))));
 
-/** The Why line and, with a target, its continuation — each clipped to fit 80 columns. */
+// why-as-a-story D4 — the Why is read in full: it wraps (lib/roadmap-contract's wrapWords, the guard's own wrap).
+export { wrapWords, WHY_LINES_MAX };
+
+/** The Why, wrapped over as many lines as it needs (D4), then the target. Every line fits 80 columns. */
 export function whyLines(target, pad, cont, now = new Date()) {
   const room = WIDTH - cont.length;
   const t = target || {};
+  const story = t.hypothesis
+    ? wrapWords(t.hypothesis, room).map((l, i) => (i === 0 ? `${pad('Why')}${l}` : `${cont}${l}`))
+    : [];
   if (!t.metric) {
     if (!t.hypothesis) return [`${pad('Why')}no target set`];
-    return [`${pad('Why')}${clip(t.hypothesis, room)}`, `${cont}no target set`];
+    return [...story, `${cont}no target set`];
   }
   const read = t.read_date ? `read ${shortDay(t.read_date, now)}` : 'read 30 days after shipping';
   const numbers = ` ${fmtNum(t.from)} ━━▸ ${fmtNum(t.to)} · ${read}`;
   const metric = `${clip(t.metric, Math.max(8, room - numbers.length))}${numbers}`;
-  return t.hypothesis
-    ? [`${pad('Why')}${clip(t.hypothesis, room)}`, `${cont}${clip(metric, room)}`]
-    : [`${pad('Why')}${clip(metric, room)}`];
+  return t.hypothesis ? [...story, `${cont}${clip(metric, room)}`] : [`${pad('Why')}${clip(metric, room)}`];
 }
 
 // build-view-upgrade D2 — one cell per story, sprint by sprint: ▰ has a commit, ▱ not yet, │ between sprints.
@@ -986,7 +1002,10 @@ export function sprintBars(bySprint) {
     .map((sp) => {
       const width = Math.min(sp.total, SPRINT_CELLS_MAX);
       // Rounded down, so a scaled sprint is never drawn full before every story has a commit (#312 review).
-      const filled = sp.done >= sp.total ? width : Math.max(0, Math.min(width - 1, Math.floor((sp.done / sp.total) * width)));
+      const filled =
+        sp.done >= sp.total
+          ? width
+          : Math.max(0, Math.min(width - 1, Math.floor((sp.done / sp.total) * width)));
       return '▰'.repeat(filled) + '▱'.repeat(width - filled);
     })
     .join('│');

@@ -11,6 +11,8 @@ import {
   resolveBuildState,
   renderLines,
   sprintBars,
+  wrapWords,
+  WHY_LINES_MAX,
   stageTrack,
   parseBranch,
   branchCandidates,
@@ -177,7 +179,10 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
     f.commit('S2.2 — a second commit on the same story');
     const p = resolveBuildState({ root: f.root, offline: true, gh: noGh });
     assert.equal(p.progress.stories_with_commits, 3, 'S1.1 + S2.1 + S2.2; S1.2 is not a story of this epic');
-    assert.match(renderLines(p).find((l) => l.startsWith('  Progress')), /^ {2}Progress ▰│▰▰ 3 of 3 stories done · in flight S2\.2 · Sprint 2 of 2$/);
+    assert.match(
+      renderLines(p).find((l) => l.startsWith('  Progress')),
+      /^ {2}Progress ▰│▰▰ 3 of 3 stories done · in flight S2\.2 · Sprint 2 of 2$/
+    );
   } finally {
     f.done();
   }
@@ -231,7 +236,11 @@ test('commits with no story convention and no journal → story unknown, never a
     assert.equal(s.progress.story, null);
     assert.equal(renderLines(s)[2], '  Why      no target set');
     assert.equal(renderLines(s)[3], '  Story    unknown');
-    assert.match(renderLines(s)[5], /^ {2}Progress ▱│▱▱ 0 of 3 stories done · Sprint \? of 2$/, 'no story → no "in flight"');
+    assert.match(
+      renderLines(s)[5],
+      /^ {2}Progress ▱│▱▱ 0 of 3 stories done · Sprint \? of 2$/,
+      'no story → no "in flight"'
+    );
   } finally {
     f.done();
   }
@@ -852,10 +861,7 @@ test('S3.1: offline, the stage is read from the snapshot and says how old it is;
 
     rmSync(join(f.root, '.golden-frijoles'), { recursive: true, force: true });
     const none = resolveBuildState({ root: f.root, offline: true, elsewhere: false });
-    assert.match(
-      statusOf(renderLines(none)),
-      /\(docs only, no snapshot yet\)/
-    );
+    assert.match(statusOf(renderLines(none)), /\(docs only, no snapshot yet\)/);
   } finally {
     f.done();
   }
@@ -874,8 +880,12 @@ test('S2.3: a live epic branch with no locked_at reads Locking architecture; the
         JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs })
       );
     snapshot([]);
-    const status = () => statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
-    assert.match(status(), /^Refining ─ Ready ─ ◉ Locking ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, /);
+    const status = () =>
+      statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
+    assert.match(
+      status(),
+      /^Refining ─ Ready ─ ◉ Locking ─ QA ─ Shipped \| from git: feat\/arranged-only-s2 \(snapshot, /
+    );
     // A draft PR is still the lock in progress; a READY one is QA whatever the docs say (the stage resolver decides).
     snapshot([{ number: 9, head: 'feat/arranged-only-s2', state: 'OPEN', draft: true, url: 'u' }]);
     assert.match(status(), /◉ Locking .*\| from github: PR #9 draft/);
@@ -893,11 +903,18 @@ test('S2.3 (#241 review r2): the gate reads the README phase, not a sprint file 
   const f = fixture({ sprint2: 'Shaping', epicPhase: 'Building' });
   try {
     f.git('checkout', '-qb', 'feat/arranged-only-s2');
-    writeFileSync(join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'), EPIC_README('Building', null));
+    writeFileSync(
+      join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'),
+      EPIC_README('Building', null)
+    );
     mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
     writeFileSync(
       join(f.root, '.golden-frijoles', 'board.json'),
-      JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
+      JSON.stringify({
+        generated_at: '2026-10-02T09:00:00.000Z',
+        branches: ['feat/arranged-only-s2'],
+        prs: [],
+      })
     );
     const line = statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
     assert.doesNotMatch(line, /Locking/);
@@ -911,13 +928,22 @@ test('S2.3 (#241 review): an epic built before the lock command — no stamp, ph
     const f = fixture({ sprint2: phase, epicPhase: phase });
     try {
       f.git('checkout', '-qb', 'feat/arranged-only-s2');
-      writeFileSync(join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'), EPIC_README(phase, null));
+      writeFileSync(
+        join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md'),
+        EPIC_README(phase, null)
+      );
       mkdirSync(join(f.root, '.golden-frijoles'), { recursive: true });
       writeFileSync(
         join(f.root, '.golden-frijoles', 'board.json'),
-        JSON.stringify({ generated_at: '2026-10-02T09:00:00.000Z', branches: ['feat/arranged-only-s2'], prs: [] })
+        JSON.stringify({
+          generated_at: '2026-10-02T09:00:00.000Z',
+          branches: ['feat/arranged-only-s2'],
+          prs: [],
+        })
       );
-      const line = statusOf(renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false })));
+      const line = statusOf(
+        renderLines(resolveBuildState({ root: f.root, offline: true, elsewhere: false }))
+      );
       assert.match(line, /◉ Building .*\| from git: /, phase);
       assert.doesNotMatch(line, /Locking/, phase);
     } finally {
@@ -951,7 +977,10 @@ test('build-view-upgrade D4: the link opens the epic page; with no board row it 
     );
     f.git('checkout', '-qb', 'feat/arranged-only-s2');
     const lines = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
-    assert.ok(lines.includes('           ↗ https://goldenfrijoles.com/hub/demo/epic/arranged-only'), lines.join('\n'));
+    assert.ok(
+      lines.includes('           ↗ https://goldenfrijoles.com/hub/demo/epic/arranged-only'),
+      lines.join('\n')
+    );
     f.git('checkout', '-q', 'main');
     const idle = renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false }));
     assert.ok(idle.includes('           ↗ https://goldenfrijoles.com/hub/demo/board'), idle.join('\n'));
@@ -959,7 +988,12 @@ test('build-view-upgrade D4: the link opens the epic page; with no board row it 
       join(f.root, 'golden-frijoles.config.json'),
       JSON.stringify({ board: { hubUrl: 'http://goldenfrijoles.com/hub/demo' } })
     );
-    assert.ok(!renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false })).some((l) => l.includes('↗')), 'https only');
+    assert.ok(
+      !renderLines(resolveBuildState({ root: f.root, gather: liveFacts(), elsewhere: false })).some((l) =>
+        l.includes('↗')
+      ),
+      'https only'
+    );
   } finally {
     f.done();
   }
@@ -972,26 +1006,40 @@ test('build-view-upgrade D1: the Why line reads the README target, and says so w
     const now = new Date('2026-10-08T00:00:00Z');
     f.git('checkout', '-qb', 'feat/arranged-only-s2');
     const why = () => {
-      const lines = renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }), now);
+      const lines = renderLines(
+        resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }),
+        now
+      );
       const at = lines.findIndex((l) => l.startsWith('  Why'));
-      return lines.slice(at, lines.findIndex((l) => l.startsWith('  Story')));
+      return lines.slice(
+        at,
+        lines.findIndex((l) => l.startsWith('  Story'))
+      );
     };
     assert.deepEqual(why(), ['  Why      no target set']);
-    const withTarget = (fields) => writeFileSync(readme, EPIC_README().replace('type: feature', `type: feature\n${fields}`));
+    const withTarget = (fields) =>
+      writeFileSync(readme, EPIC_README().replace('type: feature', `type: feature\n${fields}`));
     withTarget(
       'hypothesis: "Sellers who can mark a listing arranged-only stop losing orders to carrier rails they cannot fulfil at checkout time"\ntarget_metric: arranged_checkout_rate\ntarget_from: 12\ntarget_to: 30\nread_date: 2026-12-04'
     );
     const lines = why();
-    assert.equal(lines.length, 2);
-    assert.match(lines[0], /^ {2}Why {6}Sellers who can mark .*…$/);
-    assert.equal(lines[1], '           arranged_checkout_rate 12 ━━▸ 30 · read 4 Dec');
+    // why-as-a-story D4: the Why wraps in full, then the target.
+    assert.deepEqual(lines, [
+      '  Why      Sellers who can mark a listing arranged-only stop losing orders to',
+      '           carrier rails they cannot fulfil at checkout time',
+      '           arranged_checkout_rate 12 ━━▸ 30 · read 4 Dec',
+    ]);
     for (const l of lines) assert.ok(l.length <= 80, `${l.length}: ${l}`);
     withTarget('target_metric: "activation rate"\ntarget_from: 0.4\ntarget_to: 0.55\nread_date: null');
     assert.deepEqual(why(), ['  Why      activation rate 0.4 ━━▸ 0.55 · read 30 days after shipping']);
     withTarget('hypothesis: "a sentence on its own"\ntarget_metric: null');
     assert.deepEqual(why(), ['  Why      a sentence on its own', '           no target set']);
     withTarget('target_metric: tiny\ntarget_from: 0.004\ntarget_to: 0.006');
-    assert.deepEqual(why(), ['  Why      tiny 0.004 ━━▸ 0.006 · read 30 days after shipping'], 'small numbers keep their digits');
+    assert.deepEqual(
+      why(),
+      ['  Why      tiny 0.004 ━━▸ 0.006 · read 30 days after shipping'],
+      'small numbers keep their digits'
+    );
     withTarget('target_metric: half_a_target\ntarget_from: 1');
     assert.deepEqual(why(), ['  Why      no target set'], 'a metric without both numbers is not a target');
   } finally {
@@ -999,12 +1047,51 @@ test('build-view-upgrade D1: the Why line reads the README target, and says so w
   }
 });
 
+test('why-as-a-story D4: the Why wraps at word boundaries, up to five lines, and is never cut mid-sentence', () => {
+  const story =
+    "Today the Why lists the parts being built and is cut off on screen, so a founder approves bets they cannot easily explain. Written as a short story from the strategy we already agreed, and shown in full, it becomes a bet they can defend. We'll know when every new Why is read in full and approved without a rewrite.";
+  const lines = wrapWords(story, 69);
+  assert.ok(lines.length <= WHY_LINES_MAX, `${lines.length} lines`);
+  assert.equal(lines.join(' '), story, 'every word, in order: nothing cut');
+  for (const l of lines) assert.ok(l.length <= 69, `${l.length}: ${l}`);
+  const long = wrapWords(`${story} ${story}`, 69);
+  assert.equal(long.length, WHY_LINES_MAX, 'a Why longer than the story rule stops at five lines');
+  assert.ok(long.at(-1).endsWith('…') && long.at(-1).length <= 69, long.at(-1));
+  assert.deepEqual(
+    wrapWords('a'.repeat(80), 10),
+    ['aaaaaaaaa…'],
+    'one word wider than the room is the only thing clipped'
+  );
+  assert.deepEqual(wrapWords('', 10), []);
+});
+
 test('build-view-upgrade D2/D3: bars per sprint, the track per stage', () => {
-  assert.equal(sprintBars([{ done: 2, total: 3 }, { done: 0, total: 4 }]), '▰▰▱│▱▱▱▱');
-  assert.equal(sprintBars([{ done: 5, total: 16 }]), '▰▰▱▱▱▱▱▱', 'a wide sprint is scaled to 8 cells, rounded down');
-  assert.equal(sprintBars([{ done: 19, total: 20 }]), '▰▰▰▰▰▰▰▱', 'never drawn full before every story has a commit');
+  assert.equal(
+    sprintBars([
+      { done: 2, total: 3 },
+      { done: 0, total: 4 },
+    ]),
+    '▰▰▱│▱▱▱▱'
+  );
+  assert.equal(
+    sprintBars([{ done: 5, total: 16 }]),
+    '▰▰▱▱▱▱▱▱',
+    'a wide sprint is scaled to 8 cells, rounded down'
+  );
+  assert.equal(
+    sprintBars([{ done: 19, total: 20 }]),
+    '▰▰▰▰▰▰▰▱',
+    'never drawn full before every story has a commit'
+  );
   assert.equal(sprintBars([{ done: 20, total: 20 }]), '▰▰▰▰▰▰▰▰');
-  assert.equal(sprintBars([{ done: 0, total: 0 }, { done: 1, total: 1 }]), '▰', 'an empty sprint draws nothing');
+  assert.equal(
+    sprintBars([
+      { done: 0, total: 0 },
+      { done: 1, total: 1 },
+    ]),
+    '▰',
+    'an empty sprint draws nothing'
+  );
   assert.equal(sprintBars([]), '');
   assert.equal(stageTrack('Grooming'), '◉ Refining ─ Ready ─ Building ─ QA ─ Shipped');
   assert.equal(stageTrack('Ready to build'), 'Refining ─ ◉ Ready ─ Building ─ QA ─ Shipped');
