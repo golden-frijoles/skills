@@ -660,7 +660,10 @@ export async function pushUsage({
     return { sent: 0, reason: `config unreadable — ${err && err.message ? err.message : err}` };
   }
   if (setting !== 'on')
-    return { sent: 0, reason: 'off — spend.telemetry is not on (frijoles-kit config set spend.telemetry on)' };
+    return {
+      sent: 0,
+      reason: 'off — spend.telemetry is not on (frijoles-kit config set spend.telemetry on)',
+    };
   // The throttle counts ATTEMPTS, not successes: a persistent 401 or 429 retries every 10 minutes, not every minute.
   const last = Math.max(index.pushed_at ?? -Infinity, index.push_attempt_at ?? -Infinity);
   if (throttle && Number.isFinite(last) && now - last < PUSH_EVERY_MS)
@@ -733,11 +736,26 @@ export async function pushUsage({
 
 // stampFrontmatter moved to lib/frontmatter-stamp.mjs (result-record D8); re-exported above for existing callers.
 
-/** The three actual_* fields for an epic's report. */
+/**
+ * why-as-a-story D6 — the crew that actually worked, by model: `claude-opus-5-5 ≈$40.12 · claude-sonnet-5-5 ≈$3.10`,
+ * most spent first. Subagents are in the transcripts, so a delegated builder shows here; outside tools (Codex, agy,
+ * Devin) are not, and the retrospective names them from the PR's review records. Null when nothing was measured.
+ */
+export function modelsText(byModel) {
+  const rows = Object.entries(byModel ?? {}).filter(([, p]) => p && typeof p.usd === 'number');
+  if (!rows.length) return null;
+  return rows
+    .sort((a, b) => b[1].usd - a[1].usd || (a[0] < b[0] ? -1 : 1))
+    .map(([model, p]) => `${model} ${usdText(p.usd, p.usd_known)}`)
+    .join(' · ');
+}
+
+/** The actual_* fields for an epic's report: the spend, its tokens, where it came from, and by which models. */
 export function actualFields(report, basisPrefix, date) {
   return {
     actual_usd: report.usd,
     actual_mtok: report.mtok,
+    actual_models: modelsText(report.by_model),
     actual_basis: `${basisPrefix}${MACHINE} · ${date} · ${report.sessions} session${report.sessions === 1 ? '' : 's'}${
       report.usd_known ? '' : ' · lower bound (unpriced model)'
     } · prices ${PRICES_AS_OF}`,

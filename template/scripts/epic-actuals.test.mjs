@@ -33,6 +33,8 @@ import {
   summarize,
   updateIndex,
   usdText,
+  actualFields,
+  modelsText,
 } from './epic-actuals.mjs';
 
 // ⚠️ SEALED: git exports GIT_DIR into hooks, and it overrides cwd (see build-state.test.mjs).
@@ -866,4 +868,29 @@ test('round 5 #232: an idle run never clears a refusal, and the count restarts a
   } finally {
     fx.cleanup();
   }
+});
+
+test('why-as-a-story D6: actual_models names each model and its spend, most first; nothing measured is null', () => {
+  assert.equal(
+    modelsText({
+      'claude-sonnet-5-5': { usd: 3.1, usd_known: true },
+      'claude-opus-5-5': { usd: 40.123, usd_known: true },
+      'claude-haiku-5-5': { usd: 0.2, usd_known: false },
+    }),
+    'claude-opus-5-5 ≈$40.12 · claude-sonnet-5-5 ≈$3.10 · claude-haiku-5-5 ≥$0.20'
+  );
+  assert.equal(modelsText({}), null);
+  assert.equal(modelsText(undefined), null);
+  const fields = actualFields(
+    {
+      usd: 43.2,
+      mtok: 1.5,
+      sessions: 1,
+      usd_known: true,
+      by_model: { 'claude-opus-5-5': { usd: 43.2, usd_known: true } },
+    },
+    '',
+    '2026-10-10'
+  );
+  assert.equal(fields.actual_models, 'claude-opus-5-5 ≈$43.20');
 });

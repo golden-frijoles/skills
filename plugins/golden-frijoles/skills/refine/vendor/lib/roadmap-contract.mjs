@@ -45,7 +45,9 @@ export const STORY_FIELDS = ['id', 'title', 'as_a', 'i_want', 'so_that', 'risk',
 // All optional: an epic scaffolded before FinOps has none, and an absent field is never a zero (D4). The numeric
 // ones are numbers >= 0 or null; a `*_basis` says where the number came from, in words.
 export const FINOPS_NUMERIC_FIELDS = ['quote_low_usd', 'quote_high_usd', 'actual_usd', 'actual_mtok'];
-export const FINOPS_BASIS_FIELDS = ['quote_basis', 'actual_basis'];
+// `actual_models` (why-as-a-story D6) is text too, validated here but NOT in FINOPS_FIELDS: it stays in the README for the
+// retrospective's Crew line and is never pushed, so the hosted push schema does not change.
+export const FINOPS_BASIS_FIELDS = ['quote_basis', 'actual_basis', 'actual_models'];
 export const FINOPS_FIELDS = [
   'quote_low_usd',
   'quote_high_usd',
