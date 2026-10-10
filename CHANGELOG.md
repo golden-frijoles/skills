@@ -18,6 +18,8 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 - When you are not signed in, Measure is where an account is suggested, once per project, with "Later" always there:
   the bet is saved either way, and the Plan gate says "measured once you sign in".
 - The bet's measurement travels from the seed through the scaffold, the roadmap contract and the roadmap push.
+- A `measure` config section, with `measure.signIn` (`later` | `now`): the Measure sign-in answer, kept so it is asked
+  once per project. Needs this kit: 1.4.0 refuses the section.
 - Pairs with CLI 1.3.0: `frijoles bet sync <epic README>` creates the bet's Measure flag (off until you roll it out)
   and leaves an existing flag as it is. The console shows each measured flag's funnel on its epic page and in
   Journeys' From your flags, on the TARS model: targeted (everyone), got the flag on, adopted, retained, satisfied or

@@ -21,8 +21,9 @@ with nothing guessed. On yes, write the bet's measurement into the seed's frontm
 **Report each evaluation, or the funnel stays empty.** The flag is read through the SDK's flag provider, which does not
 report on its own: the code that reads it calls `trackFlagEvaluation` (the SDK README's *Flag evaluation telemetry*),
 with `subject: { type: 'user', id }` set to **the same id the app tracks its events with** (`growthFor(user.id)`). The
-funnel counts the person in `subject`, so a server client's own user (`system:server`) never stands in for the people
-it evaluates for. Write this into the story that puts the feature behind the flag.
+funnel counts the person in a `subject` **of type `user`** (any other type, such as the SDK README's `merchant`, counts
+the client's own user instead), so a server client's own user (`system:server`) never stands in for the people it
+evaluates for. Write this into the story that puts the feature behind the flag.
 
 **When the founder is not signed in** (`whoami --json`, run as setup's Stage 2.1 runs it, does not exit 0), this is
 the one place an account is suggested, because here it pays off. First read the kit's `config get measure.signIn`: a
