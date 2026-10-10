@@ -37,8 +37,8 @@ script names never change, so a gate may show one as a path or in `code`, never 
 | Proven · Disproven · Unclear | `verdict:` in the epic README | — |
 | Flag | `flag_key:`, a flag in Golden Frijoles | — |
 
-"Bet" is the idea behind an epic and appears only as its sentence ("We believe that … for … will … because … We'll
-know when …"), never as a stage, a button or a status.
+"Bet" is the idea behind an epic and appears only as its Why, the short story `result-record.md` describes (what is
+wrong today and for whom, what changes, why it matters, "We'll know when …"), never as a stage, a button or a status.
 
 | Was | Now |
 |---|---|
