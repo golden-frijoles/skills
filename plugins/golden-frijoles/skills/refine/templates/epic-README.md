@@ -81,6 +81,6 @@ build_order: null    # integer position in the ONE global build sequence — the
 - [ ] **Kill-switch (only if one was planned at refining — Stage 6b):** the flag slice shipped, the flag
       exists **in Golden Frijoles, in every env**, with the stated polarity, **and its switch is set there** —
       `frijoles flags get <key>` must print `on vN` or `off vN` in its PRODUCTION row (a bare `off` with no version
-      means nothing is served there, so the app runs on its own built-in default). A synced flag sets no switch. *Verify-only — not a new gate; whether a high-risk epic needs one
+      means nothing is served there, so the app runs on its own built-in default). A newly synced flag starts at its default; a sync never switches an existing one. *Verify-only — not a new gate; whether a high-risk epic needs one
       is decided at refining, not here.*
 - [ ] Feature branch deleted; **this README's frontmatter `status: shipped`** (the SSOT — the board & Notion derive from it; run `node scripts/build-order.mjs`)

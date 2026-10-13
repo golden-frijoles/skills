@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-10-13
+
+### Changed
+- `frijoles flags sync`: a **new** flag starts switched to its default in every environment, from the source file; an
+  existing flag's switch is never changed by a sync. The flag guide and the epic template say so (CLI 1.5.2).
+
 ## [1.7.2] - 2026-10-13
 
 ### Changed

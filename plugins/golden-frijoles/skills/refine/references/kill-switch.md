@@ -82,8 +82,8 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      carries that default and the flag can never make the seam `async`.
   4. **Switch it, per environment — its own step.** A flag has one switch per environment, On or Off, and the CLI,
      MCP and the flags page all show the same one. `frijoles flags create --all-envs` creates the flag *and* sets its
-     switch (on for a kill switch, off for an enablement); `frijoles flags sync` pushes definitions from source control
-     and **switches nothing**. The story must carry the check, per environment:
+     switch (on for a kill switch, off for an enablement); `frijoles flags sync` pushes definitions from source control,
+     sets a **new** flag's switch to its default in every environment, and **never switches an existing flag**. The story must carry the check, per environment:
      ```
      frijoles flags get <domain>.<feature>_enabled
      ```
