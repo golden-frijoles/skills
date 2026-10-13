@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-13
+
+**One flag switch.**
+
+### Changed
+- The flag guide (`refine/references/kill-switch.md`) speaks of one switch per environment, On or Off, the same in the
+  CLI, MCP and the flags page. The check is `frijoles flags get <key>` reading `on vN` or `off vN`; a bare `off` with no
+  version means the switch was never set there.
+
 ## [1.7.0] - 2026-10-13
 
 **Drills an agent can run.**

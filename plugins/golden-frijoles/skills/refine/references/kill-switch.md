@@ -71,7 +71,7 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
   2. **Polarity** (pick the fail-open default to match intent):
      - **Kill-switch** (ship live, instantly killable) → default **`true`**, **create it ENABLED in
        every env** (switch *armed*; disabling is the deliberate kill) → `--kill-switch`.
-     - **Enablement / dark-launch** (merge dark, activate deliberately — esp. money infra that must be
+     - **Enablement / dark-launch** (merge dark, switch on deliberately — esp. money infra that must be
        **seeded first**) → default **`false`**, **create it DISABLED in every env**, flip on when ready
        → `--enablement`. *"Created disabled" means serving `false`, not absent from the snapshot.*
      - A flag is **invisible until created in the flag provider** — the story must say "create it in every env."
@@ -80,20 +80,18 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      `createFlagProvider`) so UI + agent surface + the money path are covered by one call. The
      provider resolves **synchronously** against a **caller-supplied default**, so the seam's signature
      carries that default and the flag can never make the seam `async`.
-  4. **Activation — its own step, not a consequence of the definition.** Definitions are
-     catalog-as-code; activations are not. `frijoles flags sync` pushes definitions from source control and
-     **does not activate anything**; `frijoles flags create --all-envs` creates *and* activates. The story
-     must carry the check, per environment:
+  4. **Switch it, per environment — its own step.** A flag has one switch per environment, On or Off, and the CLI,
+     MCP and the flags page all show the same one. `frijoles flags create --all-envs` creates the flag *and* sets its
+     switch (on for a kill switch, off for an enablement); `frijoles flags sync` pushes definitions from source control
+     and **switches nothing**. The story must carry the check, per environment:
      ```
      frijoles flags get <domain>.<feature>_enabled
      ```
-     It prints one row per environment. **PRODUCTION must not read `—`.** In the CLI's vocabulary
-     `—` is *never activated here*, `off (nothing served)` is *activated then deactivated* — both
-     mean the consumer is serving its call-site default — and anything else is the value a context
-     with no attributes actually gets. (`frijoles flags ls` is the all-flags view; it takes no `--env`.)
-     *The cautionary tale is real: a project synced 42 flag definitions, never created the
-     activations, and 39 of them read "Never turned on here" while the runtime quietly served
-     compile-time defaults through the fallback chain. Every dashboard said the flags existed.*
+     It prints one row per environment: `on vN` or `off vN`. A bare **`off` with no version** means nobody has set the
+     switch there yet, so the app is running on its own built-in default: set it (`frijoles flags set … --value
+     true|false`) before calling the story done. (`frijoles flags ls` is the all-flags view; it takes no `--env`.)
+     *The cautionary tale is real: a project synced 42 flag definitions, never set their switches, and the runtime
+     quietly served compile-time defaults while every dashboard said the flags existed.*
   5. **Runtime placement.** The provider is **server-side**: its `flagReadKey` is a credential and must
      never reach a browser bundle. For a **middleware / Edge seam**, read
      [`references/flags-runtime.md`](https://github.com/golden-frijoles/skills/blob/main/template/references/flags-runtime.md)
@@ -102,8 +100,8 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
 - **No →** write the **one-line carve-out reason** (e.g. *DB migration — can't sit behind a runtime flag;
   reversible expand/contract instead*; *gate is the auth provider*; *no new runtime seam*).
 
-The epic Definition of Done then only **verifies** the planned slice shipped, the flag exists **and is
-activated in production** — it does **not** introduce the policy as a new build-time gate. This composes
+The epic Definition of Done then only **verifies** the planned slice shipped, the flag exists **and its switch is
+set in production** (`on vN` or `off vN`) — it does **not** introduce the policy as a new build-time gate. This composes
 with the merge rule unchanged: the kill-switch story rides the same `HIGH ⇒ the product owner merges`.
 See the ADR `Roadmap/00-ideas/seeds/kill-switch-at-grooming.md`.
 
