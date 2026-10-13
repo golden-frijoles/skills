@@ -263,5 +263,5 @@ going; on hand off, emit its next-session prompt instead. Cadence + template: `r
 - Reuse list produced (platform-first reframe done).
 - The ask kept verbatim (Stage 1), scored or "could not look" said (3.5), the visuals its shape calls for (4.6).
 - Each story risk-tiered; QA stage named; smoke-walkthrough owner identified.
-- **The flag decision is recorded** (Stage 6b): Measure for a Feature epic (its measurement in the seed), Safety by risk — either a Golden Frijoles flag story (polarity · seam · **activation** · placement) or a one-line carve-out reason.
+- **The flag decision is recorded** (Stage 6b): Measure for a Feature epic (its measurement in the seed), Safety by risk — either a Golden Frijoles flag story (polarity · seam · **switch set per environment** · placement) or a one-line carve-out reason.
 - the product owner approved the scope doc.

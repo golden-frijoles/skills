@@ -79,9 +79,9 @@ build_order: null    # integer position in the ONE global build sequence — the
 - [ ] Team memory + `MEMORY.md` index updated
 - [ ] Durable learnings promoted to `Roadmap/LEARNINGS.md` (dedupe — sharpen, don't append)
 - [ ] **Kill-switch (only if one was planned at refining — Stage 6b):** the flag slice shipped, the flag
-      exists **in Golden Frijoles, in every env**, with the stated polarity, **and is ACTIVATED there** —
-      `frijoles flags get <key>` must not print `—` in its PRODUCTION row. Creating a definition is not
-      turning it on, and a flag that is synced but never activated serves compile-time defaults while
-      every dashboard says it exists. *Verify-only — not a new gate; whether a high-risk epic needs one
+      exists **in Golden Frijoles, in every env**, with the stated polarity, **and its switch is set there** —
+      `frijoles flags get <key>` must print `on vN` or `off vN` in its PRODUCTION row (a bare `off` with no version
+      means the switch was never set, and the app is running on its own built-in default). A synced flag sets no
+      switch. *Verify-only — not a new gate; whether a high-risk epic needs one
       is decided at refining, not here.*
 - [ ] Feature branch deleted; **this README's frontmatter `status: shipped`** (the SSOT — the board & Notion derive from it; run `node scripts/build-order.mjs`)
