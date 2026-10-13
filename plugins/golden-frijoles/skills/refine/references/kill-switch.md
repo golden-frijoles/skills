@@ -87,8 +87,8 @@ question and **write the answer in the scope seed** (the answer is mandatory; th
      ```
      frijoles flags get <domain>.<feature>_enabled
      ```
-     It prints one row per environment: `on vN` or `off vN`. A bare **`off` with no version** means nobody has set the
-     switch there yet, so the app is running on its own built-in default: set it (`frijoles flags set … --value
+     It prints one row per environment: `on vN` or `off vN`. A bare **`off` with no version** means nothing is served there,
+     so the app is running on its own built-in default: set it (`frijoles flags set … --value
      true|false`) before calling the story done. (`frijoles flags ls` is the all-flags view; it takes no `--env`.)
      *The cautionary tale is real: a project synced 42 flag definitions, never set their switches, and the runtime
      quietly served compile-time defaults while every dashboard said the flags existed.*

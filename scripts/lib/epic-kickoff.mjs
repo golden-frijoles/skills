@@ -170,7 +170,16 @@ export function buildEpicRules({ risk, texts, appetite = null, slug = '<slug>' }
   return rules.length ? `\nFor this epic:\n${rules.join('\n')}\n` : '';
 }
 
-export function buildEpicKickoff({ macro, slug, epicTitle, risk, sprints, templateText, texts = [], appetite = null }) {
+export function buildEpicKickoff({
+  macro,
+  slug,
+  epicTitle,
+  risk,
+  sprints,
+  templateText,
+  texts = [],
+  appetite = null,
+}) {
   return sub(templateText, {
     EPIC_RULES: buildEpicRules({ risk, texts, appetite, slug }),
     MACRO: macro,

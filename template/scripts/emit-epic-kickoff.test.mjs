@@ -75,7 +75,7 @@ test('buildEpicRules picks only the rules this epic needs', () => {
   assert.match(high, /High risk/);
   assert.doesNotMatch(high, /Migration/, 'a negated mention is not a migration');
   assert.match(buildEpicRules({ risk: 'LOW', texts: ['Adds `supabase/migrations/2026…_x.sql`.'] }), /Migration:.*BEFORE merging/);
-  assert.match(buildEpicRules({ risk: 'LOW', texts: ['Gate on `checkout.stripe_enabled`.'] }), /Flag:.*ACTIVATE/);
+  assert.match(buildEpicRules({ risk: 'LOW', texts: ['Gate on `checkout.stripe_enabled`.'] }), /Flag:.*on vN/);
   // Every scaffolded README's DoD mentions a kill-switch; that alone must not add the flag rule.
   assert.equal(buildEpicRules({ risk: 'LOW', texts: ['- [ ] **Kill-switch (only if one was planned)**'] }), '');
 });
