@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-10-13
+
+### Changed
+- Setup quotes `@golden-frijoles/cli` 1.5.1: `frijoles flags ls/get` say who an On flag reaches — `on (everyone)`,
+  `on (25% of people)`, `on (a segment (not named yet))`.
+
 ## [1.7.1] - 2026-10-13
 
 **One flag switch.**
