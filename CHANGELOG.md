@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-13
+
+**Drills an agent can run.**
+
+### Added
+- Setup routes "rehearse a failure" to a new **drills** guide (`setup/references/drills.md`): make the app a target
+  with `frijoles scenarios targets add` and the SDK's `createScenarioOwnershipHandler`, give the fault one seam, then
+  define, launch, watch and stop a drill with `frijoles scenarios` (CLI 1.4.0, SDK 1.1.0).
+
 ## [1.6.0] - 2026-10-10
 
 **The Why reads as a story, in full, and the plan names its crew.**
