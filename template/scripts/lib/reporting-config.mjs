@@ -136,11 +136,11 @@ export function validateReportingConfig(raw, path = CONFIG_FILENAME) {
     }
   }
 
-  // What owed-ledger.mjs counts: who manual checks are owed to, and where the specs live.
+  // What owed-ledger.mjs counts: who manual checks are owed to, and where the specs and the epic docs live.
   const owed = raw.owed ?? {};
   if (typeof owed !== 'object' || Array.isArray(owed))
-    fail(path, '"owed" must be an object {owners, specDirs}');
-  for (const k of ['owners', 'specDirs']) {
+    fail(path, '"owed" must be an object {owners, specDirs, docDirs}');
+  for (const k of ['owners', 'specDirs', 'docDirs']) {
     if (
       owed[k] != null &&
       (!Array.isArray(owed[k]) || owed[k].some((v) => typeof v !== 'string' || !v.trim()))
@@ -148,9 +148,11 @@ export function validateReportingConfig(raw, path = CONFIG_FILENAME) {
       fail(path, `"owed.${k}" must be an array of non-empty strings`);
     }
   }
-  for (const d of owed.specDirs ?? []) {
-    if (d.startsWith('/') || d.includes('\\') || d.split('/').includes('..'))
-      fail(path, `"owed.specDirs" entry "${d}" must be relative, inside the repo`);
+  for (const k of ['specDirs', 'docDirs']) {
+    for (const d of owed[k] ?? []) {
+      if (d.startsWith('/') || d.includes('\\') || d.split('/').includes('..'))
+        fail(path, `"owed.${k}" entry "${d}" must be relative, inside the repo`);
+    }
   }
 
   const stalePreviewAgeDays = raw.stalePreviewAgeDays ?? null;
@@ -198,7 +200,7 @@ export function validateReportingConfig(raw, path = CONFIG_FILENAME) {
     repos,
     deployRepos,
     checkouts,
-    owed: { owners: owed.owners ?? null, specDirs: owed.specDirs ?? null },
+    owed: { owners: owed.owners ?? null, specDirs: owed.specDirs ?? null, docDirs: owed.docDirs ?? null },
     telegram: { chatId: telegram.chatId ?? null, chatIds },
     smoke,
     liveFlags,

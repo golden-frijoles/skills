@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { categorise, extractMarkers, buildLedger, renderMarkdown, listSpecFiles, CATEGORIES } from './owed-ledger.mjs';
+import { categorise, extractMarkers, buildLedger, renderMarkdown, listSpecFiles, listDocFiles, kindOf, CATEGORIES, KINDS } from './owed-ledger.mjs';
 
 // ---- extraction ----
 
@@ -94,7 +94,7 @@ test('buildLedger: an empty tree is zero, not a crash', () => {
 test('renderMarkdown: says it is generated, so nobody hand-edits it', () => {
   const md = renderMarkdown(buildLedger([{ file: 'e2e/a.spec.ts', line: 1, text: 'owed' }]), '2026-07-26');
   assert.match(md, /GENERATED — do not hand-edit/);
-  assert.match(md, /1 check\(s\) owed across 1 spec file\(s\)/);
+  assert.match(md, /1 check\(s\) owed across 1 file\(s\)\*\* · 0 cleared/);
 });
 
 test('renderMarkdown: names "other" as a to-triage list rather than a dumping ground', () => {
@@ -102,10 +102,11 @@ test('renderMarkdown: names "other" as a to-triage list rather than a dumping gr
   assert.match(md, /not a bin, a to-triage list/);
 });
 
-test('renderMarkdown: an empty category is omitted rather than printed as a bare heading', () => {
+test('renderMarkdown: items are listed by who can clear them, tagged with their category; an empty kind has no heading', () => {
   const md = renderMarkdown(buildLedger([{ file: 'e2e/checkout.spec.ts', line: 1, text: 'payment owed' }]), '2026-07-26');
-  assert.match(md, /## money-path/);
-  assert.doesNotMatch(md, /## admin-only \(0\)/);
+  assert.match(md, /## unsorted \(1\)/);
+  assert.match(md, /checkout\.spec\.ts:1` · money-path/);
+  assert.doesNotMatch(md, /## publish \(0\)/);
 });
 
 // ---- cross-review findings on PR #110 ----
@@ -146,7 +147,7 @@ test('resolveOwedConfig: config wins; otherwise the role owner and every apps/*/
   const { ReportingConfigError } = await import('./lib/reporting-config.mjs');
   const fsFake = (present) => ({ exists: (p) => present.some((x) => p.endsWith(x)), readdir: () => ['web', 'api'] });
   const fromConfig = resolveOwedConfig({ root: '/r', load: () => ({ owed: { owners: ['Jordan'], specDirs: ['e2e'] } }), ...fsFake([]) });
-  assert.deepEqual(fromConfig, { owners: ['Jordan'], specDirs: ['e2e'] });
+  assert.deepEqual(fromConfig, { owners: ['Jordan'], specDirs: ['e2e'], docDirs: [] });
   // A PRESENT but broken config must not silently fall back to the defaults.
   assert.throws(() => resolveOwedConfig({
     root: '/r',
@@ -158,5 +159,77 @@ test('resolveOwedConfig: config wins; otherwise the role owner and every apps/*/
     load: () => { throw new ReportingConfigError('absent'); },
     ...fsFake(['/r/apps', 'apps/web/e2e']),
   });
-  assert.deepEqual(derived, { owners: DEFAULT_OWNERS, specDirs: ['apps/web/e2e'] });
+  assert.deepEqual(derived, { owners: DEFAULT_OWNERS, specDirs: ['apps/web/e2e'], docDirs: [] });
+  const withRoadmap = resolveOwedConfig({
+    root: '/r',
+    load: () => ({ owed: {} }),
+    ...fsFake(['/r/Roadmap']),
+  });
+  assert.deepEqual(withRoadmap.docDirs, ['Roadmap']);
+});
+
+// ── The epic docs, cleared lines and kinds (launch-sweep audit §3) ───────────────────────────────
+
+test('extractMarkers: a retro list item reads as prose, and a template placeholder is not a marker', () => {
+  const md = [
+    '<!-- Smoke gaps owed to the product owner, deferred slices, known limitations. -->',
+    '<!--',
+    '  owed to the product owner: an example inside a block comment',
+    '-->',
+    '- **Owed to the product owner:** the signed-in look at the funnel',
+    '1. (owed to the product owner — interactive) Run setup',
+  ].join('\n');
+  const found = extractMarkers(md, 'Roadmap/x/RETROSPECTIVE.md');
+  assert.deepEqual(found.map((f) => f.line), [5, 6]);
+  assert.match(found[0].text, /^\*\*Owed to/);
+  assert.match(found[1].text, /^\(owed to/);
+});
+
+test('buildLedger: a ticked or struck line is cleared — out of the total, still accounted for', () => {
+  const found = extractMarkers(
+    ['- ✅ owed to the product owner: done', '- ~~owed to the product owner: the npm publish~~ done 2026-10-14', '- owed to the product owner: still open'].join('\n'),
+    'Roadmap/x/RETROSPECTIVE.md'
+  );
+  const ledger = buildLedger(found);
+  assert.equal(ledger.total, 1);
+  assert.equal(ledger.cleared, 2);
+  assert.equal(KINDS.reduce((n, k) => n + ledger.byKind[k], 0) + ledger.cleared, found.length);
+});
+
+test('buildLedger: a strike further in clears that part only, and the rest decides the kind', () => {
+  const found = extractMarkers(
+    '- **Owed to the product owner:** ~~`npm publish` of the CLI (2FA)~~, then the signed-in walkthrough',
+    'Roadmap/x/RETROSPECTIVE.md'
+  );
+  const ledger = buildLedger(found);
+  assert.equal(ledger.total, 1);
+  assert.equal(ledger.cleared, 0);
+  assert.equal(ledger.byKind['signed-in'], 1);
+});
+
+test('kindOf: who can clear it, most specific first', () => {
+  const cases = [
+    ['`cd packages/cli && npm publish` (npm 2FA), then smoke the signed-in flow', 'publish'],
+    ['mint the first real share link', 'credential'],
+    ['the signals-loop production write smoke', 'credential'],
+    ['the Notion `Stage` select', 'ops'],
+    ['repair the local `.git`', 'ops'],
+    ['the _Intent_ answer and the signed-in look', 'judgment'],
+    ['decide promote / tune / drop', 'judgment'],
+    ['(signed in) Open https://example.com/app', 'signed-in'],
+    ['the interactive setup walkthrough on a scratch repo', 'interactive'],
+    ['a human should read the copy', 'unsorted'],
+  ];
+  for (const [text, kind] of cases) assert.equal(kindOf({ text }), kind, text);
+});
+
+test('listDocFiles: retros always count; a sprint doc only while its epic has no retro', () => {
+  const tree = {
+    '/R': ['done', 'open', 'notes.md'],
+    '/R/done': ['RETROSPECTIVE.md', 'sprint-1.md', 'README.md'],
+    '/R/open': ['sprint-1.md', 'sprint-2.md'],
+  };
+  const read = (d) => tree[d] ?? [];
+  const stat = (p) => ({ isDirectory: () => p in tree });
+  assert.deepEqual(listDocFiles('/R', { read, stat }), ['/R/done/RETROSPECTIVE.md', '/R/open/sprint-1.md', '/R/open/sprint-2.md']);
 });

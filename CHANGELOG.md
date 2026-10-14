@@ -7,6 +7,16 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-14
+
+### Added
+- `owed-ledger` reads the epic docs too: every `RETROSPECTIVE.md`, and each `sprint-*.md` while its epic has no
+  retrospective (`reporting.config.json → owed.docDirs`, default `Roadmap`). A heading-shaped "Owed to …:" line counts
+  each item in the list under it. Each item gets a **kind**: who can clear it (a publish, a production credential,
+  the product owner's own accounts, a judgment, a signed-in walkthrough, an interactive walkthrough, or unsorted).
+- A line ticked (`✅`) or struck (`~~…~~`) where it was written is **cleared**: out of the count, and reported as
+  cleared. Template placeholders inside HTML comments and "none owed" lines are not counted.
+
 ## [1.7.3] - 2026-10-13
 
 ### Changed
