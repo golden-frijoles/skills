@@ -7,6 +7,19 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-14
+
+### Changed
+- `roadmap-push` works in a first-day repo: a failed extract prints its real cause (the last 20 stderr lines), `--docs-only`
+  is accepted, and a repo with no `origin` remote pushes its docs-only board with one line saying why. A repo whose
+  `gh` call fails still fails, naming the cause (many-products S2.5).
+- The template no longer denies `supabase db push` to agents; `supabase db reset` stays denied, and
+  `permissions-smoke` probes both directions (many-products S2.4).
+- The setup skill pins CLI 1.6.0: `frijoles login` signs in the account without asking for a product, and
+  `frijoles init --project <slug> | --create <slug>` binds the repo (`project.slug` in golden-frijoles.config.json);
+  `frijoles projects create | delete | purge` (many-products S1–S2).
+- Review rail: agy pinned to 1.3.5 (doctor probe green 2026-10-14).
+
 ## [1.7.3] - 2026-10-13
 
 ### Changed
