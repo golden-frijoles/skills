@@ -10,7 +10,8 @@
 // no privileged internal path — if this script works, a customer's does too.
 //
 //   node scripts/roadmap-push.mjs                       # push to $GROWTH_ENGINE_URL
-//   node scripts/roadmap-push.mjs --dry-run             # print the envelope, send nothing
+//   node scripts/roadmap-push.mjs --docs-only           # the docs-only stages (automatic, with one line, when there is no origin)
+//   node scripts/roadmap-push.mjs --dry-run            # print the envelope, send nothing
 //   node scripts/roadmap-push.mjs --url http://localhost:3000
 //   node scripts/roadmap-push.mjs --env-file .env.local   # the key and URL `frijoles init --ingest` wrote
 //
@@ -91,28 +92,62 @@ export function buildBoard({ wip, repo }) {
   return Object.keys(board).length ? board : null;
 }
 
+/** The last ~20 lines / 4 KB of a failed child's stderr — the REAL cause, not just its final line. */
+export function boundedStderr(stderr, { lines = 20, bytes = 4096 } = {}) {
+  let text = String(stderr || '')
+    .trim()
+    .split('\n')
+    .slice(-lines)
+    .join('\n');
+  if (text.length > bytes) text = `…${text.slice(-bytes)}`;
+  return text;
+}
+
+/** Does this checkout have an `origin` remote? False in a first-day repo — and when it is not a git repo at all. */
+export function hasOrigin(root = REPO_ROOT, gitFn = git) {
+  return !!gitFn(['remote', 'get-url', 'origin'], root);
+}
+
 /**
  * Rows from `roadmap-extract.mjs --live` — the ONE extractor (board-sinks-and-scrumban D15), with git and GitHub facts
  * gathered now, so the pushed stages are the ones the event that triggered this run produced. Dies loudly on empty
- * output (LEARNINGS: treat empty as failure).
+ * output (LEARNINGS: treat empty as failure). `docsOnly` asks for the docs-only stages instead (a first-day repo with
+ * no remote, or `roadmap-push --docs-only`): no git/GitHub facts are gathered, so there is nothing to require.
  */
-export function readExtract(run = spawnSync) {
+export function readExtract(run = spawnSync, { docsOnly = false } = {}) {
   // --require-live: a failed git/GitHub gather turns the run red rather than publishing a docs-only board.
-  const r = run('node', [resolve(__dirname, 'roadmap-extract.mjs'), '--live', '--require-live'], {
+  const flags = docsOnly ? ['--docs-only'] : ['--live', '--require-live'];
+  const r = run('node', [resolve(__dirname, 'roadmap-extract.mjs'), ...flags], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
   if (r.status !== 0) {
-    throw new Error(`roadmap-extract.mjs --live failed: ${(r.stderr || '').trim().split('\n').pop()}`);
+    throw new Error(`roadmap-extract.mjs ${flags.join(' ')} failed (exit ${r.status}):\n${boundedStderr(r.stderr)}`);
   }
   const out = (r.stdout || '').trim();
-  if (!out) throw new Error('roadmap-extract.mjs --live produced no output — treating empty as failure.');
+  if (!out) throw new Error(`roadmap-extract.mjs ${flags.join(' ')} produced no output — treating empty as failure.`);
   const items = JSON.parse(out);
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('extract returned no rows — refusing to push an empty roadmap.');
   }
   return items;
+}
+
+/**
+ * Which stages to push: `--docs-only` asks for them; a checkout with no `origin` has no live facts to gather, so it gets
+ * the docs-only board and ONE line saying why. A repo WITH an origin whose gather fails still fails (--require-live).
+ */
+export function readExtractFor(
+  args,
+  { root = REPO_ROOT, run = spawnSync, gitFn = git, say = (l) => process.stderr.write(l) } = {}
+) {
+  let docsOnly = args.includes('--docs-only');
+  if (!docsOnly && !hasOrigin(root, gitFn)) {
+    docsOnly = true;
+    say('pushed docs-only stages because there is no remote (origin).\n');
+  }
+  return readExtract(run, { docsOnly });
 }
 
 /** The project's ingest key: `SELF_PROJECT_API_KEY` first, else the SDK's `GROWTH_ENGINE_API_KEY`. */
@@ -232,7 +267,7 @@ async function main() {
     'http://localhost:3000';
   // A key in the file wins over the shell's, so the key and the URL come from the same place (verifier, #338).
   const apiKey = apiKeyFrom(fromFile) ?? apiKeyFrom(process.env);
-  const items = readExtract();
+  const items = readExtractFor(args);
   if (args.includes('--dry-run')) {
     writeSync(1, `${JSON.stringify(envelopeFor(items), null, 2)}\n`);
     return;

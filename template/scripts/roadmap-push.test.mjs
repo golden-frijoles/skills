@@ -250,3 +250,64 @@ test('readEnvFile reads only the push variables, last assignment wins, quotes an
   assert.equal(env.GROWTH_ENGINE_API_KEY, 'gk_from_file', 'an empty later line does not erase the key');
   assert.equal(env.SELF_PROJECT_API_KEY, '$(touch /tmp/should-not-run)', 'kept as text, never run');
 });
+
+// many-products S2.5 — roadmap-push works in a first-day repo.
+import { boundedStderr, hasOrigin, readExtractFor } from './roadmap-push.mjs';
+
+const okRun = (calls) => (cmd, argv) => {
+  calls.push(argv);
+  return { status: 0, stdout: JSON.stringify(rows), stderr: '' };
+};
+
+test('a failed extract surfaces the WHOLE bounded stderr, not just its last line', () => {
+  const stderr = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n') + '\nroadmap-extract: gh auth required';
+  assert.throws(
+    () => readExtract(() => ({ status: 3, stdout: '', stderr })),
+    (err) =>
+      /roadmap-extract: gh auth required/.test(err.message) &&
+      /line 15/.test(err.message) && // more than the last line
+      !/line 5\n/.test(err.message) // but bounded to ~20 lines
+  );
+  assert.ok(boundedStderr('x'.repeat(10_000)).length <= 4097);
+});
+
+test('--docs-only runs the extract without --live/--require-live and pushes', () => {
+  const calls = [];
+  const said = [];
+  const got = readExtractFor(['--docs-only'], {
+    run: okRun(calls),
+    gitFn: () => 'git@github.com:o/r.git',
+    say: (l) => said.push(l),
+  });
+  assert.deepEqual(got, rows);
+  assert.ok(calls[0].includes('--docs-only'));
+  assert.ok(!calls[0].includes('--require-live') && !calls[0].includes('--live'));
+  assert.equal(said.length, 0, 'asked for explicitly: no explanation line');
+});
+
+test('no origin remote → docs-only stages and exactly ONE line saying why', () => {
+  const calls = [];
+  const said = [];
+  readExtractFor([], { run: okRun(calls), gitFn: () => null, say: (l) => said.push(l) });
+  assert.ok(calls[0].includes('--docs-only') && !calls[0].includes('--require-live'));
+  assert.equal(said.length, 1);
+  assert.match(said[0], /docs-only stages because there is no remote/);
+  assert.equal(hasOrigin('/x', () => null), false);
+});
+
+test('an origin whose live gather fails still FAILS, naming the cause', () => {
+  const calls = [];
+  const run = (cmd, argv) => {
+    calls.push(argv);
+    return {
+      status: 3,
+      stdout: '',
+      stderr: 'roadmap-extract: gh: not authenticated\nroadmap-extract: live facts could not be gathered',
+    };
+  };
+  assert.throws(
+    () => readExtractFor([], { run, gitFn: () => 'git@github.com:o/r.git', say: () => {} }),
+    /gh: not authenticated/
+  );
+  assert.ok(calls[0].includes('--require-live'), 'the live path keeps --require-live');
+});
