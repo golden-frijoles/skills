@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-10-14
+
+### Changed
+- The setup skill pins CLI 1.7.0: `frijoles horizon` reads a product's destinations headless (also the `get_horizon`
+  MCP tool), and `frijoles login` says where the active product came from (agent-legible-horizon).
+
 ## [1.9.2] - 2026-10-14
 
 ### Fixed
