@@ -417,14 +417,22 @@ test('source.repo names the ANALYSED checkout, never a hardcoded dataset', () =>
 // ── outcome-report-any-product D1/D2 — dates and rework from each README's REAL status history ──────────────────
 // Real throwaway git repos, so the git half (`git log` + one `git cat-file --batch`) is exercised, not mocked.
 
+/**
+ * The environment with every GIT_* variable removed (the `sealedEnv()` pattern, git-fixtures-sealed.test.mjs): from a
+ * linked worktree's hook, git exports GIT_DIR pointing at the REAL repository, and it beats `cwd`.
+ */
+function sealedEnv(extra = {}) {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+  return { ...env, ...extra };
+}
+// readEpics (the code under test) spawns git with the PROCESS environment, so it is sealed here too.
+for (const key of Object.keys(process.env)) if (key.startsWith('GIT_')) delete process.env[key];
+
 function scratchRepo() {
   const dir = mkdtempSync(join(tmpdir(), 'pod-history-'));
   const git = (...args) => {
-    const r = run('git', args, {
-      cwd: dir,
-      encoding: 'utf8',
-      env: { ...process.env, GIT_DIR: undefined, GIT_WORK_TREE: undefined },
-    });
+    const r = run('git', args, { cwd: dir, encoding: 'utf8', env: sealedEnv() });
     if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
   };
   git('init', '-q');
@@ -436,7 +444,7 @@ function scratchRepo() {
     git('add', path);
     run('git', ['commit', '-q', '-m', subject], {
       cwd: dir,
-      env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+      env: sealedEnv({ GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }),
     });
   };
   return { dir, commit };

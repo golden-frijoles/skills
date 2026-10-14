@@ -7,6 +7,18 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.9.4] - 2026-10-14
+
+### Added
+- `pod-report` ships in the kit: `npx -y @golden-frijoles/kit pod-report --push`, run in any product's repo, computes its
+  outcome report and pushes it with the key from `.env.local` (`GROWTH_ENGINE_API_KEY`), to https://goldenfrijoles.com by
+  default. The report carries each epic's status history and a rework count (epics re-opened after shipping).
+
+### Fixed
+- Lead time and throughput read each epic's real `status:` history. The old text search matched the epic template's own
+  "`status: shipped`" line at the README's creation, filing most epics as documented after the fact, and counted some
+  never-shipped epics as shipped. The report says so in its caveats (outcome-report-any-product).
+
 ## [1.9.3] - 2026-10-14
 
 ### Changed
