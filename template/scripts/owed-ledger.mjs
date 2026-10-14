@@ -123,7 +123,7 @@ export function kindOf({ text }) {
     return 'credential';
   }
   if (/\bnotion\b|\bfolder move\b|\.git\b|\broutine key\b|\bprovision(?:ing)?\b|\baccount step\b|\baccount copies\b|\bthe folder\b/.test(t)) return 'ops';
-  if (/(?:^|[^a-z])intent(?![a-z])|\bwhat was meant\b|\bapprov(?:e|al|als)\b|\bre-approv|\bdecide\b|\bdecision\b|\bpromote\b|\bjudg(?:e|ment)\b/.test(t)) {
+  if (/(?:^|[^a-z])intent(?![a-z])|\bwhat was meant\b|\bapprov(?:e|al|als)\b|\bre-approv|\bdecide\b|\bdecision\b|\bpromote\b|\bjudg(?:e|e?ment)\b/.test(t)) {
     return 'judgment';
   }
   if (/\bsigned[- ]in\b|\bsign in\b|\bbrowser smoke\b|\bon production\b|\bauthed\b|\bconsole\b|https?:\/\/\S*\/app\b/.test(t)) return 'signed-in';
@@ -207,10 +207,18 @@ export function listSpecFiles(dir, deps = {}) {
  * yet (the retro summarises its sprints' owed steps; see the header). Same throw-don't-under-report walk.
  */
 export function listDocFiles(dir, deps = {}) {
+  const { readFile = (f) => readFileSync(f, 'utf8') } = deps;
   const files = listSpecFiles(dir, { ...deps, match: isEpicDoc });
-  const withRetro = new Set(files.filter((f) => /RETROSPECTIVE\.md$/.test(f)).map((f) => dirname(f)));
-  return files.filter((f) => /RETROSPECTIVE\.md$/.test(f) || !withRetro.has(dirname(f)));
+  // The scaffolder writes RETROSPECTIVE.md on day one, so a retro only summarises its sprints once it is CLOSED
+  // (`_Closed: <a real date>_`). Until then the sprint docs are where the owed steps live, and they count.
+  const closed = new Set(
+    files.filter((f) => /RETROSPECTIVE\.md$/.test(f) && isClosedRetro(readFile(f))).map((f) => dirname(f))
+  );
+  return files.filter((f) => /RETROSPECTIVE\.md$/.test(f) || !closed.has(dirname(f)));
 }
+
+/** A retro is closed when its `_Closed:` line holds a date, not the template's `<date>`. */
+export const isClosedRetro = (contents) => /^_Closed: \d{4}-\d{2}-\d{2}/m.test(String(contents ?? ''));
 
 /** An item's text in the report is capped: the ledger is a list to act on, the source keeps the whole note. */
 const MAX_TEXT = 280;
@@ -238,7 +246,12 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
   const wrapped = (i) => {
     let whole = lines[i];
     let j = i + 1;
-    if (isMd) for (; j < lines.length && !/^\s*$|^\s*(?:#|[-*+]\s|\d+\.\s|<!--)/.test(lines[j]); j++) whole += ` ${lines[j].trim()}`;
+    if (isMd) {
+      for (; j < lines.length && !/^\s*$|^\s*(?:#|[-*+]\s|\d+\.\s|<!--|```|~~~)/.test(lines[j]); j++) {
+        whole += ` ${lines[j].trim()}`;
+        taken.add(j);
+      }
+    }
     return whole;
   };
   const push = (i, whole) => {
@@ -249,8 +262,16 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
     found.push({ file, line: i + 1, text: prose, ...(isCleared(prose) ? { cleared: true } : {}) });
   };
   let inHtmlComment = false;
+  let inFence = false;
+  const taken = new Set(); // a line already counted (as a child, or inside a wrapped item) is never counted again
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
+    // A marker inside a code fence is an example, not an owed check.
+    if (isMd && /^\s*(?:```|~~~)/.test(raw)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence || taken.has(i)) continue;
     // A template's `<!-- … owed to the product owner … -->` placeholder is guidance, not an owed check.
     const opens = raw.includes('<!--');
     const commented = inHtmlComment || opens;
@@ -259,7 +280,7 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
     if (commented || !marker.test(raw)) continue;
     const whole = wrapped(i);
     // "None owed to …", or a spec that replaces a smoke that "would otherwise be owed": a mention, not a debt.
-    if (/\b(?:none|nothing)\b[^.]*\bowed\b|\botherwise\s+be\s+owed\b|\breplaces\b[^.]*\bowed\b/i.test(whole)) continue;
+    if (/\b(?:none|nothing)\b[^.]*\bowed\b|\bowed\b[^.]*:\s*(?:\*\*)?\s*(?:none|nothing)\b|\botherwise\s+be\s+owed\b|\breplaces\b[^.]*\bowed\b/i.test(whole)) continue;
     // A heading-shaped marker ("**Owed to the product owner:**") owns the list under it: each item is its own
     // check, so one can be cleared without the rest, and the header itself is not counted.
     if (isMd && /:\s*(?:\*\*|_)?\s*$/.test(whole)) {
@@ -271,10 +292,17 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
       for (; j < lines.length; j++) {
         const m = lines[j].match(ITEM);
         if (m && (!isList || m[1].length > own)) children.push(j);
-        else if (m || /^\s*$|^\s*#/.test(lines[j]) || !/^\s/.test(lines[j])) break;
+        else if (/^\s*$/.test(lines[j])) {
+          // A loose list: a blank line between items. It goes on only if the next line is another child.
+          const next = lines[j + 1]?.match(ITEM);
+          if (!children.length || !next || (isList && next[1].length <= own)) break;
+        } else if (m || /^\s*#/.test(lines[j]) || !/^\s/.test(lines[j])) break;
       }
       if (children.length) {
-        for (const c of children) push(c, wrapped(c));
+        for (const c of children) {
+          taken.add(c);
+          push(c, wrapped(c));
+        }
         continue;
       }
     }

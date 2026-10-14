@@ -231,7 +231,16 @@ test('listDocFiles: retros always count; a sprint doc only while its epic has no
   };
   const read = (d) => tree[d] ?? [];
   const stat = (p) => ({ isDirectory: () => p in tree });
-  assert.deepEqual(listDocFiles('/R', { read, stat }), ['/R/done/RETROSPECTIVE.md', '/R/open/sprint-1.md', '/R/open/sprint-2.md']);
+  const readFile = () => '_Closed: 2026-10-13_\n';
+  assert.deepEqual(listDocFiles('/R', { read, stat, readFile }), ['/R/done/RETROSPECTIVE.md', '/R/open/sprint-1.md', '/R/open/sprint-2.md']);
+  // The scaffolder writes the retro on day one: an unfilled one does not hide its sprints.
+  const unfilled = () => '_Closed: <date>_\n';
+  assert.deepEqual(listDocFiles('/R', { read, stat, readFile: unfilled }), [
+    '/R/done/RETROSPECTIVE.md',
+    '/R/done/sprint-1.md',
+    '/R/open/sprint-1.md',
+    '/R/open/sprint-2.md',
+  ]);
 });
 
 // ── Cross-review findings on PR #357 ─────────────────────────────────────────────────────────────
@@ -262,4 +271,34 @@ test('a strike past the rendered cap still decides the kind: the whole text is c
   assert.equal(ledger.byKind.publish, 0);
   const md = renderMarkdown(ledger, '2026-10-14');
   assert.ok(md.split('\n').every((l) => l.length < 400), 'the rendered item is capped');
+});
+
+// ── Verifier findings on PR #357 ─────────────────────────────────────────────────────────────────
+
+test('extractMarkers: a loose list under a heading marker keeps every item', () => {
+  const md = ['**Owed to the product owner:**', '', '- one', '', '- two', '', '- three', '', 'Next paragraph.'].join('\n');
+  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.text), ['one', 'two', 'three']);
+});
+
+test('extractMarkers: a line is counted once, however many markers reach it', () => {
+  const md = [
+    '- **Owed to the product owner:**',
+    '  - owed to the product owner: a child that names the owner too',
+    '- owed to the product owner: an item whose continuation',
+    '  is also owed to the product owner',
+  ].join('\n');
+  assert.equal(extractMarkers(md, 'R/RETROSPECTIVE.md').length, 2);
+});
+
+test('extractMarkers: a marker inside a code fence is an example, not a check', () => {
+  const md = ['```', '- owed to the product owner: example', '```', '- owed to the product owner: real'].join('\n');
+  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line), [4]);
+});
+
+test('extractMarkers: "owed to the product owner: nothing" is not a check', () => {
+  assert.equal(extractMarkers('- **owed to the product owner:** nothing', 'R/sprint-1.md').length, 0);
+});
+
+test('kindOf: the British spelling is a judgment too', () => {
+  assert.equal(kindOf({ text: 'the one judgement no spec makes' }), 'judgment');
 });
