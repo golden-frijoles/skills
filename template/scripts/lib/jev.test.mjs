@@ -278,13 +278,14 @@ test('readApiKey: a linked worktree falls back to the main checkout, last', () =
   assert.equal(readApiKey({ env: {}, root: main, cwd: main, mainRoot: () => null }), 'main');
 });
 
+// Sealed: a hook exports GIT_DIR, and a fixture that inherits it rewrites the real repo (git-fixtures-sealed.test.mjs).
+const sealedEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+
 test('mainCheckoutRoot: null outside a repo, the main checkout from a linked worktree', () => {
   assert.equal(mainCheckoutRoot(mkdtempSync(join(tmpdir(), 'jev-norepo-'))), null);
   const base = mkdtempSync(join(tmpdir(), 'jev-git-'));
   const repo = join(base, 'main');
-  // Sealed: a hook exports GIT_DIR, and a fixture that inherits it rewrites the real repo (LEARNINGS, worktree hooks).
-  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
-  const git = (...a) => execFileSync('git', a, { cwd: repo, stdio: 'ignore', env });
+  const git = (...a) => execFileSync('git', a, { cwd: repo, stdio: 'ignore', env: sealedEnv() });
   mkdirSync(repo);
   git('init', '-q');
   git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'x');

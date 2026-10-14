@@ -185,9 +185,12 @@ export function envFileValue(text, key) {
  */
 export function mainCheckoutRoot(root) {
   try {
+    // GIT_DIR (exported into hooks) would override `-C root`: ask about `root`, not whatever the hook points at.
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
     const common = execFileSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      env,
     }).trim();
     return basename(common) === '.git' ? dirname(common) : null;
   } catch {
