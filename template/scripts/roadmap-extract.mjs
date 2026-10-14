@@ -80,6 +80,7 @@ import {
 } from './lib/roadmap-contract.mjs';
 import { isDay, isLate, readDateOf } from './lib/result-dates.mjs';
 import { pushRoadmap, reportPush } from './roadmap-push.mjs';
+import { destinationIds, HORIZON_FILE, readHorizon, unknownDestinations } from './lib/horizon.mjs';
 
 const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
 
@@ -183,7 +184,8 @@ export function flagFields(fm, readme) {
  * contract names a bad one). Defaults are the reader's (an absent window is 7 days), never written here.
  */
 export function betFields(fm) {
-  const token = (v) => (typeof v === 'string' && /^[A-Za-z0-9_.:$-]{1,200}$/.test(v.trim()) ? v.trim() : null);
+  const token = (v) =>
+    typeof v === 'string' && /^[A-Za-z0-9_.:$-]{1,200}$/.test(v.trim()) ? v.trim() : null;
   const days = Number(fm.retention_days);
   return {
     target_segment: fm.target_segment === 'everyone' ? 'everyone' : null,
@@ -570,6 +572,8 @@ export function buildRows({
 
   const rows = [];
   const epicDirs = listEpicDirs(ROADMAP);
+  // many-products D14 — the product's declared destinations; an epic may only name one of them.
+  const horizon = readHorizon(root);
 
   // Which initiative each branch and PR belongs to (D13): epic slugs and funnel-seed slugs are the names a branch can
   // carry; a seed that carries `epic:` names that epic.
@@ -627,6 +631,13 @@ export function buildRows({
     }
 
     const readme = readFileSync(join(e.path, 'README.md'), 'utf8');
+    const destinations = destinationIds(epicFm.destination);
+    const unknown = unknownDestinations(destinations, horizon);
+    if (unknown.length)
+      throw new Error(
+        `Roadmap/${epicKey}/README.md: epic "${e.slug}" names destination ${unknown.map((u) => `"${u}"`).join(', ')} ` +
+          `that ${HORIZON_FILE} does not declare${horizon ? ` (declared: ${horizon.map((d) => d.id).join(', ')})` : ' (no horizon file)'}`
+      );
     // Epic row
     rows.push({
       name: epicTitle(e.path, e.slug),
@@ -665,6 +676,8 @@ export function buildRows({
       ...flagFields(epicFm, readme),
       ...groundedFields(epicFm),
       ...betFields(epicFm),
+      // many-products D14 — absent, not empty, for an epic that lights nothing (older repos' rows stay byte-identical).
+      ...(destinations.length ? { destinations } : {}),
     });
 
     // Sprint rows (one per sprint-N.md), related to the Epic by slug. boardSprints already carries

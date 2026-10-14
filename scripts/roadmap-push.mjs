@@ -25,6 +25,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getKey } from './lib/config.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { readHorizon } from './lib/horizon.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // The PROJECT, not this file's parent: installed from the kit, this file lives in node_modules (golden-frijoles-plugin D2).
@@ -47,7 +48,7 @@ function git(args, root = REPO_ROOT) {
  * touching the network — the envelope is the thing the server validates, so it is the thing worth
  * testing.
  */
-export function buildEnvelope(items, { commit, ref, generatedAt, board = null } = {}) {
+export function buildEnvelope(items, { commit, ref, generatedAt, board = null, horizon = null } = {}) {
   return {
     schemaVersion: ROADMAP_SCHEMA_VERSION,
     generatedAt: generatedAt ?? new Date().toISOString(),
@@ -61,6 +62,8 @@ export function buildEnvelope(items, { commit, ref, generatedAt, board = null } 
     // board-sinks-and-scrumban D21 — optional and additive; absent rather than null when there is nothing in it,
     // so the server's unchanged-board check (D16) never sees a difference that carries no information.
     ...(board ? { board } : {}),
+    // many-products D14 — the product's declared destinations; absent when it has none, for the same reason as `board`.
+    ...(Array.isArray(horizon) && horizon.length ? { horizon } : {}),
   };
 }
 
@@ -123,10 +126,13 @@ export function readExtract(run = spawnSync, { docsOnly = false } = {}) {
     maxBuffer: 64 * 1024 * 1024,
   });
   if (r.status !== 0) {
-    throw new Error(`roadmap-extract.mjs ${flags.join(' ')} failed (exit ${r.status}):\n${boundedStderr(r.stderr)}`);
+    throw new Error(
+      `roadmap-extract.mjs ${flags.join(' ')} failed (exit ${r.status}):\n${boundedStderr(r.stderr)}`
+    );
   }
   const out = (r.stdout || '').trim();
-  if (!out) throw new Error(`roadmap-extract.mjs ${flags.join(' ')} produced no output — treating empty as failure.`);
+  if (!out)
+    throw new Error(`roadmap-extract.mjs ${flags.join(' ')} produced no output — treating empty as failure.`);
   const items = JSON.parse(out);
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('extract returned no rows — refusing to push an empty roadmap.');
@@ -170,6 +176,7 @@ export function envelopeFor(items, root = REPO_ROOT) {
       wip: getKey('board.wip', { root }),
       repo: repoBlobBase(git(['remote', 'get-url', 'origin'], root), defaultBranch),
     }),
+    horizon: readHorizon(root),
   });
 }
 
