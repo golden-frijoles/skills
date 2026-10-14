@@ -173,7 +173,7 @@ variables it just wrote. The whole kill-switch story is then three commands:
 
 ```
 frijoles flags create <domain>.<feature>_enabled --kill-switch --all-envs
-frijoles flags get <domain>.<feature>_enabled    # ← the ACTIVATION check: PRODUCTION must not read "—"
+frijoles flags get <domain>.<feature>_enabled    # ← the switch check: PRODUCTION must read "on vN" or "off vN"
 frijoles flags kill <domain>.<feature>_enabled --env production
 ```
 
