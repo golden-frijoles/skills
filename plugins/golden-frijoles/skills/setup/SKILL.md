@@ -186,7 +186,8 @@ again; say which answer you found ("You told `frijoles setup`: this repo") and t
 > Everything so far works on this machine with no account: planning, the coaches, build and review,
 > all kept in `Roadmap/`.
 > An account adds feature flags you can roll out and turn off, each bet measured on its read date,
-> every product in one place, and an outcome report you can send.
+> every product in one place, and an outcome report you can send (`npx -y @golden-frijoles/kit pod-report --push`,
+> run in the product's repo with its ingest key in `.env.local`).
 > Signing in opens your browser once; nothing is sent until you confirm there.
 > You can do it now or whenever a bet first needs a flag.
 >
