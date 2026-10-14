@@ -17,6 +17,9 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 - A line ticked (`✅`) or struck (`~~…~~`) where it was written is **cleared**: out of the count, and reported as
   cleared. Template placeholders inside HTML comments and "none owed" lines are not counted.
 
+### Changed
+- The cross-review rail pins agy 1.3.5, after a green doctor probe (help contract and both models).
+
 ## [1.7.3] - 2026-10-13
 
 ### Changed
