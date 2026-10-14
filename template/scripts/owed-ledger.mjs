@@ -179,7 +179,10 @@ export function listSpecFiles(dir, deps = {}) {
       let s;
       try {
         s = stat(p);
-      } catch {
+      } catch (e) {
+        // A name that vanished between the listing and the stat (or a dangling link) holds nothing to count; any
+        // other failure is a file we could not look at, and the count must not read as complete.
+        if (e?.code !== 'ENOENT') unreadable.push(`${p}: ${e?.code || e?.message}`);
         continue;
       }
       if (s.isDirectory()) walk(p);
@@ -241,8 +244,9 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
   const push = (i, whole) => {
     // Strip comment and list punctuation so the text reads as prose in the report.
     const prose = whole.replace(/^\s*(?:\/\/|\/\*+|\*+\/?|#+|[-*+]\s|\d+\.\s)\s*/, '').trim();
-    const text = prose.length > MAX_TEXT ? `${prose.slice(0, MAX_TEXT - 1).trimEnd()}…` : prose;
-    found.push({ file, line: i + 1, text, ...(isCleared(prose) ? { cleared: true } : {}) });
+    // The whole text is kept: the kind and category read all of it (a strike near the end included); only the
+    // rendered list is capped.
+    found.push({ file, line: i + 1, text: prose, ...(isCleared(prose) ? { cleared: true } : {}) });
   };
   let inHtmlComment = false;
   for (let i = 0; i < lines.length; i++) {
@@ -335,7 +339,10 @@ export function renderMarkdown(ledger, generatedAt) {
     if (!items.length) continue;
     l.push(`## ${k} (${items.length})`);
     l.push('');
-    for (const it of items) l.push(`- \`${it.file}:${it.line}\` · ${it.category} — ${it.text}`);
+    for (const it of items) {
+      const text = it.text.length > MAX_TEXT ? `${it.text.slice(0, MAX_TEXT - 1).trimEnd()}…` : it.text;
+      l.push(`- \`${it.file}:${it.line}\` · ${it.category} — ${text}`);
+    }
     l.push('');
   }
   return `${l.join('\n')}\n`;
@@ -399,6 +406,7 @@ function main() {
       prev &&
       prevMd !== null &&
       prev.total === ledger.total &&
+      prev.cleared === ledger.cleared &&
       prev.files === ledger.files &&
       JSON.stringify(prev.byCategory) === JSON.stringify(ledger.byCategory) &&
       JSON.stringify(prev.byKind) === JSON.stringify(ledger.byKind) &&

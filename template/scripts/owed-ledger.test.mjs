@@ -233,3 +233,33 @@ test('listDocFiles: retros always count; a sprint doc only while its epic has no
   const stat = (p) => ({ isDirectory: () => p in tree });
   assert.deepEqual(listDocFiles('/R', { read, stat }), ['/R/done/RETROSPECTIVE.md', '/R/open/sprint-1.md', '/R/open/sprint-2.md']);
 });
+
+// ── Cross-review findings on PR #357 ─────────────────────────────────────────────────────────────
+
+test('listSpecFiles: an entry that cannot be stat-ed THROWS; one that vanished is skipped', () => {
+  const read = (d) => (d === '/r' ? ['a.spec.ts', 'gone.spec.ts', 'locked'] : []);
+  const stat = (p) => {
+    if (p.endsWith('gone.spec.ts')) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    if (p.endsWith('locked')) throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    return { isDirectory: () => false };
+  };
+  assert.throws(() => listSpecFiles('/r', { read, stat }), /locked: EACCES/);
+  const ok = (p) => {
+    if (p.endsWith('gone.spec.ts')) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    return { isDirectory: () => p.endsWith('locked') };
+  };
+  assert.deepEqual(listSpecFiles('/r', { read, stat: ok }), ['/r/a.spec.ts']);
+});
+
+test('a strike past the rendered cap still decides the kind: the whole text is classified', () => {
+  const long = 'x'.repeat(300);
+  const found = extractMarkers(
+    `- **Owed to the product owner:** the signed-in walkthrough ${long} ~~\`npm publish\` (2FA)~~`,
+    'Roadmap/x/RETROSPECTIVE.md'
+  );
+  const ledger = buildLedger(found);
+  assert.equal(ledger.byKind['signed-in'], 1);
+  assert.equal(ledger.byKind.publish, 0);
+  const md = renderMarkdown(ledger, '2026-10-14');
+  assert.ok(md.split('\n').every((l) => l.length < 400), 'the rendered item is capped');
+});
