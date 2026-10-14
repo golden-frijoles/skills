@@ -62,7 +62,7 @@ export const NOT_INSTRUMENTED = [
 
 /** Percentile over an unsorted numeric array. Nearest-rank — no interpolation, so it is exact. */
 export function percentile(values, p) {
-  const sorted = [...values].filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  const sorted = [...(values ?? [])].filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
   if (sorted.length === 0) return null;
   const rank = Math.ceil((p / 100) * sorted.length);
   return sorted[Math.min(Math.max(rank, 1), sorted.length) - 1];
@@ -256,7 +256,9 @@ export function reworkSummary(epics) {
         reshippedAt: epic.reshippedAt ?? null,
         subject: epic.reopenedBy ?? '',
       }))
-      .sort((a, b) => (a.reopenedAt < b.reopenedAt ? -1 : a.reopenedAt > b.reopenedAt ? 1 : 0)),
+      .sort((a, b) =>
+        a.reopenedAt < b.reopenedAt ? -1 : a.reopenedAt > b.reopenedAt ? 1 : a.slug.localeCompare(b.slug)
+      ),
   };
 }
 

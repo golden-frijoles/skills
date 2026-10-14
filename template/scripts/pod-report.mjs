@@ -382,6 +382,20 @@ export function resolvePushConfig(env = process.env) {
   };
 }
 
+/**
+ * The environment the push reads, with its URL and key from ONE source (security lens, vibe, #368): the file's values
+ * only when the file supplies a key; otherwise the shell's — never the file's URL with the shell's key.
+ */
+export function pushEnvFrom(shell, file) {
+  const fileHasKey = Boolean(
+    file.POD_REPORT_API_KEY || file.SELF_PROJECT_API_KEY || file.GROWTH_ENGINE_API_KEY
+  );
+  if (!fileHasKey) return { ...shell };
+  const keyless = { ...shell };
+  for (const name of POD_ENV_NAMES) delete keyless[name];
+  return { ...keyless, ...file };
+}
+
 /** The variables this script reads from a dotenv file — nothing is evaluated, the last assignment wins (like roadmap-push). */
 export const POD_ENV_NAMES = [
   'GROWTH_ENGINE_URL',
@@ -475,18 +489,27 @@ async function main() {
     die(`no checkout at ${repo}. Run it inside the product's repo, or pass --repo <path>.`);
   }
 
-  // The push's key and URL: --env-file, else the repo's own `.env.local` when it has one (where `frijoles init --ingest`
-  // writes them). The file wins over the shell, so the key and the URL come from the same place (as roadmap-push).
+  // The push's key and URL: --env-file, else the repo's own `.env.local` (where `frijoles init --ingest` writes them).
+  //
+  // ⚠️ Security lens (vibe, #368): an auto-loaded file must never pair ITS url with someone else's key. A cloned repo can
+  // commit a `.env.local` that sets only GROWTH_ENGINE_URL; with the file winning over the shell, the person's own key
+  // would be sent to that host. So: a TRACKED `.env.local` (committed by whoever committed it) is never auto-loaded, and
+  // `pushEnvFrom` takes the URL and the key from ONE source — the file only when the file also supplies the key.
   const envPath = envFile ? resolve(envFile) : resolve(repo, '.env.local');
   let fromFile = {};
-  if (envFile || existsSync(envPath)) {
+  const tracked = !envFile && git(repo, ['ls-files', '--error-unmatch', '.env.local']) !== '';
+  if (tracked) {
+    process.stderr.write(
+      '⚠ .env.local is tracked by git here, so it is not read; pass --env-file to use a file on purpose.\n'
+    );
+  } else if (envFile || existsSync(envPath)) {
     try {
       fromFile = readPodEnvFile(readFileSync(envPath, 'utf8'));
     } catch (err) {
       die(`could not read ${envPath}: ${err.message}`);
     }
   }
-  const pushEnv = { ...process.env, ...fromFile };
+  const pushEnv = pushEnvFrom(process.env, fromFile);
 
   const commits = readCommits(repo);
   if (commits.length === 0) die(`no commits found in ${repo} — is it a git checkout?`);

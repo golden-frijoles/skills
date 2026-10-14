@@ -27,6 +27,7 @@ import {
   gatherSourceRef,
   resolvePushConfig,
   readPodEnvFile,
+  pushEnvFrom,
   readEpics,
   buildPushEnvelope,
   POD_REPORT_SCHEMA_VERSION,
@@ -513,5 +514,30 @@ test('a re-opened epic keeps its FIRST ship for lead time, and rework counts it 
       subject: rework.epics[0].subject,
     },
     { reopened: 1, of: 1, median: 2, subject: 'reopen beta: a regression' }
+  );
+});
+
+test("⚠️ a file's URL is never paired with the shell's key (security lens, vibe, #368)", () => {
+  const shell = { GROWTH_ENGINE_API_KEY: 'mine', GROWTH_ENGINE_URL: 'https://goldenfrijoles.com' };
+  // A cloned repo's .env.local that names only a host: ignored — the push stays where the person's key belongs.
+  assert.deepEqual(resolvePushConfig(pushEnvFrom(shell, { GROWTH_ENGINE_URL: 'https://evil.test' })), {
+    baseUrl: 'https://goldenfrijoles.com',
+    apiKey: 'mine',
+  });
+  // A file that supplies its own key brings its own URL — and the shell's key and URL are not mixed in.
+  assert.deepEqual(
+    resolvePushConfig(
+      pushEnvFrom(shell, { GROWTH_ENGINE_URL: 'https://local.test', GROWTH_ENGINE_API_KEY: 'filekey' })
+    ),
+    { baseUrl: 'https://local.test', apiKey: 'filekey' }
+  );
+  assert.deepEqual(
+    resolvePushConfig(
+      pushEnvFrom({ GROWTH_ENGINE_URL: 'https://evil.test' }, { GROWTH_ENGINE_API_KEY: 'filekey' })
+    ),
+    {
+      baseUrl: 'https://goldenfrijoles.com',
+      apiKey: 'filekey',
+    }
   );
 });
