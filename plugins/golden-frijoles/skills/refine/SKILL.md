@@ -10,6 +10,7 @@ description: >
   sprint docs and emits the builder kickoff — epic-mode by default (one orchestrated run
   across the whole epic), per-sprint only as the named exception. Planning only, never code.
 requires_scripts:
+  - lib/horizon.mjs
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs
   - quote.mjs

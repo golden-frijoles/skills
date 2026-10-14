@@ -12,6 +12,7 @@ description: >
   monthly PMO packet", or as a routine's one step.
 # Repo-local scripts this skill wraps — its FULL closure (scripts/check-skill-scripts.mjs walks it).
 requires_scripts:
+  - lib/horizon.mjs
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs
   - standup.mjs

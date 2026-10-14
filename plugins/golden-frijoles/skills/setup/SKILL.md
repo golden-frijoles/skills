@@ -10,6 +10,7 @@ description: >
   channel lacks (no build-view hook, no verifier agent) instead of pretending it has parity with
   the Claude Code plugin channel.
 requires_scripts:
+  - lib/horizon.mjs
   - init.mjs
   - lib/project-root.mjs
   - config.mjs
