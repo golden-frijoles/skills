@@ -12,6 +12,11 @@ description: >
   monthly PMO packet", or as a routine's one step.
 # Repo-local scripts this skill wraps — its FULL closure (scripts/check-skill-scripts.mjs walks it).
 requires_scripts:
+  # outcome-report-any-product D4: the outcome report from any product's repo (`npx -y @golden-frijoles/kit pod-report --push`).
+  - pod-report.mjs
+  - lib/pod-metrics.mjs
+  - lib/maturity-lens.mjs
+  - lib/project-root.mjs
   - lib/horizon.mjs
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs
