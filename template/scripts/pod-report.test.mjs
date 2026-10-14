@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync as writeFile } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync as writeFile } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync as run } from 'node:child_process';
 import { reworkSummary } from './lib/pod-metrics.mjs';
@@ -168,7 +168,7 @@ test('an UNMERGED pr has no merged-by verdict', () => {
 // ── Regressions from cross-review round 3 ───────────────────────────────────────────────────
 
 test('a classic commit STATUS counts as success, not just a check-run conclusion', () => {
-  // GitHub check-RUNS carry `conclusion`; classic commit STATUSES carry `state`. medusa-bonsai uses
+  // GitHub check-RUNS carry `conclusion`; classic commit STATUSES carry `state`. the first measured product uses
   // check-runs exclusively (94 of 94), so this dataset never exercises the second shape — but this
   // tool runs against CUSTOMER repos, and one posting statuses from an external CI would have had
   // every PR silently reported as failing its gate.
@@ -223,7 +223,7 @@ test('the ADAPTER honours a classic commit status, not just the helper in isolat
 test('readCommits populates isRevert, and matches the SUBJECT not the body', () => {
   // `scoreTrustedSelfVerificationLoop` filters on `c.isRevert`; leaving it undefined made
   // revertCount 0 for EVERY repository — a 0% revert rate that means "never computed". It happened
-  // to match this dataset (medusa-bonsai genuinely has no reverts), which is exactly how it went
+  // to match this dataset (the first measured product genuinely has no reverts), which is exactly how it went
   // unnoticed for six rounds: accidentally right here, wrong everywhere else.
   const SEP = '\x1e';
   const US = '\x1f';
@@ -282,7 +282,7 @@ test('the adapter collects names from BOTH check shapes', () => {
 // The bug this closes: the old `--push` printed a warning and exited 0 whether or not anything was
 // actually stored. These pure helpers are what main() calls to decide WHERE to push, WITH what
 // credential, and WHAT to send — each is worth pinning on its own, without a network or a real
-// medusa-bonsai checkout.
+// the first measured product checkout.
 
 test('gatherSourceRef reads the ANALYSED repo, not this one, via an injectable git runner', () => {
   const calls = [];
@@ -292,10 +292,10 @@ test('gatherSourceRef reads the ANALYSED repo, not this one, via an injectable g
     if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref') return 'main';
     return '';
   };
-  const ref = gatherSourceRef('/some/medusa-bonsai', run);
+  const ref = gatherSourceRef('/some/client-shop', run);
   assert.deepEqual(ref, { commit: 'deadbeef1234', ref: 'main' });
   assert.ok(
-    calls.every(([repo]) => repo === '/some/medusa-bonsai'),
+    calls.every(([repo]) => repo === '/some/client-shop'),
     'every git call must target the analysed repo, never this checkout'
   );
 });
@@ -353,7 +353,7 @@ test('resolvePushConfig reads GROWTH_ENGINE_URL when set', () => {
 test('buildPushEnvelope adds git provenance WITHOUT displacing the dataset counts', () => {
   const artifact = buildArtifact({
     delivery: { cycleTimeDays: 1 },
-    source: { repo: 'medusa-bonsai', commits: 841, epics: 133, mergedPrs: 98, windowDays: 400 },
+    source: { repo: 'client-shop', commits: 841, epics: 133, mergedPrs: 98, windowDays: 400 },
     generatedAt: '2026-07-25T00:00:00.000Z',
   });
   const envelope = buildPushEnvelope(artifact, { commit: 'abc1234', ref: 'main' });
@@ -382,34 +382,46 @@ test('buildPushEnvelope emits explicit nulls, never undefined, for a missing com
   assert.ok('ref' in round.pushSource, 'ref must survive serialisation as an explicit null');
 });
 
-test('the script and the server agree on POD_REPORT_SCHEMA_VERSION', () => {
-  // Duplicated on purpose (this zero-dependency .mjs cannot import the TypeScript module behind
-  // Next's `@/` alias) — the same convention roadmap-push.test.mjs pins for ROADMAP_SCHEMA_VERSION.
-  const ts = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'web', 'lib', 'pod-report-schema.ts'),
-    'utf8'
-  );
-  const m = ts.match(/export const POD_REPORT_SCHEMA_VERSION = (\d+)/);
-  assert.ok(m, 'could not find POD_REPORT_SCHEMA_VERSION in the schema module — did it move?');
-  assert.equal(
-    Number(m[1]),
-    POD_REPORT_SCHEMA_VERSION,
-    'scripts/pod-report.mjs and lib/pod-report-schema.ts disagree on the schema version'
-  );
-});
+// The engine's schema module lives in the product repo, not in the kit's mirror: the pin runs where the file is, and
+// says why it skips elsewhere (the roadmap-push.test.mjs precedent).
+const POD_SCHEMA = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'apps',
+  'web',
+  'lib',
+  'pod-report-schema.ts'
+);
+
+test(
+  'the script and the server agree on POD_REPORT_SCHEMA_VERSION',
+  { skip: !existsSync(POD_SCHEMA) && 'the engine source is not in this checkout' },
+  () => {
+    // Duplicated on purpose (this zero-dependency .mjs cannot import the TypeScript module behind
+    // Next's `@/` alias) — the same convention roadmap-push.test.mjs pins for ROADMAP_SCHEMA_VERSION.
+    const ts = readFileSync(POD_SCHEMA, 'utf8');
+    const m = ts.match(/export const POD_REPORT_SCHEMA_VERSION = (\d+)/);
+    assert.ok(m, 'could not find POD_REPORT_SCHEMA_VERSION in the schema module — did it move?');
+    assert.equal(
+      Number(m[1]),
+      POD_REPORT_SCHEMA_VERSION,
+      'scripts/pod-report.mjs and lib/pod-report-schema.ts disagree on the schema version'
+    );
+  }
+);
 
 test('source.repo names the ANALYSED checkout, never a hardcoded dataset', () => {
-  // This was the literal string 'medusa-bonsai', so pointing --repo anywhere else produced an
-  // artifact claiming to measure medusa-bonsai — a false provenance line on a document whose whole
+  // This was the literal string 'the first measured product', so pointing --repo anywhere else produced an
+  // artifact claiming to measure the first measured product — a false provenance line on a document whose whole
   // value is traceability. Invisible with one dataset; found the first time a second repo was
   // measured. The basename is also REPO_PR_BASE's key in the renderer, so a wrong name silently
   // downgrades every `pr` evidence pointer to plain text instead of linking it.
   assert.equal(basename('/Users/someone/dobby/golden-beans'), 'golden-beans');
-  assert.equal(basename('/Users/someone/dobby/medusa-bonsai'), 'medusa-bonsai');
+  assert.equal(basename('/Users/someone/dobby/client-shop'), 'client-shop');
   // And the constant is gone from the source — the assertion that would actually have caught it.
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'pod-report.mjs'), 'utf8');
   assert.equal(
-    /repo:\s*'medusa-bonsai'/.test(src),
+    /repo:\s*'[^']+'/.test(src),
     false,
     'source.repo must be derived from the checkout, not hardcoded'
   );
@@ -443,10 +455,11 @@ function scratchRepo() {
     mkdirSync(join(dir, path, '..'), { recursive: true });
     writeFile(join(dir, path), text);
     git('add', path);
-    run('git', ['commit', '-q', '-m', subject], {
+    const r = run('git', ['commit', '-q', '-m', subject], {
       cwd: dir,
       env: sealedEnv({ GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }),
     });
+    if (r.status !== 0) throw new Error(`git commit ${subject}: ${r.stderr}`);
   };
   return { dir, commit };
 }

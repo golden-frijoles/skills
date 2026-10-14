@@ -4,9 +4,9 @@
 // returns a value. No git, no network, no clock. That is what makes the sprint's headline
 // acceptance criterion — "rerun from the same inputs ⇒ byte-identical artifact" — testable at all.
 //
-// ── The amendment this file implements (Daniel, 2026-07-25) ───────────────────────────────────
+// ── The amendment this file implements (the product owner, 2026-07-25) ───────────────────────────────────
 // The epic originally promised "human-baseline era vs agent-augmented era of the SAME repo". That
-// comparison is not computable: medusa-bonsai is agent-native from its first commit (75% of June's
+// comparison is not computable: the first measured product is agent-native from its first commit (75% of June's
 // commits carry a Claude co-author trailer, 86% of July's, 691 of 846 overall). There is no
 // human-majority era to baseline against.
 //
@@ -265,8 +265,8 @@ export function reworkSummary(epics) {
 /**
  * Deploy frequency — a LABELLED PROXY, and the label is not optional.
  *
- * There is no deploy log in the dataset, so this counts merged PRs per week and says so. medusa-
- * bonsai's own pmo-report calls its equivalent field `changeFailProxy` in its source; we inherit
+ * There is no deploy log in the dataset, so this counts merged PRs per week and says so. The first measured
+ * product's own pmo-report calls its equivalent field `changeFailProxy` in its source; we inherit
  * the caveat rather than quietly dropping it. A reader who sees "deploys per week" without the
  * proxy note has been misled, which is why `isProxy` is a required part of the shape rather than a
  * comment.

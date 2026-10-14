@@ -221,7 +221,7 @@ test('review latency is never presented as DORA-comparable', () => {
 });
 
 test('a RETROACTIVELY DOCUMENTED epic is excluded from lead time, not counted as zero days', () => {
-  // Measured live: 83 of medusa-bonsai's 130 shipped epics had their README committed with
+  // Measured live: 83 of the first measured product's 130 shipped epics had their README committed with
   // `status: shipped` ALREADY SET — create-commit and ship-flip are the same commit, to the second.
   // Counting those as 0-day epics dragged the median to 0 days. Excluding them moved it to a
   // believable 7.2 days over the 47 that are genuinely measurable.

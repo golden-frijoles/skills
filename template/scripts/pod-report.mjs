@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // pod-report.mjs — compute a product's outcome report (the Pod Report artifact) from its own repo, and push it.
 //
-// pod-report · Sprint 2, Story 2.1 built it against a local medusa-bonsai checkout; outcome-report-any-product (2026-10-14)
+// pod-report · Sprint 2, Story 2.1 built it against a local the first measured product checkout; outcome-report-any-product (2026-10-14)
 // made it run in ANY product's repo from the kit. This is the I/O half: it runs git and gh against the checkout, hands the
 // result to the pure `lib/pod-metrics.mjs` computation, and pushes the artifact through the client-pushes rail.
 //
@@ -70,7 +70,7 @@ export function readCommits(repo, run = git) {
         // ── isRevert, which round 6 caught missing ────────────────────────────────────────────
         // `scoreTrustedSelfVerificationLoop` filters on `c.isRevert`; leaving it undefined made
         // revertCount 0 for EVERY repository — a 0% revert rate that means "never computed". It
-        // happened to match this dataset (medusa-bonsai genuinely has no reverts), which is exactly
+        // happened to match this dataset (the first measured product genuinely has no reverts), which is exactly
         // how it went unnoticed: accidentally right here, wrong everywhere else.
         //
         // Matched on the SUBJECT only. `git revert` writes "Revert \"original subject\"", but a
@@ -144,7 +144,12 @@ export function catFileBatch(repo, specs) {
     input: specs.join('\n') + '\n',
     maxBuffer: 256 * 1024 * 1024,
   });
-  if (r.status !== 0 || !r.stdout) return specs.map(() => null);
+  // Loud, never quiet (verifier, #368): mapping a failed read to "missing" would silently drop every ship date it held.
+  if (r.status !== 0 || !r.stdout) {
+    throw new Error(
+      `git cat-file --batch failed in ${repo}: ${(r.stderr || '').toString().trim() || `exit ${r.status}`}`
+    );
+  }
   const out = r.stdout;
   const texts = [];
   let offset = 0;
@@ -352,7 +357,7 @@ export function buildArtifact({ delivery, source, generatedAt, maturity }) {
 }
 
 /**
- * Git provenance of the ANALYSED repo (the medusa-bonsai checkout, not this golden-beans one) — the
+ * Git provenance of the ANALYSED repo (the the first measured product checkout, not this golden-beans one) — the
  * freshness stamp a push carries. `run` is injectable so a unit test pins the call shape without a
  * real checkout, mirroring `readCommits`/`readEpics` above.
  */
@@ -367,7 +372,7 @@ export function gatherSourceRef(repo, run = git) {
  * Where to push and with which credential.
  *
  * `POD_REPORT_API_KEY` is checked FIRST, `SELF_PROJECT_API_KEY` second. The two need not agree: the
- * Pod Report is computed from a medusa-bonsai checkout but the tenant that OWNS the pushed artifact
+ * Pod Report is computed from a the first measured product checkout but the tenant that OWNS the pushed artifact
  * is whichever project the key belongs to (resolved server-side from the key, never from this
  * script — same rule as the route). A team dogfooding both rails from one tenant can set only
  * `SELF_PROJECT_API_KEY` and have it cover both; a team pushing the Pod Report to a different
@@ -562,9 +567,9 @@ async function main() {
     maturity,
     delivery: computeDelivery({ prs, epics, commits, windowDays: days, generatedAt: stamp }),
     source: {
-      // The checkout's directory name, NOT a hardcoded string. It was `'medusa-bonsai'` literally,
+      // The checkout's directory name, NOT a hardcoded string. It was a client's repo name literally,
       // which meant `--repo` pointed anywhere else still produced an artifact CLAIMING to measure
-      // medusa-bonsai — a false provenance line on a document whose entire value is that every
+      // the first measured product — a false provenance line on a document whose entire value is that every
       // number is traceable. Found the first time the script was run against a second repository
       // (golden-beans' own, for the demo-safe landing artifact), which is the only way it could have
       // been found: with one dataset the constant was indistinguishable from correct.
