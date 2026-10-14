@@ -60,7 +60,7 @@ const OUT_JSON = join(ROOT, 'Roadmap/00-ideas/OWED-LEDGER.json');
 // <owner>". One alternation per configured owner name; spacing inside a name is flexible.
 export function markerFor(owners) {
   const names = owners.map((o) => o.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'));
-  // The name ends at a non-word character: "Daniel" is not "Daniela".
+  // The name ends at a non-word character: "Jordan" is not "Jordana".
   return new RegExp(`owed\\s*(?:to|\\()?\\s*(?:${names.join('|')})(?!\\w)`, 'i');
 }
 export const DEFAULT_OWNERS = ['the product owner'];
