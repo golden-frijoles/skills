@@ -10,8 +10,10 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 ## [1.7.3] - 2026-10-13
 
 ### Changed
-- `frijoles flags sync`: a **new** flag starts switched to its default in every environment, from the source file; an
-  existing flag's switch is never changed by a sync. The flag guide and the epic template say so (CLI 1.5.2).
+- `frijoles flags sync`: a **new** flag goes live as written in the source file (default and rules) in every
+  environment, and the output says what each new flag now serves and to whom; an existing flag's switch is never
+  changed by a sync. The flag guide and the epic template say so (CLI 1.5.2, SDK 1.2.0). The switch made by a sync
+  names the sync key's owner as actor and the source in its reason.
 
 ## [1.7.2] - 2026-10-13
 

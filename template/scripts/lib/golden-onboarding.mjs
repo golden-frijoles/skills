@@ -80,16 +80,13 @@ export const CLI_GLOBAL_INSTALL = `npm i -g ${CLI_PACKAGE}`;
 /**
  * The kill-switch story as the commands that complete it — **including the activation step**.
  *
- * D4 of this epic: definitions are catalog-as-code, activations are not. `flags create` does both
- * in one verb (it creates the definition AND activates it in every environment named), which is
- * exactly why the distinction has to be written down somewhere a planner reads: `flags sync`, the
- * catalog-as-code verb, does NOT activate, and a project that syncs its definitions from source
- * control and never activates them serves compile defaults through the fallback chain while its
- * console reads "Never turned on here".
+ * `flags create` creates the definition AND sets its switch in every environment named. `flags sync`, the
+ * catalog-as-code verb, sets a NEW flag's switch as written in the file and never switches an existing one
+ * (one-flag-switch S1.5). The check either way: `flags get` must read `on vN` or `off vN` in production.
  */
 export const KILL_SWITCH_STORY = [
   `${CLI_BIN} flags create <domain>.<feature>_enabled --kill-switch --all-envs`,
-  `${CLI_BIN} flags get <domain>.<feature>_enabled    # ← the ACTIVATION check: PRODUCTION must not read "—"`,
+  `${CLI_BIN} flags get <domain>.<feature>_enabled    # ← the switch check: PRODUCTION must read "on vN" or "off vN"`,
   `${CLI_BIN} flags kill <domain>.<feature>_enabled --env production`,
 ];
 
