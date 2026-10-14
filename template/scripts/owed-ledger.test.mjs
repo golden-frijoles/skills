@@ -140,6 +140,9 @@ test('markerFor: a project can owe checks to a named person as well as the role'
   // A name with regex metacharacters is matched literally, not as a pattern.
   assert.equal(extractMarkers('// owed to J.R.', 'f.spec.ts', markerFor(['J.R.'])).length, 1);
   assert.equal(extractMarkers('// owed to JxRx', 'f.spec.ts', markerFor(['J.R.'])).length, 0);
+  // The name ends where the word does.
+  assert.equal(extractMarkers('// owed to Jordana', 'f.spec.ts', m).length, 0);
+  assert.equal(extractMarkers('// owed to Jordan, by name', 'f.spec.ts', m).length, 1);
 });
 
 test('resolveOwedConfig: config wins; otherwise the role owner and every apps/*/e2e that exists', async () => {

@@ -60,7 +60,8 @@ const OUT_JSON = join(ROOT, 'Roadmap/00-ideas/OWED-LEDGER.json');
 // <owner>". One alternation per configured owner name; spacing inside a name is flexible.
 export function markerFor(owners) {
   const names = owners.map((o) => o.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'));
-  return new RegExp(`owed\\s*(?:to|\\()?\\s*(?:${names.join('|')})`, 'i');
+  // The name ends at a non-word character: "Daniel" is not "Daniela".
+  return new RegExp(`owed\\s*(?:to|\\()?\\s*(?:${names.join('|')})(?!\\w)`, 'i');
 }
 export const DEFAULT_OWNERS = ['the product owner'];
 
@@ -379,9 +380,12 @@ export function renderMarkdown(ledger, generatedAt) {
 function gather({ owners, specDirs, docDirs = [] }) {
   const marker = markerFor(owners);
   const markers = [];
+  // A Set: two configured dirs that overlap ("Roadmap" and "Roadmap/01-…") must not count one file twice.
   const files = [
-    ...specDirs.flatMap((dir) => listSpecFiles(join(ROOT, dir))),
-    ...docDirs.flatMap((dir) => listDocFiles(join(ROOT, dir))),
+    ...new Set([
+      ...specDirs.flatMap((dir) => listSpecFiles(join(ROOT, dir))),
+      ...docDirs.flatMap((dir) => listDocFiles(join(ROOT, dir))),
+    ]),
   ];
   for (const f of files) markers.push(...extractMarkers(readFileSync(f, 'utf8'), relative(ROOT, f).split(sep).join('/'), marker));
   return buildLedger(markers);
