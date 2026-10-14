@@ -428,7 +428,7 @@ function main() {
   const generatedAt = new Date().toISOString().slice(0, 10);
 
   if (jsonOnly) {
-    const { items, itemsByKind, ...counts } = ledger;
+    const { items: _items, itemsByKind, ...counts } = ledger;
     const list = KINDS.flatMap((k) => itemsByKind[k]);
     process.stdout.write(`${JSON.stringify({ ...counts, items: list, generatedAt }, null, 2)}\n`);
     return;
