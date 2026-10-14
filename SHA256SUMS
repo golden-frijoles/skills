@@ -12,7 +12,7 @@ e5cc54c73e1f1a70aef4ae6a678ff3edbd11ed335238eba1564e90888496b308  plugins/golden
 9b462ee424b2366a18d2597256814627716f1289ea59562572cd8dd04c4a6fc9  plugins/golden-frijoles/hooks/vendor/lib/config.mjs
 b375bee588cb3cc0e9b2e428fb89cde181f62dddcfdd2010e8b27b7d1fd0892a  plugins/golden-frijoles/hooks/vendor/lib/epic-kickoff.mjs
 5190abcaf98cf95a8ee00fbc29c3aafa2796e19370cb62ba92f955f719828f74  plugins/golden-frijoles/hooks/vendor/lib/frontmatter-stamp.mjs
-2429b72b2ce62d677e8a64d45660147a96b5d826c091b913f854b80d202ef0a0  plugins/golden-frijoles/hooks/vendor/lib/horizon.mjs
+f238014c04846b14d5871e1c7beb3e731efa9a03cea5bc15ec2df93e79816da4  plugins/golden-frijoles/hooks/vendor/lib/horizon.mjs
 cdb7ce3d12cabeb0b857504181f254a3b82fdb5c07019b2e3efbdd452043d26b  plugins/golden-frijoles/hooks/vendor/lib/model-prices.mjs
 ad47e1511f5241547d6f0e05f4aefe14ddf448290a27586c3254d805b10450a7  plugins/golden-frijoles/hooks/vendor/lib/project-root.mjs
 5abfbb4c61c837ab9e08e6c9d20232eae77389e2c287e9df89fc9642f4b6fb0c  plugins/golden-frijoles/hooks/vendor/lib/result-dates.mjs
@@ -63,7 +63,7 @@ eb16fa3f6d06435a106f0ed1999a4e305fdb387f9ef59f9649df26cd8bc254b7  plugins/golden
 e5cc54c73e1f1a70aef4ae6a678ff3edbd11ed335238eba1564e90888496b308  plugins/golden-frijoles/skills/refine/vendor/lib/config-registry.mjs
 9b462ee424b2366a18d2597256814627716f1289ea59562572cd8dd04c4a6fc9  plugins/golden-frijoles/skills/refine/vendor/lib/config.mjs
 b375bee588cb3cc0e9b2e428fb89cde181f62dddcfdd2010e8b27b7d1fd0892a  plugins/golden-frijoles/skills/refine/vendor/lib/epic-kickoff.mjs
-2429b72b2ce62d677e8a64d45660147a96b5d826c091b913f854b80d202ef0a0  plugins/golden-frijoles/skills/refine/vendor/lib/horizon.mjs
+f238014c04846b14d5871e1c7beb3e731efa9a03cea5bc15ec2df93e79816da4  plugins/golden-frijoles/skills/refine/vendor/lib/horizon.mjs
 9561d484a44d7802fb1b73ebdb90d6987f9269c66ffc16bf3d60692ffc501d88  plugins/golden-frijoles/skills/refine/vendor/lib/kickoff-cli.mjs
 ad47e1511f5241547d6f0e05f4aefe14ddf448290a27586c3254d805b10450a7  plugins/golden-frijoles/skills/refine/vendor/lib/project-root.mjs
 5abfbb4c61c837ab9e08e6c9d20232eae77389e2c287e9df89fc9642f4b6fb0c  plugins/golden-frijoles/skills/refine/vendor/lib/result-dates.mjs

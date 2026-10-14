@@ -10,7 +10,7 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 ## [1.8.1] - 2026-10-14
 
 ### Added
-- Each product's own horizon: `Roadmap/00-strategy/horizon.md` declares destinations (`## <id> — <title>` + one line),
+- Each product's own horizon: `Roadmap/horizon.md` declares destinations (`## <id> — <title>` + one line),
   an epic names the one(s) it lights with `destination: <id>[, <id>]`, and `roadmap-extract` / `roadmap-push` carry
   them as an optional `horizon` key and per-row `destinations`. An epic naming an undeclared destination fails the
   extract, naming the epic (many-products S3.1).

@@ -79,8 +79,8 @@ function fixture(horizonMd, destination) {
   mkdirSync(dir, { recursive: true });
   mkdirSync(join(root, 'Roadmap', '00-ideas', 'seeds'), { recursive: true });
   if (horizonMd !== null) {
-    mkdirSync(join(root, 'Roadmap', '00-strategy'), { recursive: true });
-    writeFileSync(join(root, 'Roadmap', '00-strategy', 'horizon.md'), horizonMd);
+    mkdirSync(join(root, 'Roadmap'), { recursive: true });
+    writeFileSync(join(root, 'Roadmap', 'horizon.md'), horizonMd);
   }
   writeFileSync(
     join(dir, 'README.md'),

@@ -1,6 +1,6 @@
 // horizon.mjs — a product's destinations, declared in its own repo (many-products D14).
 //
-// `Roadmap/00-strategy/horizon.md` lists the end states a product walks toward, one `## <id> — <title>` heading each
+// `Roadmap/horizon.md` lists the end states a product walks toward, one `## <id> — <title>` heading each
 // with a one-line description under it, in display order. An epic README names the ones it lights with
 // `destination: <id>` or `destination: <id>, <id>` (the flat frontmatter parser reads a string, so a list is a
 // comma-separated string). The extractor stamps `destinations` on each epic row; the push carries the declared list as
@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const HORIZON_FILE = 'Roadmap/00-strategy/horizon.md';
+export const HORIZON_FILE = 'Roadmap/horizon.md';
 /** The envelope's ceiling. Mirrored by `apps/web/lib/roadmap-artifact-schema.ts` (HORIZON_MAX). */
 export const HORIZON_MAX = 50;
 /** lowercase-kebab. Mirrored by the schema's regex. */
