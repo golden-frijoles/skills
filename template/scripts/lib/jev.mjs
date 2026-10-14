@@ -25,7 +25,7 @@
 // Zero deps — Node 18+ (global fetch). Everything with I/O takes injectable deps, so specs never touch the
 // network.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join } from 'node:path';
@@ -179,20 +179,23 @@ export function envFileValue(text, key) {
 }
 
 /**
- * The main checkout behind a linked git worktree, or null (not a worktree, not a repo, no git). A worktree has no
- * `.env.local` of its own, so without this every rail in one silently had no key (semantic-lint shadow: 15 of 18
- * "could not look" were worktrees, 2026-10-14).
+ * The main checkout behind a linked git worktree, or null: not a linked worktree (a plain checkout, a submodule, a
+ * separate git dir), not a repo, no git, or `root` is only a folder INSIDE some repo, whose key is not this project's.
+ * A worktree has no `.env.local` of its own, so without this every rail in one silently had no key (semantic-lint
+ * shadow: 15 of 18 "could not look" were worktrees, 2026-10-14).
  */
 export function mainCheckoutRoot(root) {
   try {
     // GIT_DIR (exported into hooks) would override `-C root`: ask about `root`, not whatever the hook points at.
     const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
-    const common = execFileSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      env,
-    }).trim();
-    return basename(common) === '.git' ? dirname(common) : null;
+    const out = execFileSync(
+      'git',
+      ['-C', root, 'rev-parse', '--path-format=absolute', '--show-toplevel', '--git-dir', '--git-common-dir'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env }
+    );
+    const [top, gitDir, common] = out.trim().split('\n').map((p) => realpathSync(p.trim()));
+    if (top !== realpathSync(root) || gitDir === common || basename(common) !== '.git') return null;
+    return dirname(common);
   } catch {
     return null;
   }
@@ -213,7 +216,7 @@ export function readApiKey({
   mainRoot = () => mainCheckoutRoot(root),
 } = {}) {
   if (env.TYPESAFE_API_KEY !== undefined) return env.TYPESAFE_API_KEY.trim() || null;
-  for (const dir of [root, cwd, () => mainRoot()]) {
+  for (const dir of [root, cwd, mainRoot]) {
     const d = typeof dir === 'function' ? dir() : dir;
     if (!d) continue;
     const p = join(d, '.env.local');

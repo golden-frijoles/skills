@@ -276,12 +276,14 @@ test('readApiKey: a linked worktree falls back to the main checkout, last', () =
   assert.equal(readApiKey({ env: {}, root: wt, cwd: wt, mainRoot: never }), 'own');
   assert.equal(readApiKey({ env: { TYPESAFE_API_KEY: '' }, root: wt, cwd: wt, mainRoot: () => main }), null);
   assert.equal(readApiKey({ env: {}, root: main, cwd: main, mainRoot: () => null }), 'main');
+  // A plain path works as well as a lazy getter, like root and cwd (agy, #364).
+  assert.equal(readApiKey({ env: {}, root: mkdtempSync(join(tmpdir(), 'jev-x-')), cwd: tmpdir(), mainRoot: main }), 'main');
 });
 
 // Sealed: a hook exports GIT_DIR, and a fixture that inherits it rewrites the real repo (git-fixtures-sealed.test.mjs).
 const sealedEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
 
-test('mainCheckoutRoot: null outside a repo, the main checkout from a linked worktree', () => {
+test('mainCheckoutRoot: the main checkout from a linked worktree, and null for everything else', () => {
   assert.equal(mainCheckoutRoot(mkdtempSync(join(tmpdir(), 'jev-norepo-'))), null);
   const base = mkdtempSync(join(tmpdir(), 'jev-git-'));
   const repo = join(base, 'main');
@@ -291,6 +293,12 @@ test('mainCheckoutRoot: null outside a repo, the main checkout from a linked wor
   git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'x');
   git('worktree', 'add', '-q', join(base, 'wt'));
   assert.equal(realpathSync(mainCheckoutRoot(join(base, 'wt'))), realpathSync(repo));
+  // A plain checkout is not a worktree (verifier + agy, #364).
+  assert.equal(mainCheckoutRoot(repo), null);
+  // A folder INSIDE a repo is not that repo: borrowing the enclosing repo's key would send under someone else's.
+  mkdirSync(join(repo, 'inner'));
+  assert.equal(mainCheckoutRoot(join(repo, 'inner')), null);
+  assert.equal(mainCheckoutRoot(join(base, 'wt', 'nope')), null);
 });
 
 test('logDecision: one JSONL line with the contract fields, text truncated at 4k', () => {

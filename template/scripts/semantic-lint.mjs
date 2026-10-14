@@ -13,9 +13,9 @@
 // answer, an oversized hunk, past the candidate cap or the time budget. "Could not look" is printed and logged, and is
 // never counted as clear.
 //
-// Raise-only: this adds findings; it never clears another check's finding, and it never blocks. v1 runs in `shadow`
-// from the advisory pre-push hook: it logs every decision to .jev/decisions.jsonl as `lint:<rule id>` and prints one
-// line per rule. Exit 0 always, except 2 for bad usage or a malformed config — a lint that cannot run must say so, and
+// Raise-only: this adds findings; it never clears another check's finding, and it never blocks. It runs from the
+// advisory pre-push hook in the mode `rails.lint.mode` sets (shadow; or jev, which also prints each raise as a
+// finding): it logs every decision to .jev/decisions.jsonl as `lint:<rule id>` and prints one line per rule. Exit 0 always, except 2 for bad usage or a malformed config — a lint that cannot run must say so, and
 // the hook still ignores the code.
 //
 // Zero deps — Node 18+.
