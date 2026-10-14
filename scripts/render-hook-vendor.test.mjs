@@ -30,6 +30,7 @@ test('the real manifest bundles build-state and exactly the libs it imports', ()
     'lib/config-registry.mjs',
     'lib/config.mjs',
     'lib/epic-kickoff.mjs',
+    'lib/horizon.mjs',
     'lib/project-root.mjs',
     'lib/result-dates.mjs',
     'lib/roadmap-contract.mjs',
