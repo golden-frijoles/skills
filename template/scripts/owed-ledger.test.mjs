@@ -2,7 +2,17 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { categorise, extractMarkers, buildLedger, renderMarkdown, listSpecFiles, listDocFiles, kindOf, CATEGORIES, KINDS } from './owed-ledger.mjs';
+import {
+  categorise,
+  extractMarkers,
+  buildLedger,
+  renderMarkdown,
+  listSpecFiles,
+  listDocFiles,
+  kindOf,
+  CATEGORIES,
+  KINDS,
+} from './owed-ledger.mjs';
 
 // ---- extraction ----
 
@@ -42,19 +52,31 @@ test('extractMarkers: empty/undefined input yields nothing rather than throwing'
 // money — it is the one to run first and the most expensive to get wrong.
 
 test('categorise: money-path wins over auth when a marker mentions both', () => {
-  assert.equal(categorise({ file: 'e2e/checkout.spec.ts', text: 'needs a signed-in buyer session and a real payment' }), 'money-path');
+  assert.equal(
+    categorise({ file: 'e2e/checkout.spec.ts', text: 'needs a signed-in buyer session and a real payment' }),
+    'money-path'
+  );
 });
 
 test('categorise: auth-path when a session is needed but no money is involved', () => {
-  assert.equal(categorise({ file: 'e2e/promoter-preview.spec.ts', text: 'the authed promoter view is owed' }), 'auth-path');
+  assert.equal(
+    categorise({ file: 'e2e/promoter-preview.spec.ts', text: 'the authed promoter view is owed' }),
+    'auth-path'
+  );
 });
 
 test('categorise: admin-only for admin surfaces with no money or auth wording', () => {
-  assert.equal(categorise({ file: 'e2e/admin-seleccion.spec.ts', text: 'the pinned ordering needs an eyeball' }), 'admin-only');
+  assert.equal(
+    categorise({ file: 'e2e/admin-seleccion.spec.ts', text: 'the pinned ordering needs an eyeball' }),
+    'admin-only'
+  );
 });
 
 test('categorise: anything unplaceable goes to other — a to-triage list, never a bin', () => {
-  assert.equal(categorise({ file: 'e2e/copy.spec.ts', text: 'a human should read the founder copy' }), 'other');
+  assert.equal(
+    categorise({ file: 'e2e/copy.spec.ts', text: 'a human should read the founder copy' }),
+    'other'
+  );
 });
 
 test('categorise: always returns a known category', () => {
@@ -86,7 +108,10 @@ test('buildLedger: every input marker appears in exactly one category', () => {
 test('buildLedger: an empty tree is zero, not a crash', () => {
   const ledger = buildLedger([]);
   assert.equal(ledger.total, 0);
-  assert.equal(CATEGORIES.reduce((n, c) => n + ledger.byCategory[c], 0), 0);
+  assert.equal(
+    CATEGORIES.reduce((n, c) => n + ledger.byCategory[c], 0),
+    0
+  );
 });
 
 // ---- rendering ----
@@ -103,7 +128,10 @@ test('renderMarkdown: names "other" as a to-triage list rather than a dumping gr
 });
 
 test('renderMarkdown: items are listed by who can clear them, tagged with their category; an empty kind has no heading', () => {
-  const md = renderMarkdown(buildLedger([{ file: 'e2e/checkout.spec.ts', line: 1, text: 'payment owed' }]), '2026-07-26');
+  const md = renderMarkdown(
+    buildLedger([{ file: 'e2e/checkout.spec.ts', line: 1, text: 'payment owed' }]),
+    '2026-07-26'
+  );
   assert.match(md, /## unsorted \(1\)/);
   assert.match(md, /checkout\.spec\.ts:1` · money-path/);
   assert.doesNotMatch(md, /## publish \(0\)/);
@@ -148,18 +176,33 @@ test('markerFor: a project can owe checks to a named person as well as the role'
 test('resolveOwedConfig: config wins; otherwise the role owner and every apps/*/e2e that exists', async () => {
   const { resolveOwedConfig, DEFAULT_OWNERS } = await import('./owed-ledger.mjs');
   const { ReportingConfigError } = await import('./lib/reporting-config.mjs');
-  const fsFake = (present) => ({ exists: (p) => present.some((x) => p.endsWith(x)), readdir: () => ['web', 'api'] });
-  const fromConfig = resolveOwedConfig({ root: '/r', load: () => ({ owed: { owners: ['Jordan'], specDirs: ['e2e'] } }), ...fsFake([]) });
+  const fsFake = (present) => ({
+    exists: (p) => present.some((x) => p.endsWith(x)),
+    readdir: () => ['web', 'api'],
+  });
+  const fromConfig = resolveOwedConfig({
+    root: '/r',
+    load: () => ({ owed: { owners: ['Jordan'], specDirs: ['e2e'] } }),
+    ...fsFake([]),
+  });
   assert.deepEqual(fromConfig, { owners: ['Jordan'], specDirs: ['e2e'], docDirs: [] });
   // A PRESENT but broken config must not silently fall back to the defaults.
-  assert.throws(() => resolveOwedConfig({
-    root: '/r',
-    load: () => { throw new ReportingConfigError('/r/reporting.config.json: "owed.owners" must be an array'); },
-    ...fsFake(['/r/reporting.config.json']),
-  }), /owed\.owners/);
+  assert.throws(
+    () =>
+      resolveOwedConfig({
+        root: '/r',
+        load: () => {
+          throw new ReportingConfigError('/r/reporting.config.json: "owed.owners" must be an array');
+        },
+        ...fsFake(['/r/reporting.config.json']),
+      }),
+    /owed\.owners/
+  );
   const derived = resolveOwedConfig({
     root: '/r',
-    load: () => { throw new ReportingConfigError('absent'); },
+    load: () => {
+      throw new ReportingConfigError('absent');
+    },
     ...fsFake(['/r/apps', 'apps/web/e2e']),
   });
   assert.deepEqual(derived, { owners: DEFAULT_OWNERS, specDirs: ['apps/web/e2e'], docDirs: [] });
@@ -183,14 +226,21 @@ test('extractMarkers: a retro list item reads as prose, and a template placehold
     '1. (owed to the product owner — interactive) Run setup',
   ].join('\n');
   const found = extractMarkers(md, 'Roadmap/x/RETROSPECTIVE.md');
-  assert.deepEqual(found.map((f) => f.line), [5, 6]);
+  assert.deepEqual(
+    found.map((f) => f.line),
+    [5, 6]
+  );
   assert.match(found[0].text, /^\*\*Owed to/);
   assert.match(found[1].text, /^\(owed to/);
 });
 
 test('buildLedger: a ticked or struck line is cleared — out of the total, still accounted for', () => {
   const found = extractMarkers(
-    ['- ✅ owed to the product owner: done', '- ~~owed to the product owner: the npm publish~~ done 2026-10-14', '- owed to the product owner: still open'].join('\n'),
+    [
+      '- ✅ owed to the product owner: done',
+      '- ~~owed to the product owner: the npm publish~~ done 2026-10-14',
+      '- owed to the product owner: still open',
+    ].join('\n'),
     'Roadmap/x/RETROSPECTIVE.md'
   );
   const ledger = buildLedger(found);
@@ -235,7 +285,11 @@ test('listDocFiles: retros always count; a sprint doc only while its epic has no
   const read = (d) => tree[d] ?? [];
   const stat = (p) => ({ isDirectory: () => p in tree });
   const readFile = () => '_Closed: 2026-10-13_\n';
-  assert.deepEqual(listDocFiles('/R', { read, stat, readFile }), ['/R/done/RETROSPECTIVE.md', '/R/open/sprint-1.md', '/R/open/sprint-2.md']);
+  assert.deepEqual(listDocFiles('/R', { read, stat, readFile }), [
+    '/R/done/RETROSPECTIVE.md',
+    '/R/open/sprint-1.md',
+    '/R/open/sprint-2.md',
+  ]);
   // The scaffolder writes the retro on day one: an unfilled one does not hide its sprints.
   const unfilled = () => '_Closed: <date>_\n';
   assert.deepEqual(listDocFiles('/R', { read, stat, readFile: unfilled }), [
@@ -273,14 +327,30 @@ test('a strike past the rendered cap still decides the kind: the whole text is c
   assert.equal(ledger.byKind['signed-in'], 1);
   assert.equal(ledger.byKind.publish, 0);
   const md = renderMarkdown(ledger, '2026-10-14');
-  assert.ok(md.split('\n').every((l) => l.length < 400), 'the rendered item is capped');
+  assert.ok(
+    md.split('\n').every((l) => l.length < 400),
+    'the rendered item is capped'
+  );
 });
 
 // ── Verifier findings on PR #357 ─────────────────────────────────────────────────────────────────
 
 test('extractMarkers: a loose list under a heading marker keeps every item', () => {
-  const md = ['**Owed to the product owner:**', '', '- one', '', '- two', '', '- three', '', 'Next paragraph.'].join('\n');
-  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.text), ['one', 'two', 'three']);
+  const md = [
+    '**Owed to the product owner:**',
+    '',
+    '- one',
+    '',
+    '- two',
+    '',
+    '- three',
+    '',
+    'Next paragraph.',
+  ].join('\n');
+  assert.deepEqual(
+    extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.text),
+    ['one', 'two', 'three']
+  );
 });
 
 test('extractMarkers: a line is counted once, however many markers reach it', () => {
@@ -294,8 +364,13 @@ test('extractMarkers: a line is counted once, however many markers reach it', ()
 });
 
 test('extractMarkers: a marker inside a code fence is an example, not a check', () => {
-  const md = ['```', '- owed to the product owner: example', '```', '- owed to the product owner: real'].join('\n');
-  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line), [4]);
+  const md = ['```', '- owed to the product owner: example', '```', '- owed to the product owner: real'].join(
+    '\n'
+  );
+  assert.deepEqual(
+    extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line),
+    [4]
+  );
 });
 
 test('extractMarkers: "owed to the product owner: nothing" is not a check', () => {
@@ -310,7 +385,10 @@ test('extractMarkers: a marker beside an HTML comment still counts; one inside i
     'owed to the product owner: inside',
     'closes --> owed to the product owner: after the close',
   ].join('\n');
-  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line), [1, 5]);
+  assert.deepEqual(
+    extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line),
+    [1, 5]
+  );
 });
 
 test('kindOf: the British spelling is a judgment too', () => {

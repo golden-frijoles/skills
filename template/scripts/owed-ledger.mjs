@@ -59,7 +59,13 @@ const OUT_JSON = join(ROOT, 'Roadmap/00-ideas/OWED-LEDGER.json');
 // Case-insensitive, and tolerant of the real shapes: "owed to <owner>", "Owed (<owner>…)", "stay owed to
 // <owner>". One alternation per configured owner name; spacing inside a name is flexible.
 export function markerFor(owners) {
-  const names = owners.map((o) => o.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'));
+  const names = owners.map((o) =>
+    o
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('\\s+')
+  );
   // The name ends at a non-word character: "Jordan" is not "Jordana".
   return new RegExp(`owed\\s*(?:to|\\()?\\s*(?:${names.join('|')})(?!\\w)`, 'i');
 }
@@ -74,7 +80,12 @@ const sectionPresent = (root) => {
 };
 
 /** The project's owners, spec dirs and doc dirs: reporting.config.json's `owed`, else the defaults (derived dirs). */
-export function resolveOwedConfig({ root = ROOT, load = loadReportingConfig, exists = existsSync, readdir = readdirSync } = {}) {
+export function resolveOwedConfig({
+  root = ROOT,
+  load = loadReportingConfig,
+  exists = existsSync,
+  readdir = readdirSync,
+} = {}) {
   let owed = {};
   try {
     owed = load({ root }).owed || {};
@@ -83,18 +94,22 @@ export function resolveOwedConfig({ root = ROOT, load = loadReportingConfig, exi
     // owner would change the count with no signal — the "quietly loses items" failure this file exists
     // to prevent. (Fresh-reviewer finding on PR #21.)
     // "Present" means the reporting section exists in EITHER file (golden-frijoles-plugin D9, review of #49).
-    if (!(e instanceof ReportingConfigError) || exists(configPath({ root, env: {} })) || sectionPresent(root)) throw e;
+    if (!(e instanceof ReportingConfigError) || exists(configPath({ root, env: {} })) || sectionPresent(root))
+      throw e;
   }
   const owners = owed.owners?.length ? owed.owners : DEFAULT_OWNERS;
   let specDirs = owed.specDirs;
   if (!specDirs?.length) {
     const apps = join(root, 'apps');
-    specDirs = exists(apps) ? readdir(apps).map((a) => join('apps', a, 'e2e')).filter((d) => exists(join(root, d))) : [];
+    specDirs = exists(apps)
+      ? readdir(apps)
+          .map((a) => join('apps', a, 'e2e'))
+          .filter((d) => exists(join(root, d)))
+      : [];
   }
   const docDirs = owed.docDirs?.length ? owed.docDirs : exists(join(root, 'Roadmap')) ? ['Roadmap'] : [];
   return { owners, specDirs, docDirs };
 }
-
 
 export const CATEGORIES = ['money-path', 'auth-path', 'admin-only', 'other'];
 
@@ -119,16 +134,39 @@ export const KIND_MEANING = {
  */
 export function kindOf({ text }) {
   const t = String(text ?? '').toLowerCase();
-  if (/\bnpm publish\b|\b2fa\b|\bpublish(?:es|ed)? (?:to npm|the (?:cli|sdk|kit))\b/.test(t)) return 'publish';
-  if (/\bshare links?\b|\bmint(?:s|ed|ing)?\b|\bproduction (?:write|credential)s?\b|\bprod(?:uction)? write smoke\b/.test(t)) {
+  if (/\bnpm publish\b|\b2fa\b|\bpublish(?:es|ed)? (?:to npm|the (?:cli|sdk|kit))\b/.test(t))
+    return 'publish';
+  if (
+    /\bshare links?\b|\bmint(?:s|ed|ing)?\b|\bproduction (?:write|credential)s?\b|\bprod(?:uction)? write smoke\b/.test(
+      t
+    )
+  ) {
     return 'credential';
   }
-  if (/\bnotion\b|\bfolder move\b|\.git\b|\broutine key\b|\bprovision(?:ing)?\b|\baccount step\b|\baccount copies\b|\bthe folder\b/.test(t)) return 'ops';
-  if (/(?:^|[^a-z])intent(?![a-z])|\bwhat was meant\b|\bapprov(?:e|al|als)\b|\bre-approv|\bdecide\b|\bdecision\b|\bpromote\b|\bjudg(?:e|e?ment)\b/.test(t)) {
+  if (
+    /\bnotion\b|\bfolder move\b|\.git\b|\broutine key\b|\bprovision(?:ing)?\b|\baccount step\b|\baccount copies\b|\bthe folder\b/.test(
+      t
+    )
+  )
+    return 'ops';
+  if (
+    /(?:^|[^a-z])intent(?![a-z])|\bwhat was meant\b|\bapprov(?:e|al|als)\b|\bre-approv|\bdecide\b|\bdecision\b|\bpromote\b|\bjudg(?:e|e?ment)\b/.test(
+      t
+    )
+  ) {
     return 'judgment';
   }
-  if (/\bsigned[- ]in\b|\bsign in\b|\bbrowser smoke\b|\bon production\b|\bauthed\b|\bconsole\b|https?:\/\/\S*\/app\b/.test(t)) return 'signed-in';
-  if (/\binteractive\b|\bterminal\b|\bband\b|\bstatus line\b|\bsession\b|\bsetup\b|\bgroom\b|\brefine\b|\bplugin\b|\bwalkthrough\b|\binstall\b|\broutines?\b|\btelegram\b/.test(t)) {
+  if (
+    /\bsigned[- ]in\b|\bsign in\b|\bbrowser smoke\b|\bon production\b|\bauthed\b|\bconsole\b|https?:\/\/\S*\/app\b/.test(
+      t
+    )
+  )
+    return 'signed-in';
+  if (
+    /\binteractive\b|\bterminal\b|\bband\b|\bstatus line\b|\bsession\b|\bsetup\b|\bgroom\b|\brefine\b|\bplugin\b|\bwalkthrough\b|\binstall\b|\broutines?\b|\btelegram\b/.test(
+      t
+    )
+  ) {
     return 'interactive';
   }
   return 'unsorted';
@@ -146,7 +184,11 @@ export function categorise({ file, text }) {
   // "order" appears inside "ordering" — caught by this module's own test. "border", "reorder" and
   // "recorded" are the same trap, and a miscategorised money-path item is the most misleading kind:
   // it is the bucket a human is told to run FIRST.
-  if (/\b(?:checkout|payments?|stripe|mercadopago|money|prices?|pricing|refunds?|payouts?|orders?|carts?|subscriptions?)\b/.test(hay)) {
+  if (
+    /\b(?:checkout|payments?|stripe|mercadopago|money|prices?|pricing|refunds?|payouts?|orders?|carts?|subscriptions?)\b/.test(
+      hay
+    )
+  ) {
     return 'money-path';
   }
   if (/\b(?:auth|authed|sign-?in|log-?in|sessions?|clerk|credentials?|tokens?)\b/.test(hay)) {
@@ -297,7 +339,12 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
     if (!marker.test(visible)) continue;
     const whole = wrapped(i);
     // "None owed to …", or a spec that replaces a smoke that "would otherwise be owed": a mention, not a debt.
-    if (/\b(?:none|nothing)\b[^.]*\bowed\b|\bowed\b[^.]*:\s*(?:\*\*)?\s*(?:none|nothing)\b|\botherwise\s+be\s+owed\b|\breplaces\b[^.]*\bowed\b/i.test(whole)) continue;
+    if (
+      /\b(?:none|nothing)\b[^.]*\bowed\b|\bowed\b[^.]*:\s*(?:\*\*)?\s*(?:none|nothing)\b|\botherwise\s+be\s+owed\b|\breplaces\b[^.]*\bowed\b/i.test(
+        whole
+      )
+    )
+      continue;
     // A heading-shaped marker ("**Owed to the product owner:**") owns the list under it: each item is its own
     // check, so one can be cleared without the rest, and the header itself is not counted.
     if (isMd && /:\s*(?:\*\*|_)?\s*$/.test(whole)) {
@@ -343,7 +390,9 @@ export function buildLedger(markers) {
   const count = (groups) => Object.values(groups).reduce((n, arr) => n + arr.length, 0);
   // A ledger that loses items is worse than the scattered comments it replaced.
   if (count(byCategory) + cleared !== markers.length || count(byKind) + cleared !== markers.length) {
-    throw new Error(`owed-ledger: ${markers.length} markers in, ${count(byCategory)} + ${cleared} cleared out — categorisation dropped items.`);
+    throw new Error(
+      `owed-ledger: ${markers.length} markers in, ${count(byCategory)} + ${cleared} cleared out — categorisation dropped items.`
+    );
   }
   return {
     total: open.length,
@@ -362,11 +411,15 @@ export function renderMarkdown(ledger, generatedAt) {
   l.push('');
   l.push('> **GENERATED — do not hand-edit.** `node scripts/owed-ledger.mjs`.');
   l.push('> Re-derived from the spec tree and the epic docs on every run, never from a maintained list.');
-  l.push('> To clear an item, tick (`✅`) or strike (`~~…~~`) its line where it was written, then regenerate.');
+  l.push(
+    '> To clear an item, tick (`✅`) or strike (`~~…~~`) its line where it was written, then regenerate.'
+  );
   l.push('');
   l.push(`_Generated: ${generatedAt}_`);
   l.push('');
-  l.push(`**${ledger.total} check(s) owed across ${ledger.files} file(s)** · ${ledger.cleared ?? 0} cleared.`);
+  l.push(
+    `**${ledger.total} check(s) owed across ${ledger.files} file(s)** · ${ledger.cleared ?? 0} cleared.`
+  );
   l.push('');
   l.push('| Who can clear it | Count | What it means |');
   l.push('|---|---|---|');
@@ -374,10 +427,16 @@ export function renderMarkdown(ledger, generatedAt) {
   l.push('');
   l.push('| Category | Count | What it means |');
   l.push('|---|---|---|');
-  l.push(`| money-path | ${ledger.byCategory['money-path']} | Touches checkout, payment or order state — run these first |`);
-  l.push(`| auth-path | ${ledger.byCategory['auth-path']} | Needs a real signed-in session a script cannot mint against production |`);
+  l.push(
+    `| money-path | ${ledger.byCategory['money-path']} | Touches checkout, payment or order state — run these first |`
+  );
+  l.push(
+    `| auth-path | ${ledger.byCategory['auth-path']} | Needs a real signed-in session a script cannot mint against production |`
+  );
   l.push(`| admin-only | ${ledger.byCategory['admin-only']} | Behind an admin surface |`);
-  l.push(`| other | ${ledger.byCategory.other} | Everything the rules could not confidently place — **not a bin, a to-triage list** |`);
+  l.push(
+    `| other | ${ledger.byCategory.other} | Everything the rules could not confidently place — **not a bin, a to-triage list** |`
+  );
   l.push('');
   for (const k of KINDS) {
     const items = ledger.itemsByKind?.[k] ?? [];
@@ -403,7 +462,8 @@ function gather({ owners, specDirs, docDirs = [] }) {
       ...docDirs.flatMap((dir) => listDocFiles(join(ROOT, dir))),
     ]),
   ];
-  for (const f of files) markers.push(...extractMarkers(readFileSync(f, 'utf8'), relative(ROOT, f).split(sep).join('/'), marker));
+  for (const f of files)
+    markers.push(...extractMarkers(readFileSync(f, 'utf8'), relative(ROOT, f).split(sep).join('/'), marker));
   return buildLedger(markers);
 }
 
@@ -447,7 +507,8 @@ function main() {
     // unchanged — e.g. an item moving between categories with the same per-category totals, or the
     // file being hand-edited. That is precisely the false-green this script exists to remove, so the
     // markdown is compared too, with only the volatile date line normalised away.
-    const stripDate = (t) => String(t ?? '').replace(/^_Generated: \d{4}-\d{2}-\d{2}_$/m, '_Generated: <date>_');
+    const stripDate = (t) =>
+      String(t ?? '').replace(/^_Generated: \d{4}-\d{2}-\d{2}_$/m, '_Generated: <date>_');
     const prev = existsSync(OUT_JSON) ? JSON.parse(readFileSync(OUT_JSON, 'utf8')) : null;
     const prevMd = existsSync(OUT_MD) ? readFileSync(OUT_MD, 'utf8') : null;
     const same =
