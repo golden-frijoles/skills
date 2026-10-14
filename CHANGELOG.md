@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-10-14
+
+### Fixed
+- Jev finds its API key from a linked git worktree: after the env, the worktree's `.env.local` and the cwd's, it
+  falls back to the main checkout's `.env.local`. A worktree has none of its own, so every Jev rail in one silently
+  ran without a key (semantic-lint's shadow period: 15 of its 18 "could not look" were worktrees).
+
 ## [1.9.1] - 2026-10-14
 
 ### Added

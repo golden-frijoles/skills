@@ -26,8 +26,9 @@
 // network.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { projectRoot } from './project-root.mjs';
 import { needSetting, readSection } from './config.mjs';
 
@@ -178,10 +179,27 @@ export function envFileValue(text, key) {
 }
 
 /**
- * The API key: env first, then `.env.local` at the repo root, then the cwd. null when none. A variable that is SET
- * but empty (`TYPESAFE_API_KEY= node scripts/…`) means "no key" and stops the lookup: that is how a person turns Jev
- * off for one command, and falling through to `.env.local` made the command quietly use the key they had just
- * blanked (intent-match S1 smoke, 2026-09-29).
+ * The main checkout behind a linked git worktree, or null (not a worktree, not a repo, no git). A worktree has no
+ * `.env.local` of its own, so without this every rail in one silently had no key (semantic-lint shadow: 15 of 18
+ * "could not look" were worktrees, 2026-10-14).
+ */
+export function mainCheckoutRoot(root) {
+  try {
+    const common = execFileSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return basename(common) === '.git' ? dirname(common) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The API key: env first, then `.env.local` at the repo root, then the cwd, then the main checkout when this is a
+ * linked worktree. null when none. A variable that is SET but empty (`TYPESAFE_API_KEY= node scripts/…`) means "no
+ * key" and stops the lookup: that is how a person turns Jev off for one command, and falling through to `.env.local`
+ * made the command quietly use the key they had just blanked (intent-match S1 smoke, 2026-09-29).
  */
 export function readApiKey({
   env = process.env,
@@ -189,10 +207,13 @@ export function readApiKey({
   cwd = process.cwd(),
   read = readFileSync,
   exists = existsSync,
+  mainRoot = () => mainCheckoutRoot(root),
 } = {}) {
   if (env.TYPESAFE_API_KEY !== undefined) return env.TYPESAFE_API_KEY.trim() || null;
-  for (const dir of [root, cwd]) {
-    const p = join(dir, '.env.local');
+  for (const dir of [root, cwd, () => mainRoot()]) {
+    const d = typeof dir === 'function' ? dir() : dir;
+    if (!d) continue;
+    const p = join(d, '.env.local');
     if (!exists(p)) continue;
     try {
       const v = envFileValue(read(p, 'utf8'), 'TYPESAFE_API_KEY');
