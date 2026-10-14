@@ -31,7 +31,7 @@ test('the deny list names the guardrails the process promises', () => {
   for (const probe of [
     'vercel deploy --prod',
     'vercel --prod --yes',
-    'supabase db push',
+    'supabase db reset',
     'git push --force origin x',
     'rm -rf build',
   ]) {
@@ -45,6 +45,9 @@ test('the deny list names the guardrails the process promises', () => {
 test('ordinary builder commands are NOT caught by the deny list (a guard must allow the negation)', () => {
   const deny = settings.permissions.deny.filter((r) => r.startsWith('Bash('));
   for (const ok of [
+    // many-products S2.4 (2026-10-14): agents apply migrations with `db push`; `db reset` stays denied.
+    'supabase db push',
+    'npx supabase db push --linked',
     'git push origin feat/x',
     'git push -u origin feat/x',
     'git push origin --delete feat/x',
@@ -186,8 +189,8 @@ test('force pushes, recursive deletes and CLI deploys are refused in the spellin
     'vercel --yes',
     'vercel .',
     'npx vercel --prod',
-    'npx supabase db push',
-    'supabase --debug db push',
+    'npx supabase db reset',
+    'supabase --debug db reset',
   ]) {
     assert.ok(
       deny.some((r) => bashRuleMatches(r.slice(5, -1), probe)),

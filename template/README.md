@@ -41,7 +41,7 @@ plugin is pull-based/versioned; see the repo root README for the distinction.
    `ci.yml`'s real checks).
 4. **Wire the marketplace and the permissions** — `.claude/settings.json` already points at this
    repo's `golden-frijoles` plugin and carries the committed `permissions` block: an `allow` list of verb
-   classes, a `deny` list (CLI deploys, `supabase db push|reset`, force pushes, `rm -rf`, whole-tree
+   classes, a `deny` list (CLI deploys, `supabase db reset`, force pushes, `rm -rf`, whole-tree
    staging, hand-edits of generated boards) and an `ask` list (secret/env writes). Every deny/ask rule
    is cited in `.claude/permissions-ledger.json`; `node scripts/permissions-smoke.mjs` checks the pair.
    Add project-specific rules to BOTH files. **Auto mode is a user setting** — put

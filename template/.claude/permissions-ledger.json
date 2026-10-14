@@ -267,219 +267,147 @@
     },
     {
       "list": "deny",
-      "rule": "Bash(supabase db push*)",
-      "probe": "supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(*=* supabase db push*)",
-      "probe": "PATH=/x:$PATH supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(env *supabase db push*)",
-      "probe": "env PATH=/x:$PATH supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(supabase * db push*)",
-      "probe": "supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(*=* supabase * db push*)",
-      "probe": "PATH=/x:$PATH supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(env *supabase * db push*)",
-      "probe": "env PATH=/x:$PATH supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
       "rule": "Bash(supabase db reset*)",
       "probe": "supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* supabase db reset*)",
       "probe": "PATH=/x:$PATH supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *supabase db reset*)",
       "probe": "env PATH=/x:$PATH supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(supabase * db reset*)",
       "probe": "supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* supabase * db reset*)",
       "probe": "PATH=/x:$PATH supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *supabase * db reset*)",
       "probe": "env PATH=/x:$PATH supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(npx supabase db push*)",
-      "probe": "npx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(*=* npx supabase db push*)",
-      "probe": "PATH=/x:$PATH npx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(env *npx supabase db push*)",
-      "probe": "env PATH=/x:$PATH npx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(npx supabase * db push*)",
-      "probe": "npx supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(*=* npx supabase * db push*)",
-      "probe": "PATH=/x:$PATH npx supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
-    },
-    {
-      "list": "deny",
-      "rule": "Bash(env *npx supabase * db push*)",
-      "probe": "env PATH=/x:$PATH npx supabase --debug db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(npx supabase db reset*)",
       "probe": "npx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* npx supabase db reset*)",
       "probe": "PATH=/x:$PATH npx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *npx supabase db reset*)",
       "probe": "env PATH=/x:$PATH npx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(npx supabase * db reset*)",
       "probe": "npx supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* npx supabase * db reset*)",
       "probe": "PATH=/x:$PATH npx supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *npx supabase * db reset*)",
       "probe": "env PATH=/x:$PATH npx supabase --debug db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(npx -y supabase*)",
       "probe": "npx -y supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* npx -y supabase*)",
       "probe": "PATH=/x:$PATH npx -y supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *npx -y supabase*)",
       "probe": "env PATH=/x:$PATH npx -y supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(npx --yes supabase*)",
       "probe": "npx --yes supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* npx --yes supabase*)",
       "probe": "PATH=/x:$PATH npx --yes supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *npx --yes supabase*)",
       "probe": "env PATH=/x:$PATH npx --yes supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(pnpm dlx supabase*)",
       "probe": "pnpm dlx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* pnpm dlx supabase*)",
       "probe": "PATH=/x:$PATH pnpm dlx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *pnpm dlx supabase*)",
       "probe": "env PATH=/x:$PATH pnpm dlx supabase db push",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(bunx supabase*)",
       "probe": "bunx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(*=* bunx supabase*)",
       "probe": "PATH=/x:$PATH bunx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
       "rule": "Bash(env *bunx supabase*)",
       "probe": "env PATH=/x:$PATH bunx supabase db reset",
-      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. The orchestrator applies migrations through the MCP; `db push` replays every local file and `db reset` drops the database. Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
+      "cites": "WAYS-OF-WORKING → The cadence + Permissions → three actions get one focused question: a migration replay or a database reset against the LINKED project is irreversible against live data. `db reset` drops the database. (`db push` was allowed for agents on 2026-10-14, many-products S2.4: a migration is still its own step, applied before the merge that deploys the code that reads it.) Generated in all three prefix spellings (bare, assignment-prefixed, `env`-prefixed): a leading assignment whose value contains an expansion was observed LIVE 2026-09-16 to escape a bare rule. Deliberately NARROW rather than a `*=* <binary>*` catch-all, which also refused ordinary reads like `grep -rn --include=*.json vercel .` (found by the security lens on #17)."
     },
     {
       "list": "deny",
