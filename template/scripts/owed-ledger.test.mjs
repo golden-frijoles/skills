@@ -302,6 +302,17 @@ test('extractMarkers: "owed to the product owner: nothing" is not a check', () =
   assert.equal(extractMarkers('- **owed to the product owner:** nothing', 'R/sprint-1.md').length, 0);
 });
 
+test('extractMarkers: a marker beside an HTML comment still counts; one inside it does not', () => {
+  const md = [
+    '- Owed to the product owner: run the production smoke <!-- after launch -->',
+    '<!-- owed to the product owner: a placeholder --> plain text',
+    '<!-- opens',
+    'owed to the product owner: inside',
+    'closes --> owed to the product owner: after the close',
+  ].join('\n');
+  assert.deepEqual(extractMarkers(md, 'R/RETROSPECTIVE.md').map((f) => f.line), [1, 5]);
+});
+
 test('kindOf: the British spelling is a judgment too', () => {
   assert.equal(kindOf({ text: 'the one judgement no spec makes' }), 'judgment');
 });

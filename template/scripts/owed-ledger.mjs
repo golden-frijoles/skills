@@ -273,12 +273,28 @@ export function extractMarkers(contents, file, marker = markerFor(DEFAULT_OWNERS
       continue;
     }
     if (inFence || taken.has(i)) continue;
-    // A template's `<!-- … owed to the product owner … -->` placeholder is guidance, not an owed check.
-    const opens = raw.includes('<!--');
-    const commented = inHtmlComment || opens;
-    if (opens && !raw.includes('-->', raw.indexOf('<!--'))) inHtmlComment = true;
-    else if (inHtmlComment && raw.includes('-->')) inHtmlComment = false;
-    if (commented || !marker.test(raw)) continue;
+    // A template's `<!-- … owed to the product owner … -->` placeholder is guidance, not an owed check. Only the
+    // text INSIDE a comment is dropped: "Owed to … <!-- after launch -->" is still a real marker.
+    let visible = '';
+    let rest = raw;
+    while (rest.length) {
+      if (inHtmlComment) {
+        const end = rest.indexOf('-->');
+        if (end === -1) break;
+        rest = rest.slice(end + 3);
+        inHtmlComment = false;
+      } else {
+        const start = rest.indexOf('<!--');
+        if (start === -1) {
+          visible += rest;
+          break;
+        }
+        visible += rest.slice(0, start);
+        rest = rest.slice(start + 4);
+        inHtmlComment = true;
+      }
+    }
+    if (!marker.test(visible)) continue;
     const whole = wrapped(i);
     // "None owed to …", or a spec that replaces a smoke that "would otherwise be owed": a mention, not a debt.
     if (/\b(?:none|nothing)\b[^.]*\bowed\b|\bowed\b[^.]*:\s*(?:\*\*)?\s*(?:none|nothing)\b|\botherwise\s+be\s+owed\b|\breplaces\b[^.]*\bowed\b/i.test(whole)) continue;
