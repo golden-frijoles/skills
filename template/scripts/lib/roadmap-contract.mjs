@@ -169,7 +169,8 @@ export function validateFlagKey(fm) {
 // anyway, and `grounded_reason` says why), or absent/null (a Bug, a Chore, or an epic refined before it existed).
 // Whether a bet COUNTS as grounded is derived from its target (bets-grounded.mjs, D2), never from this field alone.
 // one-bet-wired D1 — a bet's measurement: what its flag funnel reads. Optional as a whole; once any field is set it
-// needs a flag and an adoption event, the only segment is `everyone` (named segments are tars-segments), and the window
+// needs a flag and an adoption event, the segment is `everyone` or a key the project defines (funnel-truth D13: an
+// unknown key is accepted here and read as "not defined" on screen, never as everyone), and the window
 // is 1–90 whole days. Event names are tokens: what the SDK sends.
 export const BET_FIELDS = [
   'target_segment',
@@ -179,6 +180,9 @@ export const BET_FIELDS = [
   'satisfied_event',
 ];
 export const BET_SEGMENTS = ['everyone'];
+/** funnel-truth D13 — a segment key a project defines with `frijoles segments define` (lowercase words and hyphens). */
+export const SEGMENT_KEY = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const isSegment = (v) => typeof v === 'string' && (BET_SEGMENTS.includes(v) || (v.length <= 48 && SEGMENT_KEY.test(v)));
 const EVENT_NAME = /^[A-Za-z0-9_.:$-]{1,200}$/;
 
 /** The bet's measurement fields → offenses (`contract-bet-invalid`). All absent is fine. */
@@ -189,9 +193,9 @@ export function validateBet(fm) {
   if (!BET_FIELDS.some(has)) return offenses;
   if (!has('flag_key')) bad('a bet with measurement needs a flag_key (the flag whose funnel it reads)');
   if (!has('adopted_event')) bad('a bet with measurement needs an adopted_event (what counts as adopting)');
-  if (has('target_segment') && !BET_SEGMENTS.includes(fm.target_segment))
+  if (has('target_segment') && !isSegment(fm.target_segment))
     bad(
-      `target_segment: "${fm.target_segment}" is not one of ${BET_SEGMENTS.join(' | ')} (named segments come with tars-segments)`
+      `target_segment: "${fm.target_segment}" is not everyone or a segment key (lowercase words joined by hyphens, like power-users)`
     );
   for (const key of ['adopted_event', 'retained_event', 'satisfied_event'])
     if (has(key) && !(typeof fm[key] === 'string' && EVENT_NAME.test(fm[key])))

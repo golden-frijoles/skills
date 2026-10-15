@@ -20,7 +20,7 @@ target_from: null      # from what (a number)
 target_to: null        # to what (a number)
 read_date: null        # when we read it, YYYY-MM-DD; null = 30 days after shipping
 flag_key: null         # the flag, if Stage 6b decided one (`<domain>.<feature>_enabled`); the scaffold copies it
-target_segment: null   # the bet's TARS target segment: `everyone` (the only one until tars-segments) · null = not measured
+target_segment: null   # the bet's TARS target segment: `everyone`, or a key the project defines (`frijoles segments define power-users --event <e> --min <n> --days <d>`) · null = not measured
 adopted_event: null    # the event that means "adopted" (Stage 6b, Measure) · null = not measured
 retained_event: null   # the repeat that means "retained" · null = the adoption event again
 retention_days: null   # the retention window in days (1–90) · null = 7
