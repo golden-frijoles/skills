@@ -14,6 +14,8 @@ import {
   refusalFor,
   OWED_LEDGER_JSON,
   OWED_PUSH_TEXT_MAX,
+  OWED_PUSH_MAX_PER_EPIC,
+  conformOwedForPush,
 } from './owed-ledger.mjs';
 import { buildEnvelope, pushRoadmap } from './roadmap-push.mjs';
 
@@ -149,4 +151,27 @@ test('pushRoadmap sends the owed checks it derived (through the caller, not the 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('conformOwedForPush: what the schema would refuse is left off the push, counted, never a failed push', () => {
+  const ok = (over = {}) => ({
+    epic: 'e',
+    text: 't',
+    kind: 'ops',
+    category: 'other',
+    file: 'Roadmap/02-x/e/sprint-1.md',
+    line: 1,
+    ...over,
+  });
+  const items = [
+    ok({ epic: null, file: 'apps/web/e2e/(auth)/login.spec.ts' }),
+    ok({ epic: null, file: 'apps/web/e2e/[slug]/x.spec.ts' }),
+    ok({ epic: null, file: 'apps/web/e2e/a b.spec.ts' }),
+    ok({ text: '' }),
+    ...Array.from({ length: OWED_PUSH_MAX_PER_EPIC + 1 }, () => ok()),
+  ];
+  const { kept, note } = conformOwedForPush(items);
+  assert.equal(kept.length, OWED_PUSH_MAX_PER_EPIC);
+  assert.match(note, /3 with a file path the push cannot carry, 1 with no text, 1 past 100 on one epic/);
+  assert.deepEqual(conformOwedForPush([ok()]), { kept: [ok()], note: null });
 });
