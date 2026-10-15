@@ -148,7 +148,7 @@ Never hand-edit `golden-frijoles.config.json`.
 
 ### 2.1 What happened, and what I found (before any question)
 
-1. **Signed in?** Run `npx -y @golden-frijoles/cli@1.7.0 whoami --json` (the package, never a bare `frijoles`: some shells
+1. **Signed in?** Run `npx -y @golden-frijoles/cli@1.8.0 whoami --json` (the package, never a bare `frijoles`: some shells
    alias `frijoles` to `git fetch`). Exit 0 → print its two facts:
    ```
    Signed in as <account.email>
