@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-10-15
+
+### Changed
+- A bet may name a segment (funnel-truth S2.3): `target_segment:` accepts `everyone` or a key the project defines
+  (lowercase words joined by hyphens, like `power-users`) in the roadmap contract and `roadmap-push`, and the refine
+  seed template's comment names the option. The skills pin the Golden Frijoles CLI 1.9.0, which adds
+  `frijoles segments define <key> --event <e> --min <n> --days <d>` and `frijoles segments ls`.
+
 ## [1.10.1] - 2026-10-15
 
 ### Changed
