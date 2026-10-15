@@ -496,6 +496,7 @@ export const OWED_PUSH_TEXT_MAX = 500;
 export const OWED_PUSH_MAX = 1000;
 export const OWED_PUSH_MAX_PER_EPIC = 100;
 export const OWED_PUSH_FILE_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*$/;
+export const OWED_PUSH_FILE_MAX = 300;
 
 /**
  * Keep only the items the push contract accepts, and say how many were left out. PURE. A file the schema cannot carry
@@ -510,7 +511,11 @@ export function conformOwedForPush(items) {
   let overEpic = 0;
   let overTotal = 0;
   for (const it of items) {
-    if (!OWED_PUSH_FILE_RE.test(it.file) || it.file.split('/').includes('..')) {
+    if (
+      it.file.length > OWED_PUSH_FILE_MAX ||
+      !OWED_PUSH_FILE_RE.test(it.file) ||
+      it.file.split('/').includes('..')
+    ) {
       badFile++;
       continue;
     }

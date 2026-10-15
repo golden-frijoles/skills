@@ -15,6 +15,7 @@ import {
   OWED_LEDGER_JSON,
   OWED_PUSH_TEXT_MAX,
   OWED_PUSH_MAX_PER_EPIC,
+  OWED_PUSH_MAX,
   conformOwedForPush,
 } from './owed-ledger.mjs';
 import { buildEnvelope, pushRoadmap } from './roadmap-push.mjs';
@@ -174,4 +175,23 @@ test('conformOwedForPush: what the schema would refuse is left off the push, cou
   assert.equal(kept.length, OWED_PUSH_MAX_PER_EPIC);
   assert.match(note, /3 with a file path the push cannot carry, 1 with no text, 1 past 100 on one epic/);
   assert.deepEqual(conformOwedForPush([ok()]), { kept: [ok()], note: null });
+});
+
+test('conformOwedForPush: a climbing path, an over-long path and the total cap are left off too', () => {
+  const ok = (over = {}) => ({
+    epic: null,
+    text: 't',
+    kind: 'ops',
+    category: 'other',
+    file: 'apps/web/e2e/x.spec.ts',
+    line: 1,
+    ...over,
+  });
+  const { kept, note } = conformOwedForPush([
+    ok({ file: 'Roadmap/../x.md' }),
+    ok({ file: `apps/${'a'.repeat(300)}.spec.ts` }),
+    ...Array.from({ length: OWED_PUSH_MAX + 1 }, () => ok()),
+  ]);
+  assert.equal(kept.length, OWED_PUSH_MAX);
+  assert.match(note, /2 with a file path the push cannot carry, 1 past 1000 in all/);
 });
