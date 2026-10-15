@@ -109,4 +109,7 @@ test('one-bet-wired D1: the push carries the bet as written when well-formed, el
     satisfied_event: 'rated_5',
   });
   assert.deepEqual(betFields({ target_segment: 'power', adopted_event: 'has space', retention_days: 400 }).retention_days, null);
+  // funnel-truth D13 — a named segment travels from the README to the push as written; a malformed one is null.
+  assert.equal(betFields({ target_segment: 'power-users', adopted_event: 'x' }).target_segment, 'power-users');
+  assert.equal(betFields({ target_segment: 'Power_Users', adopted_event: 'x' }).target_segment, null);
 });

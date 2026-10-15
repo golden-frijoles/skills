@@ -75,6 +75,7 @@ import {
   RESULT_FIELDS,
   FLAG_KEY_RE,
   groundedValue,
+  isSegment,
   RESULT_NUMERIC_FIELDS,
   VERDICTS,
 } from './lib/roadmap-contract.mjs';
@@ -188,7 +189,9 @@ export function betFields(fm) {
     typeof v === 'string' && /^[A-Za-z0-9_.:$-]{1,200}$/.test(v.trim()) ? v.trim() : null;
   const days = Number(fm.retention_days);
   return {
-    target_segment: fm.target_segment === 'everyone' ? 'everyone' : null,
+    // funnel-truth D13 (verifier, #379): `everyone` or a segment key travels as written; a malformed one is null (the
+    // contract names it), never rewritten to everyone.
+    target_segment: isSegment(fm.target_segment) ? fm.target_segment : null,
     adopted_event: token(fm.adopted_event),
     retained_event: token(fm.retained_event),
     retention_days: Number.isInteger(days) && days >= 1 && days <= 90 ? days : null,

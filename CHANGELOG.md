@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.10.3] - 2026-10-15
+
+### Fixed
+- `roadmap-extract` pushes a named `target_segment:` as written (it turned every key but `everyone` into null, which the
+  Hub read as everyone); a malformed one is still null and the contract names it (funnel-truth, verifier on #379).
+
 ## [1.10.2] - 2026-10-15
 
 ### Changed

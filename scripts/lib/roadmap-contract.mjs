@@ -182,7 +182,7 @@ export const BET_FIELDS = [
 export const BET_SEGMENTS = ['everyone'];
 /** funnel-truth D13 — a segment key a project defines with `frijoles segments define` (lowercase words and hyphens). */
 export const SEGMENT_KEY = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const isSegment = (v) => typeof v === 'string' && (BET_SEGMENTS.includes(v) || (v.length <= 48 && SEGMENT_KEY.test(v)));
+export const isSegment = (v) => typeof v === 'string' && (BET_SEGMENTS.includes(v) || (v.length <= 48 && SEGMENT_KEY.test(v)));
 const EVENT_NAME = /^[A-Za-z0-9_.:$-]{1,200}$/;
 
 /** The bet's measurement fields → offenses (`contract-bet-invalid`). All absent is fine. */
