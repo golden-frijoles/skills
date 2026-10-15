@@ -23,7 +23,8 @@ test('the manifest is the entry plus its real import closure — nothing hand-li
 
 test('the real manifest bundles build-state and exactly the libs it imports', () => {
   // board-sinks-and-scrumban S3.1: the build view reads its stage from the extractor's rows, so its closure is the
-  // extractor's too (and the push the extractor imports for `--sink hub`).
+  // extractor's too (and the push the extractor imports for `--sink hub`). owed-on-screen D1: the push loads the owed
+  // ledger by a dynamic import (only a push runs it), which the manifest follows like any other import.
   assert.deepEqual(vendorManifest(), [
     'build-state.mjs',
     'lib/board-text.mjs',
@@ -32,12 +33,14 @@ test('the real manifest bundles build-state and exactly the libs it imports', ()
     'lib/epic-kickoff.mjs',
     'lib/horizon.mjs',
     'lib/project-root.mjs',
+    'lib/reporting-config.mjs',
     'lib/result-dates.mjs',
     'lib/roadmap-contract.mjs',
     'lib/session-journal.mjs',
     'lib/stage-facts.mjs',
     'lib/stage.mjs',
     'lib/work-branch.mjs',
+    'owed-ledger.mjs',
     'roadmap-extract.mjs',
     'roadmap-push.mjs',
   ]);

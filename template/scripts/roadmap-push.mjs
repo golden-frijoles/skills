@@ -194,8 +194,9 @@ export function envelopeFor(items, root = REPO_ROOT, { owed = null } = {}) {
  * owed-on-screen D1 — the open owed checks for the push, or null. Never fails the push (the board must still update); a
  * ledger that could not be derived says why on stderr.
  *
- * ⚠️ A DYNAMIC import, on purpose: `roadmap-extract.mjs` imports this file statically, and the build view's hook vendors
- * that closure under a 5-second budget. Only the two push paths below need the ledger, so only they load it.
+ * ⚠️ A DYNAMIC import, on purpose: `roadmap-extract.mjs` imports this file statically, and the build view's hook runs
+ * the extractor under a 5-second budget. Only the two push paths below need the ledger, so only they LOAD it (the hook's
+ * vendored bundle still carries it: `render-hook-vendor.mjs` follows dynamic imports too).
  */
 export async function owedFor(items, root = REPO_ROOT, warn = (m) => process.stderr.write(`${m}\n`)) {
   const { owedForPush } = await import('./owed-ledger.mjs');
