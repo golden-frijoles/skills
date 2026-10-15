@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-15
+
+### Changed
+- The skills pin the Golden Frijoles CLI 1.8.0, which adds `frijoles funnel <feature> --by month|week`: a feature's
+  funnel by the month (or week) people first got it, each period read or said to be unreadable (funnel-truth S1.4).
+
 ## [1.10.0] - 2026-10-15
 
 ### Added
