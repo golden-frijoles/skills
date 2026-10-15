@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-15
+
+### Added
+- The roadmap push carries the project's open owed checks (owed-on-screen): `roadmap-push.mjs` derives them live with
+  `owed-ledger.mjs`'s own functions and sends one top-level `owed` block, each check with its epic (the epic folder it
+  was written in, else none), kind, category and `file:line`. A project with no committed
+  `Roadmap/00-ideas/OWED-LEDGER.json` pushes exactly as before; a ledger that cannot be derived is not sent, and the push
+  says why on stderr instead of failing. `refine`, `report` and `setup` now ship `owed-ledger.mjs`.
+
 ## [1.9.4] - 2026-10-14
 
 ### Added

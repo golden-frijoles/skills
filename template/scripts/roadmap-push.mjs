@@ -48,7 +48,10 @@ function git(args, root = REPO_ROOT) {
  * touching the network — the envelope is the thing the server validates, so it is the thing worth
  * testing.
  */
-export function buildEnvelope(items, { commit, ref, generatedAt, board = null, horizon = null } = {}) {
+export function buildEnvelope(
+  items,
+  { commit, ref, generatedAt, board = null, horizon = null, owed = null } = {}
+) {
   return {
     schemaVersion: ROADMAP_SCHEMA_VERSION,
     generatedAt: generatedAt ?? new Date().toISOString(),
@@ -64,6 +67,9 @@ export function buildEnvelope(items, { commit, ref, generatedAt, board = null, h
     ...(board ? { board } : {}),
     // many-products D14 — the product's declared destinations; absent when it has none, for the same reason as `board`.
     ...(Array.isArray(horizon) && horizon.length ? { horizon } : {}),
+    // owed-on-screen D3 — the open owed checks, one top-level block (never per row: every `items` reader would carry
+    // it). Absent when the project keeps no ledger; an EMPTY array is sent, because "nothing owed" is a reading.
+    ...(Array.isArray(owed) ? { owed } : {}),
   };
 }
 
@@ -164,8 +170,11 @@ export function readExtractFor(
 export const apiKeyFrom = (env = process.env) =>
   env.SELF_PROJECT_API_KEY || env.GROWTH_ENGINE_API_KEY || null;
 
-/** The envelope for `items` as pushed from the checkout at `root`: provenance, the WIP limits, the repo base. */
-export function envelopeFor(items, root = REPO_ROOT) {
+/**
+ * The envelope for `items` as pushed from the checkout at `root`: provenance, the WIP limits, the repo base, and the owed
+ * checks when the caller derived them (`owedFor`, below — async, so it is passed in rather than computed here).
+ */
+export function envelopeFor(items, root = REPO_ROOT, { owed = null } = {}) {
   const defaultBranch = (
     git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], root) || 'origin/main'
   ).replace(/^origin\//, '');
@@ -177,7 +186,23 @@ export function envelopeFor(items, root = REPO_ROOT) {
       repo: repoBlobBase(git(['remote', 'get-url', 'origin'], root), defaultBranch),
     }),
     horizon: readHorizon(root),
+    owed,
   });
+}
+
+/**
+ * owed-on-screen D1 — the open owed checks for the push, or null. Never fails the push (the board must still update); a
+ * ledger that could not be derived says why on stderr.
+ *
+ * ⚠️ A DYNAMIC import, on purpose: `roadmap-extract.mjs` imports this file statically, and the build view's hook vendors
+ * that closure under a 5-second budget. Only the two push paths below need the ledger, so only they load it.
+ */
+export async function owedFor(items, root = REPO_ROOT, warn = (m) => process.stderr.write(`${m}\n`)) {
+  const { owedForPush } = await import('./owed-ledger.mjs');
+  const epicSlugs = items.filter((i) => i?.grain === 'Epic').map((i) => i.slug);
+  const { owed, note } = owedForPush({ root, epicSlugs });
+  if (note) warn(`roadmap-push: ${note}`);
+  return owed;
 }
 
 /**
@@ -194,12 +219,14 @@ export async function pushRoadmap(
   } = {}
 ) {
   if (!apiKey) return { ok: true, skipped: true, status: null, text: '' };
+  // Outside the fetch's try: a missing owed-ledger.mjs is a broken install, never "could not reach the engine".
+  const body = JSON.stringify(envelopeFor(items, root, { owed: await owedFor(items, root) }));
   let res;
   try {
     res = await fetchFn(`${String(baseUrl).replace(/\/$/, '')}/api/v1/roadmap/push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(envelopeFor(items, root)),
+      body,
       signal: AbortSignal.timeout(30_000),
     });
   } catch (err) {
@@ -276,7 +303,10 @@ async function main() {
   const apiKey = apiKeyFrom(fromFile) ?? apiKeyFrom(process.env);
   const items = readExtractFor(args);
   if (args.includes('--dry-run')) {
-    writeSync(1, `${JSON.stringify(envelopeFor(items), null, 2)}\n`);
+    writeSync(
+      1,
+      `${JSON.stringify(envelopeFor(items, REPO_ROOT, { owed: await owedFor(items) }), null, 2)}\n`
+    );
     return;
   }
   process.exitCode = reportPush(await pushRoadmap(items, { baseUrl, apiKey }), items.length);
