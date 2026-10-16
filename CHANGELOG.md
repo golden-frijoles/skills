@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.10.4] - 2026-10-16
+
+### Changed
+- The skills pin the Golden Frijoles CLI 1.10.0 (drill-impact-for-agents): `frijoles scenarios define … --experiment
+  <key>@<version>` binds a drill to an experiment, a stop captures its impact, and `frijoles scenarios impact <run-id>`
+  reads it (control versus treatment) or, with `--capture`, retries a failed capture.
+- The template's review rail pins agy 1.4.0 (`AGY_PINNED`), after `cross-agent-doctor agy --fix` re-verified its contract.
+
 ## [1.10.3] - 2026-10-15
 
 ### Fixed
