@@ -164,13 +164,21 @@ test('/build with no slug or an unknown one lists the epics and fills nothing', 
 // ── build-view-upgrade S1.4 (D5/D6): the session line, coloured, under the hint — with the time to each reset ─────────
 const HOUR = 3_600_000;
 const NOW = Date.UTC(2026, 9, 8, 1, 0);
-const flat = (node: unknown): { text: string; color?: string }[] => {
-  if (typeof node === 'string') return [{ text: node }];
+type Run = { text: string; color?: string; bold?: boolean; dim?: boolean; italic?: boolean };
+// Every drawn string with the styles it inherits from the Text nodes around it (build-view-one-story S1.7).
+const flat = (node: unknown, inherit: Omit<Run, 'text'> = {}): Run[] => {
+  if (typeof node === 'string') return node ? [{ text: node, ...inherit }] : [];
   if (!node || typeof node !== 'object') return [];
-  const el = node as { type?: string; props?: { color?: string }; children?: unknown };
-  const kids = ([] as unknown[]).concat(el.children ?? []);
-  const out = kids.flatMap(flat);
-  return el.props?.color ? out.map((p) => ({ ...p, color: p.color ?? el.props?.color })) : out;
+  const el = node as { props?: { color?: string; bold?: boolean; dimColor?: boolean; italic?: boolean }; children?: unknown };
+  const p = el.props ?? {};
+  const style = {
+    ...inherit,
+    ...(p.color ? { color: p.color } : {}),
+    ...(p.bold ? { bold: true } : {}),
+    ...(p.dimColor ? { dim: true } : {}),
+    ...(p.italic ? { italic: true } : {}),
+  };
+  return ([] as unknown[]).concat(el.children ?? []).flatMap((c) => flat(c, style));
 };
 
 test('S1.4: session.measure draws each figure in its colour with its reset, and clears the plain status line', async ($, on) => {
@@ -199,12 +207,18 @@ test('S1.4: session.measure draws each figure in its colour with its reset, and 
   expect(parts[0].text).toBe('? for shortcuts'); // the engine's own hint is kept
   const by = (text: string) => parts.find((p) => p.text === text);
   expect(by('Session 48%')?.color).toBe('green');
-  expect(by('5h 78% (-2h)')?.color).toBe('yellow');
-  expect(by('7d 91% (-3d)')?.color).toBe('red');
+  // build-view-one-story D9 — the 5-hour meter: label, filled cells and words in the figure's tone, empty cells dim.
+  expect(by('5h ')?.color).toBe('yellow');
+  expect(by('▰▰▰▰▰▰▰▰')?.color).toBe('yellow');
+  expect(by('▱▱')?.dim).toBe(true);
+  const tail = parts.find((p) => p.text.startsWith(' 78% · resets '));
+  expect(tail?.color).toBe('yellow');
+  expect(tail?.text.endsWith('(in 2h 30m)')).toBe(true);
+  expect(by('7d 91% (in 3d 3h)')?.color).toBe('red');
   expect(parts.some((p) => p.text === ' → keep going')).toBe(true);
-  // The countdown moves with the clock, not only with a new measurement (#312 review).
-  await clock.advance(60 * 60_000);
-  expect(flat(await hint.drawn()).some((p) => p.text === '5h 78% (-1h)')).toBe(true);
+  // The countdown moves with the clock, to the minute, not only with a new measurement (#312 review).
+  await clock.advance(61 * 60_000);
+  expect(flat(await hint.drawn()).some((p) => p.text.endsWith('(in 1h 29m)'))).toBe(true);
 });
 
 test('S1.4: a question waiting shows before the first measurement (#312 review)', async ($, on) => {

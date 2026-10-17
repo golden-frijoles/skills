@@ -10,6 +10,7 @@ import {
   sessionLine,
   sessionParts,
   resetIn,
+  clockTime,
   toneOf,
   TONES,
   sessionVerdict,
@@ -96,8 +97,11 @@ test('figuresFromMeasure reads the event payload and leaves absent figures null'
 });
 
 test('the Claude Code line drops unknown figures instead of showing 0%', () => {
-  assert.equal(sessionLine({ contextPct: 48, fiveHourPct: 23.4, sevenDayPct: 9 }), 'Session 48% · 5h 23% · 7d 9% → keep going');
-  assert.equal(sessionLine({ contextPct: null, fiveHourPct: 23 }), '5h 23% → keep going');
+  assert.equal(
+    sessionLine({ contextPct: 48, fiveHourPct: 23.4, sevenDayPct: 9 }),
+    'Session 48% · 5h ▰▰▱▱▱▱▱▱▱▱ 23% · 7d 9% → keep going'
+  );
+  assert.equal(sessionLine({ contextPct: null, fiveHourPct: 23 }), '5h ▰▰▱▱▱▱▱▱▱▱ 23% → keep going');
   assert.equal(sessionLine({ contextPct: 62, questionsWaiting: 1 }), 'Session 62% · 1 question waiting → checkpoint');
   assert.equal(sessionLine({ contextPct: 40, questionsWaiting: 0 }), 'Session 40% → keep going');
   assert.equal(sessionLine({ contextPct: null, fiveHourPct: null, sevenDayPct: null }), null, 'no figure, no line');
@@ -107,22 +111,24 @@ test('the Claude Code line drops unknown figures instead of showing 0%', () => {
 test('build-view-upgrade D5: each figure is coloured by its own table, with the time to its reset', () => {
   const now = Date.UTC(2026, 9, 8, 1, 0);
   const H = 3_600_000;
+  const parts = sessionParts(
+    { contextPct: 48, fiveHourPct: 78, sevenDayPct: 46, fiveHourResetsAt: now + 2.5 * H, sevenDayResetsAt: now + 75 * H },
+    undefined,
+    now,
+  );
   assert.deepEqual(
-    sessionParts(
-      { contextPct: 48, fiveHourPct: 78, sevenDayPct: 46, fiveHourResetsAt: now + 2.5 * H, sevenDayResetsAt: now + 75 * H },
-      undefined,
-      now,
-    ),
+    parts.map(({ text, tone, verdict }) => ({ text, tone, ...(verdict ? { verdict } : {}) })),
     [
       { text: 'Session 48%', tone: 'good' },
-      { text: '5h 78% (-2h)', tone: 'warn' },
-      { text: '7d 46% (-3d)', tone: 'good' },
+      { text: `5h ▰▰▰▰▰▰▰▰▱▱ 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)`, tone: 'warn' },
+      { text: '7d 46% (in 3d 3h)', tone: 'good' },
       { text: 'keep going', tone: null, verdict: true },
     ],
   );
+  assert.deepEqual(parts[1].meter, { head: '5h ', filled: '▰▰▰▰▰▰▰▰', empty: '▱▱', tail: ` 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)` });
   assert.equal(
     sessionLine({ fiveHourPct: 91, sevenDayPct: 62, fiveHourResetsAt: now + 40 * 60_000, sevenDayResetsAt: now + 24 * H }, undefined, now),
-    '5h 91% (-40m) · 7d 62% (-24h) → hand off',
+    `5h ▰▰▰▰▰▰▰▰▰▱ 91% · resets ${clockTime(now + 40 * 60_000)} (in 40m) · 7d 62% (in 1d) → hand off`,
   );
   for (const [key, cases] of Object.entries({
     contextPct: [[59, 'good'], [60, 'warn'], [79, 'warn'], [80, 'bad']],
@@ -132,13 +138,26 @@ test('build-view-upgrade D5: each figure is coloured by its own table, with the 
     for (const [value, tone] of cases) assert.equal(toneOf(key, value), tone, `${key} ${value}`);
   assert.equal(TONES.contextPct.bad, THRESHOLDS.handOff.contextPct, 'red is the hand-off line, not a second number');
   assert.equal(TONES.fiveHourPct.bad, THRESHOLDS.handOff.fiveHourPct);
-  assert.equal(resetIn(now + 30_000, now), '-1m', 'never -0');
-  assert.equal(resetIn(now + 59 * 60_000, now), '-59m');
-  assert.equal(resetIn(now + H, now), '-1h');
-  assert.equal(resetIn(now + 25 * H, now), '-1d');
+  assert.equal(resetIn(now + 30_000, now), 'in 1m', 'never in 0m');
+  assert.equal(resetIn(now + 59 * 60_000, now), 'in 59m');
+  assert.equal(resetIn(now + H, now), 'in 1h');
+  assert.equal(resetIn(now + 25 * H, now), 'in 1d 1h');
   assert.equal(resetIn(now - 1, now), null, 'a past reset shows nothing');
   assert.equal(resetIn(null, now), null);
-  assert.equal(sessionLine({ fiveHourPct: 20, fiveHourResetsAt: null }, undefined, now), '5h 20% → keep going');
+  assert.equal(sessionLine({ fiveHourPct: 20, fiveHourResetsAt: null }, undefined, now), '5h ▰▰▱▱▱▱▱▱▱▱ 20% → keep going');
+});
+
+test('build-view-one-story D9: the reset seen as "-1h" on 2026-10-10 reads to the minute, and under an hour has no hours', () => {
+  // Reproduced before the change: at 7:51 pm with a 9:20 pm reset, resetIn said `-1h` (floored hours, and the minus
+  // read as "an hour ago"). The line now says when, and how long until then.
+  const seen = new Date(2026, 9, 10, 19, 51).getTime();
+  const reset = new Date(2026, 9, 10, 21, 20).getTime();
+  assert.equal(sessionLine({ fiveHourPct: 62, fiveHourResetsAt: reset }, undefined, seen), '5h ▰▰▰▰▰▰▱▱▱▱ 62% · resets 9:20 pm (in 1h 29m) → keep going');
+  assert.equal(resetIn(reset, new Date(2026, 9, 10, 20, 31).getTime()), 'in 49m', 'under an hour: minutes alone, never "in 0h 49m" or "-1h"');
+  assert.equal(clockTime(new Date(2026, 9, 10, 0, 5).getTime()), '12:05 am');
+  assert.equal(clockTime(new Date(2026, 9, 10, 12, 0).getTime()), '12:00 pm');
+  assert.equal(clockTime(null), null);
+  assert.ok(!/-\d/.test(sessionLine({ fiveHourPct: 5, fiveHourResetsAt: seen + 1 }, undefined, seen)), 'no minus sign, ever');
 });
 
 test('the Cowork line says context is not measured and uses the same verdict', () => {

@@ -101,34 +101,58 @@ export function toneOf(key, value) {
 }
 
 /**
- * Time to a window's reset (D5): `-40m` under an hour, `-2h` up to 24 hours, `-3d` beyond — whole units, rounded down,
- * never `-0` (the last minute reads `-1m`). A reset that is unknown or already past → null, and nothing is shown.
+ * Time to a window's reset, to the minute (build-view-one-story D9): `in 40m` under an hour, `in 1h 29m` under a day,
+ * `in 3d 4h` beyond — floored, a zero unit left out, never `in 0m` (the last minute reads `in 1m`). It replaced `-1h`,
+ * which read as "an hour ago" for a reset 1 h 29 m away (seen 2026-10-10). Unknown or already past → null.
  */
 export function resetIn(at, now = Date.now()) {
   if (!known(at) || !known(now) || at <= now) return null;
   const minutes = Math.max(1, Math.floor((at - now) / 60_000));
-  if (minutes < 60) return `-${minutes}m`;
+  if (minutes < 60) return `in ${minutes}m`;
   const hours = Math.floor(minutes / 60);
-  if (hours <= 24) return `-${hours}h`;
-  return `-${Math.floor(hours / 24)}d`;
+  if (hours < 24) return `in ${hours}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`;
+  return `in ${Math.floor(hours / 24)}d${hours % 24 ? ` ${hours % 24}h` : ''}`;
 }
 
+/** The wall-clock time of a reset in the runtime's local time, `9:20 pm` / `12:05 am` (D9). Unknown → null. */
+export function clockTime(at) {
+  if (!known(at)) return null;
+  const d = new Date(at);
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+export const METER_WIDTH = 10;
+
 /**
- * The Claude Code line in parts, each with its colour (D5): `[{ text: 'Session 48%', tone: 'good' }, { text: '5h 78%
- * (-2h)', tone: 'warn' }, …]`, the verdict last (tone null). Unknown figures are dropped (D4); nothing known → [].
+ * The Claude Code line in parts, each with its colour (D5): `[{ text: 'Session 48%', tone: 'good' }, { text: '5h ▰▰▰▰▰▰▰▰▱▱
+ * 78% · resets 3:30 am (in 2h 30m)', tone: 'warn', meter: {…} }, …]`, the verdict last (tone null). The 5-hour part is a
+ * meter (D9): `meter` splits its text so the band can draw the empty cells dim. Unknown figures are dropped (D4);
+ * nothing known → [].
  */
 export function sessionParts(figures, verdict = sessionVerdict(figures), now = Date.now()) {
   const f = figures || {};
   const parts = [];
-  const reset = (at) => {
-    const r = resetIn(at, now);
-    return r ? ` (${r})` : '';
-  };
   if (known(f.contextPct)) parts.push({ text: `Session ${pct(f.contextPct)}`, tone: toneOf('contextPct', f.contextPct) });
-  if (known(f.fiveHourPct))
-    parts.push({ text: `5h ${pct(f.fiveHourPct)}${reset(f.fiveHourResetsAt)}`, tone: toneOf('fiveHourPct', f.fiveHourPct) });
-  if (known(f.sevenDayPct))
-    parts.push({ text: `7d ${pct(f.sevenDayPct)}${reset(f.sevenDayResetsAt)}`, tone: toneOf('sevenDayPct', f.sevenDayPct) });
+  if (known(f.fiveHourPct)) {
+    const filled = Math.max(0, Math.min(METER_WIDTH, Math.round((f.fiveHourPct / 100) * METER_WIDTH)));
+    const r = resetIn(f.fiveHourResetsAt, now);
+    const meter = {
+      head: '5h ',
+      filled: '▰'.repeat(filled),
+      empty: '▱'.repeat(METER_WIDTH - filled),
+      tail: ` ${pct(f.fiveHourPct)}${r ? ` · resets ${clockTime(f.fiveHourResetsAt)} (${r})` : ''}`,
+    };
+    parts.push({
+      text: `${meter.head}${meter.filled}${meter.empty}${meter.tail}`,
+      tone: toneOf('fiveHourPct', f.fiveHourPct),
+      meter,
+    });
+  }
+  if (known(f.sevenDayPct)) {
+    const r = resetIn(f.sevenDayResetsAt, now);
+    parts.push({ text: `7d ${pct(f.sevenDayPct)}${r ? ` (${r})` : ''}`, tone: toneOf('sevenDayPct', f.sevenDayPct) });
+  }
   if (known(f.questionsWaiting) && f.questionsWaiting > 0)
     parts.push({ text: plural(f.questionsWaiting, 'question waiting', 'questions waiting'), tone: null });
   if (!parts.length) return [];
@@ -136,7 +160,8 @@ export function sessionParts(figures, verdict = sessionVerdict(figures), now = D
 }
 
 /**
- * The Claude Code line as plain text: `Session 48% · 5h 23% (-2h) · 7d 9% (-3d) → keep going` — sessionParts, joined.
+ * The Claude Code line as plain text: `Session 48% · 5h ▰▰▱▱▱▱▱▱▱▱ 23% · resets 9:20 pm (in 1h 29m) · 7d 9% (in 3d 4h)
+ * → keep going` — sessionParts, joined.
  * With nothing known at all there is no line — `null`, not `Session ? → keep going`.
  */
 export function sessionLine(figures, verdict = sessionVerdict(figures), now = Date.now()) {

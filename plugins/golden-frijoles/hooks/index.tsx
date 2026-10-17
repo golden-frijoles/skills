@@ -443,14 +443,27 @@ export const register: Register = (on) => {
       <Box flexDirection="column">
         {base}
         <Text wrap="truncate">
-          {figuresOnly.map((p, i) => (
-            <Text key={`s${i}`}>
-              {i ? <Text dimColor>{' · '}</Text> : null}
-              <Text color={p.tone ? TONE_COLORS[p.tone as keyof typeof TONE_COLORS] : undefined} dimColor={!p.tone}>
-                {p.text}
+          {figuresOnly.map((p, i) => {
+            const color = p.tone ? TONE_COLORS[p.tone as keyof typeof TONE_COLORS] : undefined;
+            return (
+              <Text key={`s${i}`}>
+                {i ? <Text dimColor>{' · '}</Text> : null}
+                {/* build-view-one-story D9 — the 5-hour meter: its filled cells and words in the figure's tone, the rest dim. */}
+                {p.meter ? (
+                  <Text color={color}>
+                    {p.meter.head}
+                    {p.meter.filled}
+                    <Text dimColor>{p.meter.empty}</Text>
+                    {p.meter.tail}
+                  </Text>
+                ) : (
+                  <Text color={color} dimColor={!p.tone}>
+                    {p.text}
+                  </Text>
+                )}
               </Text>
-            </Text>
-          ))}
+            );
+          })}
           {verdict ? <Text dimColor>{` → ${verdict.text}`}</Text> : null}
         </Text>
       </Box>
