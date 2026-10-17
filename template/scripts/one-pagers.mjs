@@ -29,9 +29,9 @@
 // Zero deps — Node 18+.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { projectRoot } from './lib/project-root.mjs';
 import { ONE_PAGERS_DIR, STRATEGY_DIR, parseFrontmatter, section } from './lib/strategy-files.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 /** The persona block's fields, in the order the narrative template lists them under `### Persona`. */
 export const PERSONA_FIELDS = [
@@ -462,5 +462,5 @@ function main(argv) {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])
+if (isMain(import.meta.url))
   process.exitCode = main(process.argv.slice(2));

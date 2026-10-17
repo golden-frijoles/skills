@@ -19,11 +19,11 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { loadJevConfig, repoRoot } from './lib/jev.mjs';
 import { parseJevMarker } from './lib/review-guard.mjs';
 import { harvest } from './jev-backtest.mjs';
 import { FIXTURES_PATH } from './jev-eval.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 /** Parse JSONL, skipping blank and malformed lines (counted, never fatal). Pure. */
 export function parseLog(text) {
@@ -289,8 +289,7 @@ async function main() {
     writeFileSync(resolve(argv[jsonIx + 1]), `${JSON.stringify(report.candidates, null, 2)}\n`);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`jev-report: ${e.message}\n`);
     process.exit(1);

@@ -53,9 +53,10 @@
 
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readSection } from './lib/config.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const POLICY_PATH = join(__dirname, '..', 'smoke-triage.config.json');
@@ -418,13 +419,7 @@ export async function main(argv, deps = {}) {
   return decision.exitCode;
 }
 
-let isMain = false;
-try {
-  isMain = !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-} catch {
-  isMain = false;
-}
-if (isMain) {
+if (isMain(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => {
     process.exitCode = code;
   });

@@ -14,7 +14,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { listPulls, searchMergedPrs } from './lib/gh-rest.mjs';
 import { readLogFromBranch, appendLineToBranch } from './lib/log-branch.mjs';
 import { telegramHtmlToConsoleText, truncateForTelegram } from './lib/telegram-format.mjs';
@@ -31,6 +31,7 @@ import { parseStatusFlipsFromLog, filterFlipsToWindow } from './weekly-recap.mjs
 import { baselineSummary, formatBaselineSummary, summarizePmoMetrics } from './lib/pmo-metrics.mjs';
 import { computePmoWindow, formatPmoReport, lastPmoLogEntry, pmoLogLine } from './lib/pmo-window-log.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = projectRoot(); // D2
@@ -334,5 +335,4 @@ async function main() {
   }
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) await main();
+if (isMain(import.meta.url)) await main();

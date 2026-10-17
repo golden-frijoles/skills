@@ -17,10 +17,10 @@
 // what it skipped.
 //
 // Zero deps — Node 18+.
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readStack } from './read-repo.mjs';
+import { isMain } from './vendor/lib/is-main.mjs';
 
 export const MAX_FILES = 4000;
 export const MAX_BYTES = 256 * 1024;
@@ -325,6 +325,6 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

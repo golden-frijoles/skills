@@ -15,16 +15,16 @@
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export {
   decideDoctorAction,
   bumpPinnedSource,
   parseAgyModelSlugs as parseModelList,
 } from './cross-agent-doctor.mjs';
+import { isMain } from './lib/is-main.mjs';
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) {
+if (isMain(import.meta.url)) {
   const doctor = join(dirname(fileURLToPath(import.meta.url)), 'cross-agent-doctor.mjs');
   const r = spawnSync(process.execPath, [doctor, 'agy', ...process.argv.slice(2)], { stdio: 'inherit' });
   process.exit(r.status ?? 1);

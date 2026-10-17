@@ -19,6 +19,7 @@ requires_scripts:
   - lib/cross-agent-cli.mjs
   - lib/review-shape.mjs
   - lib/project-root.mjs
+  - lib/is-main.mjs
   - lib/strategy-files.mjs
 ---
 

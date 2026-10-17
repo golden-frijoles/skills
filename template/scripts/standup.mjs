@@ -55,6 +55,7 @@ import {
 } from './lib/prose-brief.mjs';
 import { parseStatusFlipsFromLog } from './weekly-recap.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = projectRoot(); // D2
@@ -625,8 +626,7 @@ async function main() {
   }
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().catch((e) => {
     console.error(e.message || e);
     process.exit(1);

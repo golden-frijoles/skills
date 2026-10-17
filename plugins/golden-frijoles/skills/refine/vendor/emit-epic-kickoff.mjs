@@ -35,8 +35,7 @@
 // One source, three homes (kickoff-generator-path C1): this file ships in the kit, a project spawned from the template
 // carries it in `scripts/`, and the refine skill holds a byte-identical copy in `vendor/` (render-hook-vendor.mjs).
 
-import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The builder, its parsers and the template text live in ONE file, `lib/epic-kickoff.mjs` (board-sinks-and-scrumban
@@ -57,6 +56,7 @@ import {
   EPIC_KICKOFF_TEMPLATE,
 } from './lib/epic-kickoff.mjs';
 import { wipWarning } from './lib/wip.mjs';
+import { isMain } from './lib/is-main.mjs';
 export {
   sprintNumFromFilename,
   listSprintFiles,
@@ -160,13 +160,4 @@ function main() {
   process.stdout.write(built.kickoff);
 }
 
-// realpath on both sides (D6): run through a symlinked path (npx's bin link, macOS /tmp → /private/tmp) a plain
-// compare is false and the script would exit 0 having printed nothing.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+if (isMain(import.meta.url)) main();

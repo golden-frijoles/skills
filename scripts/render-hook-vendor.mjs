@@ -43,7 +43,9 @@ export const BUNDLES = Object.freeze([
     // `templates/kickoff.md` is read, not imported, so it is named. The copies sit in `vendor/`, beside their `lib/`,
     // because the source's `./lib/…` imports must resolve unchanged and writeVendor empties the directory first.
     entry: 'emit-epic-kickoff.mjs',
-    also: ['templates/kickoff.md'],
+    // + the entry check the refine skill's own scripts import as ./vendor/lib/is-main.mjs
+    // (template-scripts-consumer-gates D4): named, so it never rides on what the generators happen to import.
+    also: ['templates/kickoff.md', 'lib/is-main.mjs'],
     vendorDir: join(repoRoot, 'plugins', 'golden-frijoles', 'skills', 'refine', 'vendor'),
     fix: 'skills/refine/vendor/',
   },

@@ -19,10 +19,11 @@
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { ensureGh, die } from './lib/cross-agent-cli.mjs';
 import { createPullRequest } from './lib/gh-rest.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = projectRoot(); // D2: the user's project, wherever this set runs from
@@ -137,5 +138,4 @@ function main() {
   console.log(pr.url);
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) main();
+if (isMain(import.meta.url)) main();

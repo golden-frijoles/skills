@@ -48,7 +48,6 @@ import {
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { resolveTarget } from './build-state.mjs';
 import { buildRows } from './roadmap-extract.mjs';
 import { projectRoot } from './lib/project-root.mjs';
@@ -59,6 +58,7 @@ export { stampFrontmatter };
 import { needSetting } from './lib/config.mjs';
 import { apiKeyFrom } from './roadmap-push.mjs';
 import { PRICES_AS_OF, PRICES_SOURCE, TOKEN_KINDS, tokensOf, usdOf } from './lib/model-prices.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const INDEX_VERSION = 1;
 export const STATE_DIR = '.golden-frijoles';
@@ -997,16 +997,7 @@ async function main(argv) {
   return 2;
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   try {
     process.exitCode = await main(process.argv.slice(2));
   } catch (err) {

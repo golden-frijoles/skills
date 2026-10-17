@@ -24,11 +24,11 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { judgeProse } from './lib/prose-guard.mjs';
 import { judgeReviewOutput } from './lib/review-guard.mjs';
 import { loadJevConfig, parseJevConfig, readApiKey, repoRoot } from './lib/jev.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const REVIEW_TITLE = /^### (?:🔎 Cross-agent review \(|🔐 Cross-agent review — \S+ lens \()/;
 
@@ -273,8 +273,7 @@ async function main() {
   process.stdout.write(`${out}\n`);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`jev-backtest: ${e.message}\n`);
     process.exit(1);

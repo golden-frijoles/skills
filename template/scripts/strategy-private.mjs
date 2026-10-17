@@ -20,9 +20,9 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { projectRoot } from './lib/project-root.mjs';
 import { STRATEGY_DIR } from './lib/strategy-files.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const IGNORE_LINE = `${STRATEGY_DIR.split('\\').join('/')}/`;
 export const OPT_IN_LINE = `!${IGNORE_LINE}`;
@@ -154,5 +154,5 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])
+if (isMain(import.meta.url))
   process.exitCode = main(process.argv.slice(2));

@@ -98,7 +98,8 @@ test('imports only node:* and the parser — never the design system (D4)', () =
   assert.ok(specifiers.includes('./lib/surface.mjs'), `the scan found ${JSON.stringify(specifiers)}`);
   for (const specifier of specifiers) {
     assert.ok(
-      specifier.startsWith('node:') || specifier === './lib/surface.mjs',
+      // lib/is-main.mjs is the zero-dep entry check every rail uses (template-scripts-consumer-gates D4).
+      specifier.startsWith('node:') || specifier === './lib/surface.mjs' || specifier === './lib/is-main.mjs',
       `sketch-render.mjs imports ${specifier}`
     );
   }

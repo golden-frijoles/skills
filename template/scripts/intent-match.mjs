@@ -32,8 +32,6 @@
 // the first `## Acceptance…` heading. Zero deps — Node 18+.
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   askJev,
   loadJevConfig,
@@ -45,6 +43,7 @@ import {
 } from './lib/jev.mjs';
 import { needSetting } from './lib/config.mjs';
 import { loadQuestions, wireQuestion } from './lib/jev-questions.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const EXIT_SCORED = 0;
 export const EXIT_USAGE = 1;
@@ -657,8 +656,7 @@ async function main() {
   process.exitCode = code;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`intent-match: ${e.message}\n`);
     process.exitCode = EXIT_USAGE;

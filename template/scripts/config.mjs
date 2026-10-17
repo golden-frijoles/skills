@@ -9,9 +9,8 @@
 // A thin front end: every rule (precedence, the secret guard, what migrate folds) lives in lib/config.mjs, which the
 // `frijoles` CLI imports too. Exit 0 ok · 1 usage · 2 configuration error (a malformed file, a secret, an unknown section).
 
-import { realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { CONFIG_FILENAME, ConfigError, getKey, loadConfig, migrate, setKey } from './lib/config.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const USAGE = 'usage: frijoles-kit config list|get <key>|set <key> <value>|migrate [--dry-run] [--json]';
 
@@ -72,11 +71,4 @@ export function main(argv, { out = (s) => process.stdout.write(s), err = (s) => 
   return 1;
 }
 
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-})();
-if (isMain) process.exitCode = main(process.argv.slice(2));
+if (isMain(import.meta.url)) process.exitCode = main(process.argv.slice(2));

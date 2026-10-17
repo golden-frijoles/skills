@@ -21,7 +21,7 @@
 // It does NOT write any file — this is a read + print tool, same "advisory, editorial control
 // stays with the caller" stance as the other refine/cross-agent scripts in this repo.
 
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseArgs, resolveRepoRoot, findEpicDir } from './lib/kickoff-cli.mjs';
@@ -45,6 +45,7 @@ import {
   sprintBranch,
   sprintBase,
 } from './lib/epic-kickoff.mjs';
+import { isMain } from './lib/is-main.mjs';
 export { sub, parseFrontmatter, stripFrontmatter, parseEpicTitle, parseSprintHeader, parseStoryHeadings };
 
 export function buildStoryList(headings) {
@@ -119,13 +120,4 @@ function main() {
   process.stdout.write(out);
 }
 
-// realpath on both sides (D6): run through a symlinked path (npx's bin link, macOS /tmp → /private/tmp) a plain
-// compare is false and the script would exit 0 having printed nothing.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+if (isMain(import.meta.url)) main();

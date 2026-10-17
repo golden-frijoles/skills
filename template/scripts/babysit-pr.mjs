@@ -12,10 +12,9 @@
 // Reuse, don't rebuild: ensureGh()/die() (scripts/lib/cross-agent-cli.mjs). Zero new npm deps — Node 18+.
 
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
 import { ensureGh, die } from './lib/cross-agent-cli.mjs';
 import { getPull, getStatusRollup, postIssueComment } from './lib/gh-rest.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const BANNER =
   '🤖 **babysit-pr — advisory PR watch (Claude).** Never merges; never a required check — a plain ' +
@@ -209,5 +208,4 @@ function main() {
   console.log(`✓ Advisory comment posted on #${pr} (${repo})${url ? `: ${url}` : ''}`);
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) main();
+if (isMain(import.meta.url)) main();

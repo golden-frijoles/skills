@@ -31,10 +31,10 @@
 // Zero deps — Node 18+.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseDocFrontmatter } from './lib/roadmap-contract.mjs';
 import { section } from './lib/strategy-files.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const INPUT_KEY = 'grounded_bets_share';
 const NOT_COUNTED_TYPES = new Set(['bug', 'chore']);
@@ -267,7 +267,7 @@ async function main(argv) {
   return result.ok ? 0 : 1;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => {
     process.exitCode = code;
   });

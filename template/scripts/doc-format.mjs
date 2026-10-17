@@ -33,13 +33,14 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import {
   parseDocFrontmatter,
   validateEpicFrontmatter,
   validateSprintFrontmatter,
 } from './lib/roadmap-contract.mjs';
 import { projectAsset, projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = projectRoot(); // D2
@@ -883,8 +884,7 @@ function runHook() {
   });
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+if (isMain(import.meta.url)) {
   if (process.argv.includes('--hook')) {
     runHook();
   } else if (process.argv.includes('--files')) {

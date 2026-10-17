@@ -17,6 +17,7 @@ description: >
 requires_scripts:
   - live-smoke.mjs
   - lib/project-root.mjs
+  - lib/is-main.mjs
   - lib/config-registry.mjs
   - lib/config.mjs
 ---

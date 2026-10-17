@@ -14,12 +14,11 @@
 // Rows come from roadmap-extract.mjs's buildRows() — the same SSOT build-order.mjs reads — so the board can
 // never disagree with BUILD-ORDER.md about an epic's status.
 
-import { writeSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { writeSync } from 'node:fs';
 import { buildRows, factsModeFrom } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 // Notion caps ONE rich-text object at 2000 characters, and a property may carry up to 100 of them. An epic row carries
 // its whole epic kickoff, often longer than that, so long text is SPLIT across objects, never cut: the kickoff on a
@@ -216,13 +215,4 @@ async function main() {
   console.log(`sync done — created ${created}, updated ${updated}, scanned ${existing.size} existing`);
 }
 
-// realpath, not resolve: on macOS a temp or symlinked path (/var → /private/var) never equals the module
-// URL, and a plain comparison makes the CLI a silent no-op.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) await main();
+if (isMain(import.meta.url)) await main();

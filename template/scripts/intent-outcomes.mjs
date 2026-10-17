@@ -24,7 +24,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isMain } from './lib/is-main.mjs';
 
 export const CALIBRATION_N = 20;
 export const BACKFILL_PATH = join('Roadmap', '00-ideas', 'intent-backfill.json');
@@ -272,5 +272,4 @@ export function run(argv, io = {}) {
   return 0;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) process.exitCode = run(process.argv.slice(2));
+if (isMain(import.meta.url)) process.exitCode = run(process.argv.slice(2));

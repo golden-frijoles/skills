@@ -31,11 +31,11 @@
  */
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join, isAbsolute, normalize } from 'node:path';
 import { projectRoot } from './lib/project-root.mjs';
 import { readSection } from './lib/config.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const REPO_ROOT = projectRoot(); // D2
 export const CONFIG_FILENAME = 'live-smoke.config.json';
@@ -299,13 +299,4 @@ function main() {
   process.exit(result.status ?? 1);
 }
 
-// realpath, not resolve: on macOS a temp or symlinked path (/var → /private/var) never equals the module
-// URL, and a plain comparison makes the CLI a silent no-op.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+if (isMain(import.meta.url)) main();

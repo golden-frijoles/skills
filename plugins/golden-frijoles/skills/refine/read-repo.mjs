@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { readField, setField, yamlString } from './roadmap-fm.mjs';
 import { branchCandidates, parseBranch } from './vendor/lib/work-branch.mjs';
 import { parseDocFrontmatter, validateEpicFrontmatter, validateSprintFrontmatter } from './vendor/lib/roadmap-contract.mjs';
+import { isMain } from './vendor/lib/is-main.mjs';
 
 const REFINE = dirname(fileURLToPath(import.meta.url));
 
@@ -855,6 +856,6 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

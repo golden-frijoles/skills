@@ -11,8 +11,8 @@
 // work, and CI still reads every commit the band reads.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { isMain } from './lib/is-main.mjs';
 
 // git exports GIT_DIR (and friends) into hooks; they would point the calls below at the hook's repository however
 // `cwd` is set. The hook runs at the worktree top, so plain `git` from here is the repository being committed to.
@@ -78,13 +78,4 @@ async function main() {
   process.exit(1);
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) await main();
+if (isMain(import.meta.url)) await main();

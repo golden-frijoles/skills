@@ -39,11 +39,12 @@
 // Zero deps — Node 18+.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSection } from './lib/config.mjs';
 import { loadJevConfig, parseJevConfig, RAILS, readApiKey, repoRoot } from './lib/jev.mjs';
 import { questionHash } from './lib/jev-questions.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const FIXTURES_PATH = join(__dirname, 'jev-eval.fixtures.json');
@@ -526,8 +527,7 @@ async function main() {
   if (code) process.exit(code);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`jev-eval: ${e.message}\n`);
     process.exit(1);

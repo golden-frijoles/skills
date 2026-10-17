@@ -32,6 +32,7 @@ test('the real manifest bundles build-state and exactly the libs it imports', ()
     'lib/config.mjs',
     'lib/epic-kickoff.mjs',
     'lib/horizon.mjs',
+    'lib/is-main.mjs', // every entry's run-directly check (template-scripts-consumer-gates D4)
     'lib/project-root.mjs',
     'lib/reporting-config.mjs',
     'lib/result-dates.mjs',

@@ -14,8 +14,8 @@
 // Zero deps — Node 18+.
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { LOG_DIR, LOG_FILE, LOG_GITIGNORE, budgetRow, coworkLine, sessionVerdict } from './session-budget.mjs';
+import { isMain } from './vendor/lib/is-main.mjs';
 
 const FLAGS = { '--asks-open': 'asksOpen', '--questions-waiting': 'questionsWaiting', '--gates-passed': 'gatesPassed' };
 const USAGE =
@@ -64,4 +64,4 @@ function main() {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main();
+if (isMain(import.meta.url)) main();

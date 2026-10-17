@@ -24,7 +24,7 @@
 // Zero deps — Node 18+.
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isMain } from './vendor/lib/is-main.mjs';
 
 export const STRATEGY_DIR = join('Roadmap', '00-strategy');
 export const KINDS = ['pmf-narrative', 'north-star', 'risk-validation'];
@@ -262,6 +262,6 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

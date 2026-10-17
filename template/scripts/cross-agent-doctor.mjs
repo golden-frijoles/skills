@@ -36,7 +36,8 @@ import {
   codexExecArgs,
   isCodexCapped,
 } from './lib/cross-agent-cli.mjs';
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { isMain } from './lib/is-main.mjs';
 
 // ═══ CODEX ════════════════════════════════════════════════════════════════════════════════════
 // The codex half — diagnose why the Codex CLI can't run, and name the exact fix.
@@ -612,15 +613,4 @@ async function main() {
   }
 }
 
-// realpath on both sides: through a symlinked path a plain compare is false and the doctor would exit 0
-// having checked nothing (#189 review).
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) await main();
+if (isMain(import.meta.url)) await main();

@@ -48,7 +48,8 @@
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const CHECKS_PATH = join(__dirname, 'prod-smoke.checks.mjs');
@@ -536,7 +537,7 @@ async function main() {
   if (values.json) {
     // Drop the retained bodies — they exist only to feed dependent checks, and a full page of HTML
     // in the report would bury the result it is supposed to communicate.
-    const slim = results.map(({ body, ...rest }) => rest);
+    const slim = results.map(({ body: _body, ...rest }) => rest);
     console.log(JSON.stringify({ base, summary, results: slim }, null, 2));
   } else {
     console.log(formatReport(results, summary, base));
@@ -547,20 +548,12 @@ async function main() {
   process.exitCode = summary.exitCode;
 }
 
-// Same main-detection shape as session-note.mjs / owed-ledger.mjs — string-comparing a `file://`
-// URL against argv[1] assumes they are spelled identically, which is not guaranteed.
-let isMain = false;
-try {
-  isMain = !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-} catch {
-  isMain = false;
-}
 // NOT a top-level await: main() imports the project's prod-smoke.checks.mjs, which imports helpers
 // (JS_MEDIA_TYPES) from THIS module. Awaiting here would leave this module mid-evaluation while that
 // import waits on it — a deadlock that exits 13 with an "unsettled top-level await" warning.
 // Anything main() throws past that is also "could not look": an unhandled rejection would exit 1,
 // which the triage routine would read as a production regression.
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().catch((e) => {
     console.error(`prod-smoke: could not run the checks — ${e.stack || e.message}`);
     process.exitCode = 2;

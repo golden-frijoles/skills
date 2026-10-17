@@ -25,12 +25,12 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, writeSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { die, need } from './lib/cross-agent-cli.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 import { computeDelivery, epicHistory, normalizeStatus } from './lib/pod-metrics.mjs';
 import { parseFrontmatter } from './lib/epic-kickoff.mjs';
 import { computeMaturityLens } from './lib/maturity-lens.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 /** The artifact's payload contract version. Bump only alongside a renderer migration. */
 export const POD_REPORT_SCHEMA_VERSION = 1;
@@ -630,8 +630,7 @@ async function main() {
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().catch((err) => {
     process.stderr.write(`✗ ${err.message}\n`);
     process.exit(1);

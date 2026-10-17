@@ -25,8 +25,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 import {
   AGY_ARG_LIMIT,
   agyArgs,
@@ -47,6 +46,7 @@ import {
   totalOf,
   upsertIntentSection,
 } from './intent-match.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const DEFAULT_TIMEOUT_S = 120;
 
@@ -320,8 +320,7 @@ async function main() {
   process.exitCode = code;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     // Even an unexpected crash is one skip line and exit 0: the reader never stops a lock (D4). A malformed config
     // is the one thing a person must see, and it is still only one line.

@@ -27,12 +27,12 @@
 // Zero deps — Node 18+.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { envFileValue } from './lib/jev.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 import { chatIdFor, loadReportingConfig, ReportingConfigError } from './lib/reporting-config.mjs';
 import { send as sendSlack } from './slack-notify.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const EXIT = { ok: 0, refused: 1, usage: 2, couldNotLook: 3 };
 export const TEST_TEXT = 'Golden Frijoles test message: notifications are wired up. You can ignore this one.';
@@ -307,8 +307,7 @@ export async function run(argv, io = {}) {
   });
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   run(process.argv.slice(2))
     .then((code) => process.exit(code))
     .catch((e) => {

@@ -24,6 +24,7 @@ requires_scripts:
   - preflight.mjs
   - lib/golden-onboarding.mjs
   - lib/project-root.mjs
+  - lib/is-main.mjs
   - intent-match.mjs
   - why-check.mjs
   - lib/jev.mjs

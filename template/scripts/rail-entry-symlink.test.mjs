@@ -8,7 +8,7 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,11 @@ const ENTRIES = [
   ['cross-agent-doctor.mjs', ['bogus-family'], /unknown family/],
   ['session-note.mjs', [], /usage|kind|note/i],
   ['session-resume.mjs', ['--help'], /session-resume\.mjs/],
+  // One per spelling that DID break behind a link before lib/is-main.mjs (template-scripts-consumer-gates D6).
+  ['owed-ledger.mjs', ['--bogus'], /owed-ledger: \d+ owed/], // resolve(argv[1]) === fileURLToPath(…)
+  ['epic-dod.mjs', ['--bogus'], /usage: node scripts\/epic-dod\.mjs/], // the same, reversed
+  ['cold-read.mjs', ['--help'], /usage: cold-read\.mjs/], // fileURLToPath(…) === argv[1], no resolve at all
+  ['perf-probe.mjs', ['--help'], /raw compressed transfer baseline/], // pathToFileURL(argv[1]).href
 ];
 
 for (const [entry, args, proof] of ENTRIES) {
@@ -38,3 +43,22 @@ for (const [entry, args, proof] of ENTRIES) {
     );
   });
 }
+
+// The helper itself, through a link: true when run, false when imported (the second half is what keeps a test that
+// imports a rail for its pure helpers from running the rail).
+test('lib/is-main.mjs: true through a symlinked path, false when imported', () => {
+  const probe = join(HERE, 'lib', `.is-main-probe-${process.pid}.mjs`);
+  writeFileSync(probe, "import { isMain } from './is-main.mjs';\nconsole.log(isMain(import.meta.url) ? 'main' : 'imported');\n");
+  try {
+    const run = spawnSync(process.execPath, [join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`)], { encoding: 'utf8' });
+    assert.equal(run.stdout.trim(), 'main', run.stderr);
+    const imported = spawnSync(
+      process.execPath,
+      ['--input-type=module', '-e', `await import(${JSON.stringify(join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`))});`],
+      { encoding: 'utf8' }
+    );
+    assert.equal(imported.stdout.trim(), 'imported', imported.stderr);
+  } finally {
+    rmSync(probe, { force: true });
+  }
+});

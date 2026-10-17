@@ -26,6 +26,7 @@ import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSection } from './lib/config.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, '..');
@@ -236,13 +237,4 @@ function main() {
   );
 }
 
-// realpath on both sides: through a symlinked dir (macOS /var → /private/var) a lexical compare is false and the
-// script silently does nothing, exit 0.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+if (isMain(import.meta.url)) main();

@@ -14,11 +14,11 @@
 // library that drifts from the first. So this file imports only `node:*` and the parser, every colour is a grey,
 // and a test fails on anything else. Zero deps.
 
-import { realpathSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseSurface, parseSurfaces, SurfaceError } from './lib/surface.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 // Above this a count stops being a shape and becomes noise; the true number is printed beside the boxes.
 const MAX_BOXES = 12;
@@ -161,18 +161,7 @@ export function main(argv) {
   return { code: 0, stdout: target };
 }
 
-// realpath on both sides: through a symlinked path a plain compare is false and the script exits 0 having done
-// nothing (#189 review).
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   const { code, stdout, stderr } = main(process.argv.slice(2));
   if (stdout) console.log(stdout);
   if (stderr) console.error(stderr);

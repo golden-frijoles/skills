@@ -59,8 +59,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import {
   CLI_BIN,
   LEGACY_CLI_BIN,
@@ -77,6 +76,7 @@ import {
   readEnvValue,
 } from './lib/golden-onboarding.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const REPO = projectRoot(); // D2
 
@@ -441,8 +441,7 @@ export async function main(argv = process.argv.slice(2)) {
   return result.exitCode;
 }
 
-// `process.argv[1]` rather than an import.meta.url comparison: this file is also imported by its
-// test, which must not run main().
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+// Guarded: this file is also imported by its test, which must not run main().
+if (isMain(import.meta.url)) {
   process.exit(await main());
 }

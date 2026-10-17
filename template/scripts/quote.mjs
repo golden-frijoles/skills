@@ -15,11 +15,10 @@
 //
 // Zero deps — Node 18+.
 
-import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { buildRows } from './roadmap-extract.mjs';
 import { projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const APPETITES = Object.freeze(['S', 'M', 'L']);
 export const MIN_HISTORY = 3;
@@ -117,16 +116,7 @@ function main(argv) {
   return 0;
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   try {
     process.exitCode = main(process.argv.slice(2));
   } catch (err) {

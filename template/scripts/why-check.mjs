@@ -7,8 +7,7 @@
 // Exit 0: it fits the build view and reads as plain words. Exit 1: the problems, one per line. Exit 2: usage.
 // Whether it reads as a STORY is a judgment, asked by intent-match (advisory); this checks only what a script can tell.
 
-import { readFileSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import {
   parseDocFrontmatter,
   whyProblems,
@@ -16,6 +15,7 @@ import {
   WHY_LINES_MAX,
   WHY_ROOM,
 } from './lib/roadmap-contract.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const USAGE = 'usage: why-check "<the Why>" | why-check --seed <seed.md>';
 
@@ -55,13 +55,4 @@ export function main(argv, out = process.stdout, err = process.stderr) {
   return 0;
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) process.exit(main(process.argv.slice(2)));
+if (isMain(import.meta.url)) process.exit(main(process.argv.slice(2)));

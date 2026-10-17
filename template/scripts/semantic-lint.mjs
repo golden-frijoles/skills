@@ -21,11 +21,10 @@
 // Zero deps — Node 18+.
 
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readSection } from './lib/config.mjs';
 import { jevContext, LINT_THRESHOLD_KEY, loadJevConfig, repoRoot, textHash } from './lib/jev.mjs';
 import { globToRegExp } from './lib/review-guard.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const QUESTION_ID = 'violates';
 export const SEVERITIES = ['blocking', 'should-fix', 'nit'];
@@ -441,8 +440,7 @@ async function main() {
   process.exitCode = code;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     // A hook caller ignores the code, but a person running it by hand must see a crash as one.
     process.stderr.write(`semantic-lint: ${e?.stack || e}\n`);

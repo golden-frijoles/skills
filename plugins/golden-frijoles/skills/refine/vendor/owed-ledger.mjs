@@ -46,13 +46,14 @@
 //   node scripts/owed-ledger.mjs --json      # print the JSON to stdout, write nothing
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative, resolve, sep } from 'node:path';
+import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 import { loadReportingConfig, ReportingConfigError, configPath } from './lib/reporting-config.mjs';
 import { readSection } from './lib/config.mjs';
+import { isMain } from './lib/is-main.mjs';
 const OUT_MD = join(ROOT, 'Roadmap/00-ideas/OWED-LEDGER.md');
 const OUT_JSON = join(ROOT, 'Roadmap/00-ideas/OWED-LEDGER.json');
 
@@ -663,5 +664,4 @@ function main() {
   );
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) main();
+if (isMain(import.meta.url)) main();

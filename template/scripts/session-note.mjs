@@ -14,7 +14,6 @@
 // journal line must never break the work the agent was actually doing. A USAGE error (bad --kind, no
 // text) is different: that's the caller's bug, so it exits 1 loudly instead of silently no-op'ing.
 
-import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { appendLineToBranch } from './lib/log-branch.mjs';
@@ -25,6 +24,7 @@ import {
   JOURNAL_BRANCH,
   JOURNAL_PATH,
 } from './lib/session-journal.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -109,18 +109,7 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   return 0;
 }
 
-// realpath on both sides: through a symlinked path a plain compare is false and the script exits 0 having
-// done nothing (#189 review).
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().then((code) => {
     process.exitCode = code;
   });

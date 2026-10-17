@@ -33,8 +33,7 @@
 
 import { escapeMrkdwn, escapeToFit, SLACK_LIMIT } from './lib/slack-text.mjs';
 import { die, need } from './lib/cross-agent-cli.mjs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isMain } from './lib/is-main.mjs';
 
 /**
  * Assemble the Incoming Webhook payload.
@@ -150,5 +149,4 @@ async function main() {
   process.exitCode = 1;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) main();
+if (isMain(import.meta.url)) main();

@@ -13,6 +13,7 @@ requires_scripts:
   - lib/horizon.mjs
   - init.mjs
   - lib/project-root.mjs
+  - lib/is-main.mjs
   - config.mjs
   - lib/config.mjs
   - lib/config-registry.mjs

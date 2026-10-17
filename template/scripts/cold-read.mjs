@@ -32,7 +32,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { hasCmd, tryCodex } from './lib/cross-agent-cli.mjs';
 import { kitRoot, projectRoot } from './lib/project-root.mjs';
 import {
@@ -44,6 +43,7 @@ import {
   proposedSections,
   section,
 } from './lib/strategy-files.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 export const PROMPT_FILE = 'cold-read.prompt.md';
 
@@ -381,5 +381,5 @@ function main(argv) {
   return r.code;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])
+if (isMain(import.meta.url))
   process.exitCode = main(process.argv.slice(2));

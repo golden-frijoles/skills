@@ -25,10 +25,10 @@
 // in this month's cycle, `underwritten_by` moved to it, position kept. With a placement it is a REORDER: the queue moves
 // and the funding record is left alone. A `raw` seed is refused — it has no pitch to fund.
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readField, setField } from './roadmap-fm.mjs';
+import { isMain } from './vendor/lib/is-main.mjs';
 
 const APPETITES = ['S', 'M', 'L'];
 const LIVE_EPIC = new Set(['scaffolded', 'in-progress']);
@@ -248,11 +248,4 @@ function main() {
   console.log(`  commit these${mode === 'fund' ? ' with the scaffold, in one commit' : ''}: ${[...writes.keys()].map((p) => `'${rel(p)}'`).join(' ')}`);
 }
 
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) main();
+if (isMain(import.meta.url)) main();

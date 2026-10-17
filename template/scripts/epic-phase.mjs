@@ -13,10 +13,11 @@
 //
 // Node 18+; validates `--now` with the contract's own validateLockedAt, so the stamp it writes is the one doc-format accepts.
 
-import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateLockedAt } from './lib/roadmap-contract.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
 
@@ -153,13 +154,4 @@ function main(argv) {
   return 0;
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) process.exit(main(process.argv.slice(2)));
+if (isMain(import.meta.url)) process.exit(main(process.argv.slice(2)));

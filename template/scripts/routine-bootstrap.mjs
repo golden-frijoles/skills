@@ -11,11 +11,12 @@
 //
 // Exit codes: 0 rendered, 1 missing fill-ins/configuration, 2 bad routine name or usage. Zero deps; Node 18+.
 
-import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSection } from './lib/config.mjs';
 import { loadPromptBody } from './lib/cross-agent-cli.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROUTINES_DIR = join(HERE, 'routines');
@@ -179,16 +180,6 @@ export function runRoutineBootstrap(
   return 0;
 }
 
-const isMain = (() => {
-  if (!process.argv[1]) return false;
-  try {
-    // Symlinked kit entrypoints otherwise compare a link on one side to a real module path on the other and silently do nothing.
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-})();
-
 // No explicit root: readSection's default (projectRoot) honours GF_PROJECT_ROOT and walks up from a subdirectory,
 // like every other kit script (#191 review).
-if (isMain) process.exitCode = runRoutineBootstrap(process.argv.slice(2));
+if (isMain(import.meta.url)) process.exitCode = runRoutineBootstrap(process.argv.slice(2));

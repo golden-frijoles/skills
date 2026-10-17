@@ -31,11 +31,12 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, writeSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { die, loadPromptBody, hasCmd } from './lib/cross-agent-cli.mjs';
 import { writeProse, buildWriterPrompt, loadLessons } from './lib/prose-writer.mjs';
 import { loadReportingConfig, chatIdFor, ReportingConfigError } from './lib/reporting-config.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -343,8 +344,7 @@ async function main() {
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().catch((e) => {
     process.stderr.write(`merge-report: ${e.message}\n`);
     process.exit(1);

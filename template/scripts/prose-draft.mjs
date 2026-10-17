@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { hasCmd, loadPromptBody, die, need } from './lib/cross-agent-cli.mjs';
 import { writeProse, buildWriterPrompt, loadLessons } from './lib/prose-writer.mjs';
 import { projectAsset, projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = projectRoot(); // D2
@@ -190,8 +191,7 @@ async function main() {
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`prose-draft: ${e?.message || e}\n`);
     process.exit(1);

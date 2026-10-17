@@ -34,10 +34,9 @@
 // fails because the platform is not linked. Grounded is now "the readings route knows this input".
 
 // Zero deps — Node 18+.
-import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { projectRoot } from './lib/project-root.mjs';
 import {
   VERDICTS,
@@ -48,6 +47,7 @@ import {
 import { READ_CAP_DAYS, addDays, dayOf, isLate, readDateOf, todayUtc, isDay } from './lib/result-dates.mjs';
 import { stampFrontmatter } from './lib/frontmatter-stamp.mjs';
 import { buildRows } from './roadmap-extract.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** `2026-11-04` → `4 Nov 2026`. */
@@ -388,16 +388,7 @@ export async function main(argv, { spawnFn = spawnSync, env = process.env, stdou
   return 0;
 }
 
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   try {
     process.exitCode = await main(process.argv.slice(2));
   } catch (err) {

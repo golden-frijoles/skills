@@ -36,7 +36,7 @@
 // lockfile itself.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -90,6 +90,7 @@ import {
   judgeReviewOutput,
 } from './lib/review-guard.mjs';
 import { jevContext } from './lib/jev.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REVIEW_CONFIG_PATH = join(__dirname, 'review-config.json');
@@ -839,18 +840,7 @@ async function main() {
 }
 
 // Guarded so importing this module for its pure helpers does not run a review.
-// realpath on both sides: through a symlinked path a plain compare is false and the script exits 0 having
-// done nothing (#189 review).
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain)
+if (isMain(import.meta.url))
   main().catch((e) => {
     process.stderr.write(`cross-review: ${e?.message || e}\n`);
     process.exit(1);

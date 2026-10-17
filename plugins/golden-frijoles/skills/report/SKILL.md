@@ -17,6 +17,7 @@ requires_scripts:
   - lib/pod-metrics.mjs
   - lib/maturity-lens.mjs
   - lib/project-root.mjs
+  - lib/is-main.mjs
   - lib/horizon.mjs
   - lib/roadmap-contract.mjs
   - lib/result-dates.mjs

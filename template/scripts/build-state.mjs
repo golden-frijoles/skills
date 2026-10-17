@@ -64,6 +64,7 @@ import { gatherFacts } from './lib/stage-facts.mjs';
 import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
 import { readDateOf } from './lib/result-dates.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1317,18 +1318,7 @@ export function renderLines(state, now = new Date()) {
   ];
 }
 
-// realpath on both sides: a plugin or checkout reached through a symlink (macOS /tmp → /private/tmp) would
-// otherwise never equal the module URL, and the CLI would print nothing and exit 0 — a blank build view.
-const isMain = (() => {
-  try {
-    return (
-      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
-    );
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   const argv = process.argv.slice(2);
   const i = argv.indexOf('--repo-root');
   if (i !== -1 && (!argv[i + 1] || argv[i + 1].startsWith('--'))) {

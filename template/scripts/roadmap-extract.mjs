@@ -59,7 +59,7 @@
 //   ⬜ Planned · 🏗 In progress · 🟦 In review · ✅ Shipped — that keeps this projection trivially reliable.
 //   Legacy freeform lines are still mapped best-effort below.
 
-import { readFileSync, readdirSync, existsSync, statSync, writeSync, realpathSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync, writeSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -82,6 +82,7 @@ import {
 import { isDay, isLate, readDateOf } from './lib/result-dates.mjs';
 import { pushRoadmap, reportPush } from './roadmap-push.mjs';
 import { destinationIds, HORIZON_FILE, readHorizon, unknownDestinations } from './lib/horizon.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const REPO = projectRoot(); // D2 — the CLI's default root; buildRows takes its own
 
@@ -773,16 +774,7 @@ export function factsModeFrom(argv) {
 // Print the rows. writeSync to fd 1 is synchronous on a PIPE too — `console.log` then an exit truncates
 // piped stdout (the async write has not flushed), which crashed build-order.mjs's execFileSync with
 // "Unexpected end of JSON input". Synchronous write guarantees the full payload.
-// realpath, not resolve: on macOS a temp or symlinked path (/var → /private/var) never equals the module
-// URL, and a plain comparison makes the CLI a silent no-op.
-const isMain = (() => {
-  try {
-    return !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
+if (isMain(import.meta.url)) {
   const argv = process.argv.slice(2);
   const sink = sinkFrom(argv);
   if (sink !== null && !SINKS.includes(sink)) {

@@ -41,6 +41,7 @@ import {
   serializeFields,
   formatScalar,
 } from './lib/roadmap-contract.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -453,5 +454,4 @@ function main(argv) {
   );
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) main(process.argv.slice(2));
+if (isMain(import.meta.url)) main(process.argv.slice(2));

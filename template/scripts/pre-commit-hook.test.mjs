@@ -12,7 +12,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, copyFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,7 +61,11 @@ function fixtureRepo() {
   mkdirSync(join(dir, '.githooks'));
   mkdirSync(join(dir, 'scripts', 'lib'), { recursive: true });
   copyFileSync(join(TEMPLATE, '.githooks', 'pre-commit'), join(dir, '.githooks', 'pre-commit'));
-  for (const f of ['doc-format.mjs', 'roadmap-extract.mjs', 'doc-format.enforced.json', 'lib/roadmap-contract.mjs', 'lib/project-root.mjs']) {
+  // Every lib module, not a hand list: a hand list breaks each time the closure grows (LEARNINGS, board-sinks-and-scrumban).
+  const libs = readdirSync(join(TEMPLATE, 'scripts', 'lib'))
+    .filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs'))
+    .map((f) => `lib/${f}`);
+  for (const f of ['doc-format.mjs', 'roadmap-extract.mjs', 'roadmap-push.mjs', 'doc-format.enforced.json', ...libs]) {
     copyFileSync(join(TEMPLATE, 'scripts', f), join(dir, 'scripts', f));
   }
   mkdirSync(join(dir, 'Roadmap', '00-ideas', 'seeds'), { recursive: true });

@@ -16,7 +16,7 @@
 // Never make a red smoke pass by weakening a check. When a route moves, re-point the check at the new
 // contract, and assert the move too when old links depend on it.
 
-import { JS_MEDIA_TYPES } from './prod-smoke.mjs'; // eslint-disable-line no-unused-vars — for a script check
+import { JS_MEDIA_TYPES } from './prod-smoke.mjs'; // eslint-disable-line no-unused-vars -- for a script check
 
 export const BASE = 'https://example.com'; // TEMPLATE FILL-IN: your production origin
 

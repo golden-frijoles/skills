@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { getKey } from './lib/config.mjs';
 import { projectRoot } from './lib/project-root.mjs';
 import { readHorizon } from './lib/horizon.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // The PROJECT, not this file's parent: installed from the kit, this file lives in node_modules (golden-frijoles-plugin D2).
@@ -313,8 +314,7 @@ async function main() {
   process.exitCode = reportPush(await pushRoadmap(items, { baseUrl, apiKey }), items.length);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+if (isMain(import.meta.url)) {
   main().catch((err) => {
     process.stderr.write(`✗ ${err.message}\n`);
     process.exit(1);
