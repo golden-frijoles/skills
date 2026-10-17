@@ -962,6 +962,50 @@ test('a branch naming a seed with no epic is that bug/chore/spike — with its o
   }
 });
 
+test('build-view-one-story D6: an idea being refined on its own docs/ branch reads Refining, its commits included', () => {
+  const f = fixture();
+  try {
+    addSeed(f, 'night-garden', 'feature');
+    const seed = join(f.root, 'Roadmap', '00-ideas', 'seeds', 'night-garden.md');
+    writeFileSync(
+      seed,
+      readFileSync(seed, 'utf8')
+        .replace('appetite: S', 'appetite: M\nhypothesis: "A garden at night."')
+        .replace('# Seed', '# Seed\n\nquote: $15–34 (M, n=24, p25–p75)')
+    );
+    f.git('commit', '-qam', 'seed: hypothesis');
+    f.git('switch', '-qc', 'docs/night-garden');
+    f.commit('docs(night-garden): refine the pitch');
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    assert.deepEqual(renderLines(s), [
+      // the fixture's repo name is 18 columns, so the quote fits on the header at column 100
+      `${s.repo} ❧ Idea · A feature called night-garden · M · ▲ risk LOW`.padEnd(100 - 'quote $15–34'.length) + 'quote $15–34',
+      '  ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped',
+      '  ↗ Roadmap/00-ideas/seeds/night-garden.md',
+      '  ❝ Why      A garden at night.',
+      '  ▸ Now      plan ready, waiting for your approval',
+    ]);
+  } finally {
+    f.done();
+  }
+});
+
+test('build-view-one-story D7: with no facts snapshot yet, this branch\'s story commits lift the track to Building', () => {
+  const f = fixture({ sprint2: 'Building' });
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('S2.1 — agent surface parity');
+    const s = resolveBuildState({ root: f.root, offline: true, gh: noGh, elsewhere: false });
+    assert.equal(s.facts_mode, 'docs', 'a fresh checkout: no snapshot');
+    assert.equal(s.stage, 'Ready to build', 'the board alone reads the docs');
+    const lines = renderLines(s);
+    assert.match(lines[0], /^\S+ ▶ /);
+    assert.ok(lines.includes('  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), lines.join('\n'));
+  } finally {
+    f.done();
+  }
+});
+
 test('a seed that carries epic: is that epic — the seed is funnel-only once scaffolded', () => {
   const f = fixture();
   try {

@@ -1080,14 +1080,21 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * stage when there is one; a shipped README is Shipped whatever the board says (stage.mjs rule 2).
  */
 export function stageOf(state) {
-  const stage =
-    state.lifecycle === 'shipped'
-      ? 'Shipped'
-      : STAGES.includes(state.stage)
-        ? state.stage
-        : (STAGE_FROM_STATUS[state.status] ?? null);
+  if (state.lifecycle === 'shipped') return { stage: 'Shipped', locking: false };
+  const board = STAGES.includes(state.stage) ? state.stage : null;
+  // Evidence only advances (D7): with no facts snapshot yet (a fresh worktree, before the first online refresh) the
+  // board reads the docs alone, while this branch's own story commits or open PR already say more. An idea's commits
+  // on its own branch are refining it, not building it.
+  const ev = state.evidence || {};
+  const commits = state.kind === 'epic' ? ev.story_commits : refiningIdea(state) ? 0 : ev.commits;
+  const evidence = ev.pr ? 'QA' : commits > 0 ? 'Building' : null;
+  const base = board ?? (refiningIdea(state) ? STAGE_FROM_STATUS[state.seed.status] : STAGE_FROM_STATUS[state.status]) ?? null;
+  const stage = evidence && (!base || STAGES.indexOf(evidence) > STAGES.indexOf(base)) ? evidence : base;
   return { stage, locking: !!stage && stageParts({ ...state, stage }).locking };
 }
+/** An idea (a feature seed) still raw or ready: being refined, whatever its branch carries. */
+const refiningIdea = (state) =>
+  !!state.seed && state.seed.type === 'feature' && ['raw', 'ready'].includes(state.seed.status);
 // With no board row (the extractor could not read the roadmap), the resolver's own status names the stage; a status it
 // does not know stays unknown, said as such.
 const STAGE_FROM_STATUS = {
@@ -1251,7 +1258,7 @@ export function renderLines(state, now = new Date()) {
   const symbol = STATE_SYMBOLS[stage] ?? STATE_SYMBOLS['Ready to build'];
   if (state.seed) {
     const { seed } = state;
-    const refining = ['raw', 'ready'].includes(seed.status) && !state.evidence?.commits;
+    const refining = refiningIdea(state);
     const lead = seed.type === 'feature' ? 'Idea' : seed.type.charAt(0).toUpperCase() + seed.type.slice(1);
     const commits = state.evidence?.commits ?? 0;
     const now_ =
