@@ -7,6 +7,17 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-17
+
+### Fixed
+- The build view's `❝ Why` read only the frontmatter `hypothesis`, so an epic with `hypothesis: null` (every chore
+  and bug) showed no Why line at all. It now falls back to the README's own `## Why` paragraph (else Goal, else
+  Problem), the same reading the Hub's goal uses. An epic with neither says `not written yet` rather than dropping the
+  line.
+- `⌖ Target` on a chore or a bug says `none: a chore carries no target` instead of `none set`.
+- The header's title is no longer cut to fit 100 columns in the resolver's text. The band clips it to the
+  terminal's real width, and a wide band now shows the whole title.
+
 ## [1.11.0] - 2026-10-17
 
 ### Changed
