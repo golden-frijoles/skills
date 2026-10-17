@@ -104,7 +104,15 @@ export function shouldRefreshUsage(lastAt, root, now = Date.now()) {
 
 const FIELD_LABELS = ['Why', 'Target', 'Now', 'Spend', 'Around', 'Next', 'Plugin'];
 /** The header's state symbol → its stage's tone (the same tone toneOf gives the stage's word on the track). */
-export const SYMBOL_TONES = Object.freeze({ '❧': 'busy', '◇': 'busy', '▶': 'busy', '◎': 'info', '✓': 'good', '○': 'plain' });
+export const SYMBOL_TONES = Object.freeze({
+  '❧': 'busy',
+  '◇': 'busy',
+  '▶': 'busy',
+  '◎': 'info',
+  '✓': 'good',
+  '○': 'plain',
+  '◌': 'bad', // stage unknown — red, as toneOf('unknown') always was
+});
 
 /** A tone for a status/phase word — a colour hint only; the word itself is always shown as written. */
 export function toneOf(value) {

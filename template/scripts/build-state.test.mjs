@@ -536,15 +536,25 @@ test('build-view-one-story D4: a source is named only when two disagree — one 
     null,
     'no story commit yet: that is Locking, not a disagreement'
   );
-  // (c) a written phase ahead of the board.
+  // (c) the docs say Shipped while the DRAWN stage is still before review — on facts that can see branches.
   assert.equal(
-    disagreement({ ...building, phase_written: 'Shipped', sprint: { n: 1 } }),
+    disagreement({ ...building, phase_written: 'Shipped', sprint: { n: 1 }, facts_mode: 'live' }),
+    "sprint 1's docs say Shipped, but the board has it at Building"
+  );
+  // #396 verifier: the raw board said Ready under a Building track lifted by story commits; the sentence names the
+  // stage the track draws, never the raw one.
+  assert.equal(
+    disagreement({ ...building, stage: 'Ready to build', phase_written: 'Shipped', sprint: { n: 1 }, facts_mode: 'snapshot' }),
     "sprint 1's docs say Shipped, but the board has it at Building"
   );
   assert.equal(
-    disagreement({ ...building, phase_written: 'In review', sprint: null }),
-    "the epic's docs say In review, but the board has it at Building"
+    disagreement({ ...building, phase_written: 'Shipped', sprint: { n: 1 }, facts_mode: 'docs' }),
+    null,
+    'a docs-only board cannot tell a merged sprint from an unstarted one'
   );
+  assert.equal(disagreement({ ...qa, phase_written: 'Shipped', facts_mode: 'live' }), null, 'merged, close-out owed');
+  for (const written of ['Verifying', 'In review'])
+    assert.equal(disagreement({ ...building, phase_written: written, facts_mode: 'live' }), null, `${written} before the PR is the cadence`);
   assert.equal(disagreement({ ...qa, phase_written: 'Building' }), null, 'docs lagging the board is the cadence');
   // (d) an unreadable sprint.
   assert.equal(
@@ -833,6 +843,8 @@ test('codex round 2: a sprint whose frontmatter cannot be read says so', () => {
     const lines = renderLines(s);
     const at = lines.indexOf('  stage unknown: the board could not be read');
     assert.ok(at > 0, lines.join('\n'));
+    // #396 review — the header never claims a stage the track cannot name.
+    assert.match(lines[0], /^\S+ ◌ Sprint 2 of 2 /);
     assert.match(lines[at + 1], /^ {2}⚑ Roadmap\/…\/sprint-2\.md frontmatter could not be read$/, 'right under the track');
     // A commit naming S2.1 does NOT lift it either: with sprint-2 unreadable, no story list says S2.1
     // exists, so the id is unlisted and the honest answer stays unknown.
@@ -1008,6 +1020,23 @@ test('build-view-one-story D7: with no facts snapshot yet, this branch\'s story 
     const lines = renderLines(s);
     assert.match(lines[0], /^\S+ ▶ /);
     assert.ok(lines.includes('  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), lines.join('\n'));
+  } finally {
+    f.done();
+  }
+});
+
+test('build-view-one-story D7 (#396 verifier): a ready PR lifts the track to QA; a draft one stays Building, as the board reads it', () => {
+  const f = fixture({ sprint2: 'Building' });
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('S2.1 — agent surface parity');
+    const track = (draft) => {
+      const gather = liveFacts([{ number: 7, head: 'feat/arranged-only-s2', state: 'OPEN', draft, url: 'u' }], ['feat/arranged-only-s2']);
+      const s = resolveBuildState({ root: f.root, gather, elsewhere: false });
+      return { drawn: statusOf(renderLines(s)), board: s.stage };
+    };
+    assert.deepEqual(track(false), { drawn: 'Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped', board: 'QA' });
+    assert.deepEqual(track(true), { drawn: 'Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped', board: 'Building' }, 'the drawn stage agrees with the board');
   } finally {
     f.done();
   }
@@ -1469,6 +1498,8 @@ test('stage agreement: the build view, the extractor rows and the six-column boa
       ([, rows]) => rows.some((r) => r.slug === 'arranged-only')
     )[0];
     assert.deepEqual([s.stage, row.stage, column], ['Building', 'Building', 'Building']);
+    // …and the stage the band DRAWS, not only the one the resolver stores (#396 verifier).
+    assert.equal(statusOf(renderLines(s)), 'Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped');
   } finally {
     f.done();
   }

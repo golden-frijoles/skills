@@ -366,7 +366,7 @@ export function prFromFacts(facts, branch) {
   // Only LIVE facts may lift the status to In review: a failed online gather that fell back to the snapshot must not
   // claim a PR from hours ago (before this, a failed gh call meant no lift; fresh review, #227).
   const live = facts?.mode === 'live';
-  return { ok: live, pr: live && pr ? { number: pr.number, url: pr.url } : null };
+  return { ok: live, pr: live && pr ? { number: pr.number, url: pr.url, draft: !!pr.draft } : null };
 }
 
 const notInFlight = (reason, extra = {}) => ({ in_flight: false, reason, ...extra });
@@ -1064,6 +1064,7 @@ export const STATE_SYMBOLS = Object.freeze({
   QA: '◎',
   Shipped: '✓',
   none: '○',
+  unknown: '◌', // the roadmap could not be read: never borrow a stage's symbol for it (#396 review)
 });
 const WIDTH = 100;
 const CONT = ' '.repeat(13);
@@ -1084,11 +1085,13 @@ export function stageOf(state) {
   if (state.lifecycle === 'shipped') return { stage: 'Shipped', locking: false };
   const board = STAGES.includes(state.stage) ? state.stage : null;
   // Evidence only advances (D7): with no facts snapshot yet (a fresh worktree, before the first online refresh) the
-  // board reads the docs alone, while this branch's own story commits or open PR already say more. An idea's commits
+  // board reads the docs alone, while this branch's own story commits already say more. An idea's commits
   // on its own branch are refining it, not building it.
   const ev = state.evidence || {};
   const commits = state.kind === 'epic' ? ev.story_commits : refiningIdea(state) ? 0 : ev.commits;
-  const evidence = ev.pr ? 'QA' : commits > 0 ? 'Building' : null;
+  // Story commits only: a PR is known only from live facts, and then the board has already read it (a draft as Building,
+  // a ready one as QA — lib/stage.mjs), so a PR lift here could only disagree with it (#396 verifier).
+  const evidence = commits > 0 ? 'Building' : null;
   const base = board ?? (refiningIdea(state) ? STAGE_FROM_STATUS[state.seed.status] : STAGE_FROM_STATUS[state.status]) ?? null;
   const stage = evidence && (!base || STAGES.indexOf(evidence) > STAGES.indexOf(base)) ? evidence : base;
   return { stage, locking: !!stage && stageParts({ ...state, stage }).locking };
@@ -1125,14 +1128,15 @@ export function disagreement(state) {
       : null;
   // (b) — the lock was never stamped, yet stories are being committed.
   if (commits > 0 && !state.epic?.locked_at && [null, 'Shaping', 'Locking architecture'].includes(phase))
-    return `the epic's docs say ${phase ?? 'no phase'}, but this branch has story commits`;
-  // (c) — the written phase claims more than the board shows.
+    return `the epic's docs say ${phase ?? 'no phase written'}, but this branch has story commits`;
+  // (c) — the docs say a sprint shipped while the stage the track DRAWS is still before review. Compared with the drawn
+  // stage, never the raw board (#396 verifier: the raw board said Ready under a lifted Building track), and only on
+  // facts that can see branches: a docs-only board cannot tell a merged sprint from an unstarted one. Verifying and
+  // In review ahead of the board are the cadence (written before the PR opens), not a disagreement.
   const written = state.phase_written;
-  const ahead =
-    (['Verifying', 'In review', 'Shipped'].includes(written) && ['Ready to build', 'Building'].includes(state.stage)) ||
-    (written === 'Shipped' && state.stage === 'QA');
-  if (ahead)
-    return `${state.sprint ? `sprint ${state.sprint.n}'s` : "the epic's"} docs say ${written}, but the board has it at ${stageWord(state.stage)}`;
+  const drawn = stageOf(state).stage;
+  if (written === 'Shipped' && state.facts_mode !== 'docs' && ['Ready to build', 'Building'].includes(drawn))
+    return `${state.sprint ? `sprint ${state.sprint.n}'s` : "the epic's"} docs say Shipped, but the board has it at ${stageWord(drawn)}`;
   return null;
 }
 
@@ -1256,7 +1260,7 @@ export function renderLines(state, now = new Date()) {
   const track = stage ? `  ${stageTrack(stage, locking)}` : '  stage unknown: the board could not be read';
   const flag = disagreement(state);
   const flagged = flag ? [`  ${GLYPHS.flag} ${flag}`] : [];
-  const symbol = STATE_SYMBOLS[stage] ?? STATE_SYMBOLS['Ready to build'];
+  const symbol = STATE_SYMBOLS[stage] ?? STATE_SYMBOLS.unknown;
   if (state.seed) {
     const { seed } = state;
     const refining = refiningIdea(state);
