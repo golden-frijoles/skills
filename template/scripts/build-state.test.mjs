@@ -476,6 +476,23 @@ test('build-view-one-story D4: a source is named only when two disagree — one 
   assert.equal(disagreement(idle), null);
 });
 
+test('build-view-one-story D6: between stories only when the tree is clean and HEAD is that story\'s commit', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('S2.1 — agent surface parity');
+    const now = () => renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).find((l) => l.startsWith('  ▸ Now'));
+    assert.equal(now(), '  ▸ Now      between stories: S2.1 done, S2.2 next');
+    writeFileSync(join(f.root, 'half-done.txt'), 'work in progress');
+    assert.equal(now(), '  ▸ Now      S2.1 Agent surface parity', 'uncommitted work: the story stays in flight');
+    rmSync(join(f.root, 'half-done.txt'));
+    f.commit('chore: tidy');
+    assert.equal(now(), '  ▸ Now      S2.1 Agent surface parity', 'HEAD is not the story\'s commit: no claim it is done');
+  } finally {
+    f.done();
+  }
+});
+
 test('build-view-one-story D7: a shipped epic reads shipped on its close-out branch — N of N, the ship day, the read', () => {
   const f = fixture();
   try {
