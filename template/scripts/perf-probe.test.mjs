@@ -312,10 +312,10 @@ test('refuses a client script on another origin: the fixture is red, and the scr
 })
 
 test('passes: a public address on the 172.16/12 boundary, and allowPrivate: true probes a real local server', async () => {
-  assert.equal(isPrivateAddress('172.67.164.209'), false, "Miyagi's Cloudflare address is public")
+  assert.equal(isPrivateAddress('172.67.164.209'), false, 'a CDN address just outside 172.16/12 is public')
   assert.equal(isPrivateAddress('172.31.255.255'), true)
   assert.equal(isPrivateAddress('not-an-ip'), true, 'anything that is not an IP fails closed')
-  await assert.doesNotReject(assertResolvedAllowed('https://miyagisanchez.com', { lookupAll: async () => [{ address: '172.67.164.209', family: 4 }] }))
+  await assert.doesNotReject(assertResolvedAllowed('https://shop.example', { lookupAll: async () => [{ address: '172.67.164.209', family: 4 }] }))
   const server = createServer((_req, res) => { res.setHeader('content-type', 'text/html'); res.end('<script src="/_next/static/chunks/x.js"></script>') })
   await new Promise((r) => server.listen(0, '127.0.0.1', r))
   try {

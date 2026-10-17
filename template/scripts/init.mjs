@@ -25,7 +25,7 @@
 //
 // ── The one exception: the rails' `.prettierignore` block (template-scripts-consumer-gates D3) ─────
 // A project that copies template/scripts runs its OWN Prettier config over them, and configs differ, so a
-// release formatted here can still fail a consumer's check (it did, twice). Decided 2026-10-14 (Daniel):
+// release formatted here can still fail a consumer's check (it did, twice). Decided 2026-10-14 (the product owner):
 // consumers ignore the vendored rails. The block lists every rail file; `init` creates `.prettierignore`,
 // appends the block, or replaces the block in place. Lines outside the markers are never touched, a
 // current block is never rewritten, and a malformed one (two openers, an opener with no closer) is refused,
