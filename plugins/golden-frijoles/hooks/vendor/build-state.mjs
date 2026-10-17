@@ -846,7 +846,8 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
   const shipped = epic.lifecycle === 'shipped';
   const nextStory = allStories.find((st) => accepts(st.id) && !withCommits.has(st.id)) ?? null;
   const clean = story && storySource === 'commit' ? tryGit(git, ['status', '--porcelain']) === '' : false;
-  const between = !!(clean && subjects[0] && storyIdsIn(subjects[0]).includes(story.id));
+  // …or every story in scope already has one, and nothing is uncommitted (a release or docs commit on top).
+  const between = !!(clean && ((subjects[0] && storyIdsIn(subjects[0]).includes(story.id)) || !nextStory));
   // D2 — the header's sprint: the story's, else the branch's, else the first with a story left, else the last.
   const headerSprint =
     sprint ??

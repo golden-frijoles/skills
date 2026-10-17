@@ -567,6 +567,13 @@ test('build-view-one-story D6: between stories only when the tree is clean and H
     rmSync(join(f.root, 'half-done.txt'));
     f.commit('chore: tidy');
     assert.equal(now(), '  ▸ Now      S2.1 Agent surface parity', 'HEAD is not the story\'s commit: no claim it is done');
+    f.commit('S2.2 — seller toggle');
+    f.commit('chore(release): 1.2.3');
+    assert.equal(
+      now(),
+      '  ▸ Now      between stories: S2.2 done, every story has a commit',
+      'every story in scope has a commit and the tree is clean: a release on top does not reopen one'
+    );
   } finally {
     f.done();
   }
