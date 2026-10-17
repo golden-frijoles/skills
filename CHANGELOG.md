@@ -7,6 +7,28 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-17
+
+### Changed
+- **Every rail decides "was I run directly?" one way** (template-scripts-consumer-gates). `lib/is-main.mjs` compares
+  realpaths on both sides, and all 59 entries (54 template, 5 plugin) call `isMain(import.meta.url)`. 34 of them
+  compared `process.argv[1]` with the module URL lexically, so behind a symlink (macOS `/tmp`, a symlinked checkout)
+  they exited 0 having done nothing. `check-is-main.mjs` fails CI on any other spelling. **A project that copies the
+  rails by hand must copy `scripts/lib/is-main.mjs` too.** Every entry now imports it.
+- **The rails are linted where they are written.** `eslint.config.mjs` (core ESLint, `no-unused-vars`) runs over
+  `template/scripts`, `template/optional` and the plugin's scripts in CI with `--max-warnings=0`, and a committed
+  fixture with an unused import must fail it. The golden-frijoles monorepo lints the same files with the same file.
+- **`frijoles-kit init` writes one marked `.prettierignore` block** listing the rails, so a project's own Prettier
+  config never reformats a byte-identical copy. It creates the file, appends the block, or replaces it in place, and
+  it never touches lines outside the markers. A second run changes nothing. It refuses a malformed block.
+
+### Security
+- **`perf-probe.mjs` only requests the hosts a project names.** It refuses private, loopback, link-local and
+  reserved addresses (`127.0.0.1`, `10.0.0.1`, `169.254.169.254`, IPv4-mapped IPv6, and a hostname resolving to
+  one) unless `smoke.perf.allowPrivate` is a literal `true`. It checks before any request and again at connect,
+  through a guarded `lookup`, so a name re-resolving to a private address is refused. It refuses client scripts on
+  another origin, which makes the run red (it never skips them). It does not follow redirects.
+
 ## [1.11.0] - 2026-10-17
 
 ### Changed
