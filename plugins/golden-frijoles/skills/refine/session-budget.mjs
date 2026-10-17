@@ -135,7 +135,8 @@ export function sessionParts(figures, verdict = sessionVerdict(figures), now = D
   const parts = [];
   if (known(f.contextPct)) parts.push({ text: `Session ${pct(f.contextPct)}`, tone: toneOf('contextPct', f.contextPct) });
   if (known(f.fiveHourPct)) {
-    const filled = Math.max(0, Math.min(METER_WIDTH, Math.round((f.fiveHourPct / 100) * METER_WIDTH)));
+    // Floored, like the stories bar: the meter is never drawn full before the budget is (#396 verifier: 95% read full).
+    const filled = Math.max(0, Math.min(METER_WIDTH, Math.floor((f.fiveHourPct / 100) * METER_WIDTH)));
     const r = resetIn(f.fiveHourResetsAt, now);
     const meter = {
       head: '5h ',

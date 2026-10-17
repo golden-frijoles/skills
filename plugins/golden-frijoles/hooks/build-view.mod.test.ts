@@ -209,8 +209,8 @@ test('S1.4: session.measure draws each figure in its colour with its reset, and 
   expect(by('Session 48%')?.color).toBe('green');
   // build-view-one-story D9 — the 5-hour meter: label, filled cells and words in the figure's tone, empty cells dim.
   expect(by('5h ')?.color).toBe('yellow');
-  expect(by('▰▰▰▰▰▰▰▰')?.color).toBe('yellow');
-  expect(by('▱▱')?.dim).toBe(true);
+  expect(by('▰▰▰▰▰▰▰')?.color).toBe('yellow');
+  expect(by('▱▱▱')?.dim).toBe(true);
   const tail = parts.find((p) => p.text.startsWith(' 78% · resets '));
   expect(tail?.color).toBe('yellow');
   expect(tail?.text.endsWith('(in 2h 30m)')).toBe(true);

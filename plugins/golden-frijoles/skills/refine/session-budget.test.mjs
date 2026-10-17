@@ -120,12 +120,12 @@ test('build-view-upgrade D5: each figure is coloured by its own table, with the 
     parts.map(({ text, tone, verdict }) => ({ text, tone, ...(verdict ? { verdict } : {}) })),
     [
       { text: 'Session 48%', tone: 'good' },
-      { text: `5h ▰▰▰▰▰▰▰▰▱▱ 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)`, tone: 'warn' },
+      { text: `5h ▰▰▰▰▰▰▰▱▱▱ 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)`, tone: 'warn' },
       { text: '7d 46% (in 3d 3h)', tone: 'good' },
       { text: 'keep going', tone: null, verdict: true },
     ],
   );
-  assert.deepEqual(parts[1].meter, { head: '5h ', filled: '▰▰▰▰▰▰▰▰', empty: '▱▱', tail: ` 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)` });
+  assert.deepEqual(parts[1].meter, { head: '5h ', filled: '▰▰▰▰▰▰▰', empty: '▱▱▱', tail: ` 78% · resets ${clockTime(now + 2.5 * H)} (in 2h 30m)` });
   assert.equal(
     sessionLine({ fiveHourPct: 91, sevenDayPct: 62, fiveHourResetsAt: now + 40 * 60_000, sevenDayResetsAt: now + 24 * H }, undefined, now),
     `5h ▰▰▰▰▰▰▰▰▰▱ 91% · resets ${clockTime(now + 40 * 60_000)} (in 40m) · 7d 62% (in 1d) → hand off`,
