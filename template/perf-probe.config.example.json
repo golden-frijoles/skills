@@ -1,5 +1,5 @@
 {
-  "$comment": "TEMPLATE FILL-IN — copy to perf-probe.config.json. scripts/perf-probe.mjs measures the RAW compressed transfer of these pages (node:https, not fetch, so byte counts are what crossed the wire). Pick real, live pages; mark one real image variant with \"image\": true if you serve an image route.",
+  "$comment": "TEMPLATE FILL-IN — copy to perf-probe.config.json. scripts/perf-probe.mjs measures the RAW compressed transfer of these pages (node:https, not fetch, so byte counts are what crossed the wire). Pick real, live pages; mark one real image variant with \"image\": true if you serve an image route. The probe refuses private, loopback and link-local addresses (127.0.0.1, 10.x, 169.254.169.254, a name resolving to one) and client scripts on another origin; to probe a local build, add \"allowPrivate\": true.",
   "baseUrl": "https://example.com",
   "targets": [
     { "id": "home", "label": "home (signed-out)", "path": "/" }

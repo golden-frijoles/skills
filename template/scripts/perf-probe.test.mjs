@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
-import { loadProbeConfig, decodeBodyForInspection, extractClientScriptUrls, fixtureUrls, formatReport, measureFixture, parseArgs, probeExitCode, rawRequest, requestTransport, runProbe } from './perf-probe.mjs'
+import { createServer } from 'node:http'
+import { assertResolvedAllowed, guardedLookup, isPrivateAddress, loadProbeConfig, decodeBodyForInspection, extractClientScriptUrls, fixtureUrls, formatReport, measureFixture, parseArgs, probeExitCode, rawRequest, requestTransport, runProbe } from './perf-probe.mjs'
 
 const TARGETS = [
   { id: 'home', label: 'home (signed-out)', path: '/mx' },
@@ -247,4 +248,90 @@ test('runProbe with no flags takes baseUrl + targets from the config (the CLI de
     loadConfig: () => ({ baseUrl: 'https://cfg.example', targets: TARGETS }),
   })
   assert.equal(over.fixtures[0].url, 'https://flag.example/mx')
+})
+
+// ── Only the hosts a project names (template-scripts-consumer-gates D7) — one test per refusal ─────────────
+
+const PUBLIC = [{ address: '104.21.10.238', family: 4 }]
+const neverRequest = async () => { throw new Error('a refused probe must make no request') }
+const probe = (baseUrl, extra = {}, deps = {}) =>
+  runProbe({ targets: [{ id: 'home', label: 'home', path: '/' }], baseUrl, revision: 'abc', ...extra }, { request: neverRequest, lookupAll: async () => PUBLIC, ...deps })
+
+for (const [url, address] of [
+  ['http://127.0.0.1:3000', '127.0.0.1'],
+  ['http://169.254.169.254', '169.254.169.254'],
+  ['http://10.0.0.1', '10.0.0.1'],
+  ['http://[::ffff:127.0.0.1]', '::ffff:7f00:1'],
+  ['http://2130706433', '127.0.0.1'], // the URL parser normalises a decimal IPv4
+]) {
+  test(`refuses ${url} before any request, naming the address and the opt-in`, async () => {
+    await assert.rejects(probe(url), (e) => e.message.includes(address) && /smoke\.perf\.allowPrivate: true/.test(e.message))
+    await assert.rejects(probe(url, { dryRun: true }), /refusing/, 'a dry run refuses a literal too, with no network')
+  })
+}
+
+test('refuses a hostname that resolves to a private address (any of its addresses)', async () => {
+  const lookupAll = async () => [...PUBLIC, { address: '10.0.0.1', family: 4 }]
+  await assert.rejects(probe('https://internal.example', {}, { lookupAll }), /10\.0\.0\.1 \(internal\.example\)/)
+})
+
+test('refuses at connect when the name re-resolves to a private address after the check (rebinding)', async () => {
+  const lookup = guardedLookup({ lookup: (_h, _o, cb) => cb(null, [{ address: '169.254.169.254', family: 4 }]) })
+  const refused = await new Promise((resolve) => lookup('rebind.example', { all: true }, (err) => resolve(err)))
+  assert.match(refused.message, /169\.254\.169\.254 \(rebind\.example\)/)
+  // …and a public answer passes through in both callback forms
+  const ok = guardedLookup({ lookup: (_h, _o, cb) => cb(null, PUBLIC) })
+  assert.deepEqual(await new Promise((r) => ok('a.example', { all: true }, (e, a) => r(a))), PUBLIC)
+  assert.deepEqual(await new Promise((r) => ok('a.example', {}, (e, a, f) => r([a, f]))), ['104.21.10.238', 4])
+})
+
+test('rawRequest really connects through the guarded lookup: a name resolving to loopback never connects', async () => {
+  const server = createServer((_req, res) => res.end('should not be reached'))
+  await new Promise((r) => server.listen(0, '127.0.0.1', r))
+  const { port } = server.address()
+  try {
+    const dnsLookup = (_h, opts, cb) => cb(null, opts.all ? [{ address: '127.0.0.1', family: 4 }] : '127.0.0.1', 4)
+    await assert.rejects(rawRequest(`http://looks-public.example:${port}/`, {}, { dnsLookup }), /refusing .*127\.0\.0\.1/)
+    const allowed = await rawRequest(`http://looks-public.example:${port}/`, { allowPrivate: true }, { dnsLookup })
+    assert.equal(allowed.statusCode, 200)
+  } finally {
+    server.close()
+  }
+})
+
+test('refuses a client script on another origin: the fixture is red, and the script is never requested', async () => {
+  const requested = []
+  const request = async (url) => {
+    requested.push(url)
+    return { url, statusCode: 200, headers: { 'content-type': 'text/html' }, bytes: 10, body: Buffer.from('<script src="https://evil.example/_next/static/chunks/a.js"></script><script src="/_next/static/chunks/b.js"></script>'), ttfbMs: 1 }
+  }
+  const result = await measureFixture({ id: 'home', label: 'home', url: 'https://shop.example/mx' }, { request })
+  assert.equal(result.status, 'absent')
+  assert.match(result.client_js_transfer_bytes.detail, /another origin refused: https:\/\/evil\.example/)
+  assert.deepEqual(requested, ['https://shop.example/mx'])
+})
+
+test('passes: a public address on the 172.16/12 boundary, and allowPrivate: true probes a real local server', async () => {
+  assert.equal(isPrivateAddress('172.67.164.209'), false, "Miyagi's Cloudflare address is public")
+  assert.equal(isPrivateAddress('172.31.255.255'), true)
+  assert.equal(isPrivateAddress('not-an-ip'), true, 'anything that is not an IP fails closed')
+  await assert.doesNotReject(assertResolvedAllowed('https://miyagisanchez.com', { lookupAll: async () => [{ address: '172.67.164.209', family: 4 }] }))
+  const server = createServer((_req, res) => { res.setHeader('content-type', 'text/html'); res.end('<script src="/_next/static/chunks/x.js"></script>') })
+  await new Promise((r) => server.listen(0, '127.0.0.1', r))
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`
+    const report = await runProbe({ targets: [{ id: 'home', label: 'home', path: '/' }], baseUrl: base, revision: 'abc', allowPrivate: true })
+    assert.equal(report.fixtures[0].status, 'present', JSON.stringify(report.fixtures[0]))
+  } finally {
+    server.close()
+  }
+})
+
+test('loadProbeConfig: only a literal true opts in', () => {
+  const read = (o) => () => JSON.stringify(o)
+  const base = { baseUrl: 'http://127.0.0.1:3000', targets: TARGETS }
+  assert.equal(loadProbeConfig({ exists: () => true, read: read({ ...base, allowPrivate: true }) }).allowPrivate, true)
+  for (const v of ['true', 1, 'yes', null]) {
+    assert.equal(loadProbeConfig({ exists: () => true, read: read({ ...base, allowPrivate: v }) }).allowPrivate, false, String(v))
+  }
 })

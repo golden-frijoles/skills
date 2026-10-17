@@ -13,16 +13,34 @@
 //                   { "id": "image", "label": "cold real image variant", "path": "/api/img?…", "image": true } ] }
 // Pick REAL, live pages — a fixture that 404s measures an error page. No config → a clear error, never
 // a probe of someone else's site.
+//
+// ── It only requests the hosts a project names (template-scripts-consumer-gates D7) ──────────────
+// This runs in CI from a config any PR can edit, so a `baseUrl` of http://169.254.169.254 would point the
+// runner at its own cloud metadata service. Three checks, none of which `allowPrivate` widens except the first:
+//   1. No private, loopback or link-local address (isPrivateAddress) unless `smoke.perf.allowPrivate: true`
+//      — a literal `true`, for probing a local build. Checked before ANY request (each host resolved, every
+//      address it returns), and again AT CONNECT: every request's `lookup` is guardedLookup, so the socket
+//      connects only to an address that was checked. A name that re-resolves to a private address between
+//      the two (DNS rebinding) is refused at connect.
+//   2. Client scripts only from the page's own origin. One on another origin is refused and the fixture is
+//      red, never silently skipped (skipping would under-count the bytes).
+//   3. Redirects are never followed (node:http/https do not; a 3xx is already `absent`).
+// Residuals: node:http ignores HTTP(S)_PROXY, so a proxy cannot route around the check; NAT64 64:ff9b::/96
+// is not refused (it embeds a public IPv4 on a NAT64 network); whatever sits behind `allowPrivate: true` is
+// the operator's choice.
 
+import dns from 'node:dns'
 import http from 'node:http'
 import https from 'node:https'
-import { pathToFileURL, fileURLToPath } from 'node:url'
+import net from 'node:net'
+import { fileURLToPath } from 'node:url'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 export const CONFIG_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'perf-probe.config.json')
 import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib'
 import { readSection } from './lib/config.mjs'
+import { isMain } from './lib/is-main.mjs'
 
 const MODERN_IMAGE_ACCEPT = 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
 
@@ -38,7 +56,80 @@ export function loadProbeConfig({ path = CONFIG_PATH, exists = existsSync, read 
       throw new Error(`${path}: "targets[${i}]" needs id, label and a path starting with "/"`)
     }
   }
-  return { baseUrl: raw.baseUrl, targets: raw.targets }
+  return { baseUrl: raw.baseUrl, targets: raw.targets, allowPrivate: raw.allowPrivate === true }
+}
+
+// Loopback, private, link-local, shared, benchmark, documentation, multicast and reserved ranges. An IPv4-mapped
+// IPv6 address (::ffff:a.b.c.d, either spelling) is matched against the IPv4 rules by BlockList itself.
+const PRIVATE_RANGES = [
+  ['0.0.0.0', 8, 'ipv4'], ['10.0.0.0', 8, 'ipv4'], ['100.64.0.0', 10, 'ipv4'], ['127.0.0.0', 8, 'ipv4'],
+  ['169.254.0.0', 16, 'ipv4'], ['172.16.0.0', 12, 'ipv4'], ['192.0.0.0', 24, 'ipv4'], ['192.168.0.0', 16, 'ipv4'],
+  ['198.18.0.0', 15, 'ipv4'], ['224.0.0.0', 4, 'ipv4'], ['240.0.0.0', 4, 'ipv4'],
+  ['::', 128, 'ipv6'], ['::1', 128, 'ipv6'], ['64:ff9b:1::', 48, 'ipv6'], ['100::', 64, 'ipv6'],
+  ['2001:db8::', 32, 'ipv6'], ['fc00::', 7, 'ipv6'], ['fe80::', 10, 'ipv6'], ['ff00::', 8, 'ipv6'],
+]
+const PRIVATE = new net.BlockList()
+for (const [address, prefix, family] of PRIVATE_RANGES) PRIVATE.addSubnet(address, prefix, family)
+
+/** True for an address the probe must not reach without `allowPrivate`. Anything that is not an IP is refused too. */
+export function isPrivateAddress(address) {
+  const family = net.isIP(address)
+  if (family === 4) return PRIVATE.check(address, 'ipv4')
+  if (family === 6) return PRIVATE.check(address, 'ipv6')
+  return true
+}
+
+/** The host of `url` as an address or a name: brackets dropped from an IPv6 literal. */
+export function hostOf(url) {
+  const host = new URL(url).hostname
+  return host.startsWith('[') ? host.slice(1, -1) : host
+}
+
+export function refusal(url, address) {
+  return new Error(`refusing ${url}: ${address} is a private, loopback or link-local address. Set smoke.perf.allowPrivate: true to probe a host on your own network.`)
+}
+
+/** Throws when `url`'s host is a private IP literal. A name is left to resolveAllowed / guardedLookup. */
+export function assertLiteralAllowed(url, { allowPrivate = false } = {}) {
+  const host = hostOf(url)
+  if (!allowPrivate && net.isIP(host) && isPrivateAddress(host)) throw refusal(url, host)
+}
+
+/**
+ * Before any request: refuse a name when ANY address it resolves to is private. A name that does not resolve is
+ * not refused here; its request then fails and the fixture is `unavailable`.
+ */
+export async function assertResolvedAllowed(url, { allowPrivate = false, lookupAll = (h) => dns.promises.lookup(h, { all: true }) } = {}) {
+  assertLiteralAllowed(url, { allowPrivate })
+  const host = hostOf(url)
+  if (allowPrivate || net.isIP(host)) return
+  let addresses
+  try {
+    addresses = await lookupAll(host)
+  } catch {
+    return
+  }
+  const bad = addresses.find((a) => isPrivateAddress(a.address))
+  if (bad) throw refusal(url, `${bad.address} (${host})`)
+}
+
+/**
+ * A `lookup` for http(s).request that checks the address the socket will connect to, so nothing can re-resolve a
+ * name between the check and the connect. Serves both callback forms: Node's autoSelectFamily asks for `all`.
+ */
+export function guardedLookup({ allowPrivate = false, lookup = dns.lookup } = {}) {
+  return (hostname, options, callback) => {
+    const cb = typeof options === 'function' ? options : callback
+    const opts = typeof options === 'function' ? {} : typeof options === 'number' ? { family: options } : options ?? {}
+    lookup(hostname, { ...opts, all: true }, (error, addresses) => {
+      if (error) return cb(error)
+      const bad = !allowPrivate && addresses.find((a) => isPrivateAddress(a.address))
+      if (bad) return cb(refusal(`//${hostname}`, `${bad.address} (${hostname})`))
+      if (opts.all) return cb(null, addresses)
+      const first = addresses[0]
+      return cb(null, first.address, first.family)
+    })
+  }
 }
 
 // `imageUrl`, when given, replaces ONLY the image target's URL (an explicit, named substitution).
@@ -96,12 +187,15 @@ export function requestTransport(url, deps = {}) {
   throw new Error(`unsupported URL protocol '${protocol}'`)
 }
 
-export function rawRequest(url, { headers = {}, timeoutMs = 30_000 } = {}, deps = {}) {
+export function rawRequest(url, { headers = {}, timeoutMs = 30_000, allowPrivate = false } = {}, deps = {}) {
   return new Promise((resolve, reject) => {
+    // An IP-literal host never reaches `lookup` (Node connects to it directly), so it is checked here.
+    assertLiteralAllowed(url, { allowPrivate })
     const startedAt = process.hrtime.bigint()
     const transport = deps.transport ?? requestTransport(url, deps)
     const req = transport(url, {
       method: 'GET',
+      lookup: guardedLookup({ allowPrivate, ...(deps.dnsLookup ? { lookup: deps.dnsLookup } : {}) }),
       headers: {
         // https.request does not auto-decompress. Explicitly negotiate normal
         // CDN encodings so the collected chunks are the real transfer payload.
@@ -149,10 +243,10 @@ export function decodeBodyForInspection(body, contentEncoding = '') {
   return body.toString('utf8')
 }
 
-export async function measureFixture(fixture, deps = { request: rawRequest }) {
+export async function measureFixture(fixture, deps = { request: rawRequest }, { allowPrivate = false } = {}) {
   const request = deps.request ?? rawRequest
   try {
-    const response = await request(fixture.url, fixture.image ? { headers: { accept: MODERN_IMAGE_ACCEPT } } : {}, deps)
+    const response = await request(fixture.url, { allowPrivate, ...(fixture.image ? { headers: { accept: MODERN_IMAGE_ACCEPT } } : {}) }, deps)
     const cache = response.headers['cf-cache-status']
     const result = {
       id: fixture.id,
@@ -201,8 +295,16 @@ export async function measureFixture(fixture, deps = { request: rawRequest }) {
       result.status = 'absent'
       return result
     }
+    // Only the page's own origin (D7): a script elsewhere is refused, and the fixture is red rather than under-counted.
+    const pageOrigin = new URL(fixture.url).origin
+    const foreign = scripts.find((src) => new URL(src).origin !== pageOrigin)
+    if (foreign) {
+      result.client_js_transfer_bytes = metric('absent', undefined, `client script on another origin refused: ${foreign}`)
+      result.status = 'absent'
+      return result
+    }
     try {
-      const transfers = await Promise.all(scripts.map((src) => request(src, {}, deps)))
+      const transfers = await Promise.all(scripts.map((src) => request(src, { allowPrivate }, deps)))
       const failed = transfers.find((item) => item.statusCode < 200 || item.statusCode >= 300)
       if (failed) {
         result.client_js_transfer_bytes = metric('absent', undefined, `client script returned HTTP ${failed.statusCode}: ${failed.url}`)
@@ -240,9 +342,15 @@ export async function runProbe(options, deps = { request: rawRequest, now: () =>
     baseUrl: options.baseUrl ?? config.baseUrl,
     imageUrl: options.imageUrl ?? null,
   })
+  const allowPrivate = options.allowPrivate ?? config.allowPrivate ?? false
+  // Refuse before ANY request (D7). A dry run makes no network call, so it checks only the literal addresses.
+  for (const fixture of fixtures) assertLiteralAllowed(fixture.url, { allowPrivate })
   if (options.dryRun) return { dry_run: true, fixtures }
+  for (const url of new Set(fixtures.map((f) => new URL(f.url).origin))) {
+    await assertResolvedAllowed(url, { allowPrivate, ...(deps.lookupAll ? { lookupAll: deps.lookupAll } : {}) })
+  }
   const results = []
-  for (const fixture of fixtures) results.push(await measureFixture(fixture, deps))
+  for (const fixture of fixtures) results.push(await measureFixture(fixture, deps, { allowPrivate }))
   const revision = typeof options.revision === 'string' ? options.revision.trim() : ''
   return {
     measured_at: (deps.now ?? (() => new Date()))().toISOString(),
@@ -303,4 +411,4 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+if (isMain(import.meta.url)) main()
