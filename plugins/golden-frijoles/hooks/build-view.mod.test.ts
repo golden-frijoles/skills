@@ -224,38 +224,3 @@ test('S1.4: a question waiting shows before the first measurement (#312 review)'
   expect(seen).toContain('1 question waiting');
 });
 
-test('S1.2: the band draws the per-sprint bars and the stage track the resolver wrote, the marked stage in its tone', async ($, on) => {
-  mock.clock(on);
-  mock.store(on);
-  world(on, (argv) =>
-    argv.includes('--json')
-      ? {
-          exitCode: 0,
-          stdout: JSON.stringify({
-            facts_mode: 'live',
-            lines: [
-              'Currently building',
-              '  Epic     Build view upgrade    02-commercial · risk LOW',
-              '  Why      no target set',
-              '  Progress ▰▰▱│▱▱ 2 of 5 stories done · in flight S1.2 · Sprint 1 of 2',
-              '  Status   Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped',
-              '           from git: feat/build-view-upgrade (live)',
-            ],
-          }),
-        }
-      : null,
-  );
-  await $.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
-  await $.turn.start({ text: 'go', turnId: 't1' });
-  const band = await $.ui.mount({
-    plugin: 'golden-frijoles',
-    surface: 'terminal',
-    component: 'AbovePrompt',
-    props: { hasSurvey: false, isWorking: false, rows: 20, bodyColumns: 100 } as never,
-  });
-  const parts = flat(await band.drawn());
-  expect(parts.find((p) => p.text === '▰▰')?.color).toBe('green');
-  expect(parts.find((p) => p.text === '◉ Building')?.color).toBe('yellow');
-  expect(parts.some((p) => p.text === '2 of 5 stories done · in flight S1.2 · Sprint 1 of 2')).toBe(true);
-  expect(parts.some((p) => p.text.includes('from git: feat/build-view-upgrade (live)'))).toBe(true);
-});

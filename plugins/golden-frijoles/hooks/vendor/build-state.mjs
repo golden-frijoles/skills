@@ -55,7 +55,7 @@ function repoEnv() {
 }
 import { readFileSync, readdirSync, existsSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { PHASES, isDay, parseDocFrontmatter, wrapWords, WHY_LINES_MAX } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
@@ -63,6 +63,7 @@ import { buildRows } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
+import { readDateOf } from './lib/result-dates.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -236,9 +237,17 @@ function readEpic(root, slug) {
     lifecycle: readme.data.status ?? null,
     quote: quoteOf(readme.data),
     target: targetOf(readme.data),
+    // build-view-one-story D2 — 3 of 92 READMEs carry `appetite:`; the quote's basis (`M, n=24, …`) names it in 42.
+    size: sizeOf(readme.data.appetite) ?? sizeOf(String(readme.data.quote_basis ?? '').split(',')[0]),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
     sprints,
   };
+}
+
+/** `M`, `L          # amended …` → `M`, `L`; anything that is not a size → null. */
+function sizeOf(v) {
+  const m = /^\s*(XS|S|M|L|XL)\b/.exec(String(v ?? ''));
+  return m ? m[1] : null;
 }
 
 const unquoteNull = (v) => (v === null || v === undefined || v === 'null' || v === '' ? null : v);
@@ -249,15 +258,19 @@ function readSeed(root, slug) {
   const p = parseDocFrontmatter(readFileSync(path, 'utf8'));
   if (!p.hasFrontmatter) return null;
   const d = p.data;
+  // D2 — the seed's quote is its body's `quote: $lo–hi (basis)` line, read with scaffold-epic's own regex.
+  const q = /^quote:\s*\$(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)\s*\(([^)]+)\)/m.exec(p.body ?? '');
   return {
     slug,
     title: d.title ?? slug,
     type: TYPES_KNOWN.includes(d.type) ? d.type : 'chore',
-    appetite: unquoteNull(d.appetite),
+    appetite: sizeOf(unquoteNull(d.appetite)),
     risk: unquoteNull(d.risk),
     status: unquoteNull(d.status),
     epic: unquoteNull(d.epic),
     path: `${SEEDS_DIR.join('/')}/${slug}.md`,
+    target: targetOf(d),
+    quote: q && Number(q[1]) <= Number(q[2]) ? { low: Number(q[1]), high: Number(q[2]), basis: q[3] } : null,
   };
 }
 const TYPES_KNOWN = ['feature', 'spike', 'bug', 'chore'];
@@ -405,24 +418,33 @@ export function dollars(usd, known = true) {
 }
 
 /**
- * The quote's label (finops S2.4): `(M)` for a calibrated quote, `(M · 2 past epics, wide)` while history is thin. Read
- * from the `quote_basis` quote.mjs writes (`M, n=2, wide` / `M, n=5, p25–p75`); an unreadable basis shows as written.
+ * What the quote's basis adds to the Spend line (build-view-one-story D8): nothing for a calibrated quote (the size is on
+ * the header now), `(2 past epics, wide)` while history is thin. Read from the `quote_basis` quote.mjs writes
+ * (`M, n=2, wide` / `M, n=5, p25–p75`); an unreadable basis shows as written.
  */
-export function quoteLabel(basis, appetite = null) {
+export function quoteLabel(basis) {
   const m = /^\s*([SML])\s*,\s*n=(\d+)\s*,\s*(wide|p25–p75)\s*$/.exec(String(basis ?? ''));
-  if (m)
-    return m[3] === 'wide' ? `(${m[1]} · ${m[2]} past epic${m[2] === '1' ? '' : 's'}, wide)` : `(${m[1]})`;
-  if (basis) return `(${basis})`;
-  return appetite ? `(${appetite})` : '';
+  if (m) return m[3] === 'wide' ? `(${m[2]} past epic${m[2] === '1' ? '' : 's'}, wide)` : '';
+  return basis ? `(${basis})` : '';
+}
+
+export const SPEND_BAR_WIDTH = 10;
+
+/** `▰▰▰▱▱▱▱▱▱▱` — spend against the quote's high end, full when over (finops D8: alert-only). */
+export function spendBar(usd, high) {
+  const filled =
+    usd > high ? SPEND_BAR_WIDTH : Math.max(0, Math.min(SPEND_BAR_WIDTH, Math.round((usd / high) * SPEND_BAR_WIDTH)));
+  return '▰'.repeat(filled) + '▱'.repeat(SPEND_BAR_WIDTH - filled);
 }
 
 /**
- * The Spend line's value — the four states of the approved mockup (finops S2.4; the resolver owns the words, D3):
- *   inside    ≈$38 of quote $30–55 (M) · 1.9M tok · 4 sessions
- *   over      ≈$71 · 29% over quote $30–55 (M) · 3.4M tok              (D8: alert-only)
- *   no quote  ≈$22 · no quote · 1.1M tok · 2 sessions                   (never an invented quote)
- *   thin      ≈$9 of quote $25–90 (M · 2 past epics, wide) · …
- * With no quote object at all (a seed, an old caller) it is Sprint 1's line, which names where it was measured.
+ * The Spend line's value — the states of the approved design (build-view-one-story D8; the resolver owns the words and
+ * the bar, the band only colours them):
+ *   inside    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session
+ *   over      ▰▰▰▰▰▰▰▰▰▰  ≈$71 · 29% over the $30–55 quote · 4 sessions        (finops D8: alert-only)
+ *   no quote  ≈$22 · no quote · 2 sessions                                    (never an invented quote, so no bar)
+ *   thin      ▰▱▱▱▱▱▱▱▱▱  ≈$9 of the $25–90 quote (2 past epics, wide) · …
+ * With no quote object at all (an old caller) it names where it was measured.
  */
 export function spendValue(spend, quote) {
   const line = spendLine(spend, quote);
@@ -432,21 +454,21 @@ export function spendValue(spend, quote) {
 }
 
 function spendLine(spend, quote) {
-  const tok = spend.mtok !== null ? `${spend.mtok}M tok` : null;
   const sessions =
     spend.sessions !== null ? `${spend.sessions} session${spend.sessions === 1 ? '' : 's'}` : null;
   const usd = dollars(spend.usd, spend.usd_known);
-  if (quote === undefined) return [usd, tok, sessions, spend.basis].filter(Boolean).join(' · ');
-  if (!quote) return [usd, 'no quote', tok, sessions].filter(Boolean).join(' · ');
-  const label = quoteLabel(quote.basis, quote.appetite);
-  const range = `$${quote.low}–${quote.high}${label ? ` ${label}` : ''}`;
+  if (quote === undefined) return [usd, sessions, spend.basis].filter(Boolean).join(' · ');
+  if (!quote) return [usd, 'no quote', sessions].filter(Boolean).join(' · ');
+  const label = quoteLabel(quote.basis);
+  const range = `the $${quote.low}–${quote.high} quote${label ? ` ${label}` : ''}`;
+  const bar = quote.high > 0 ? `${spendBar(spend.usd, quote.high)}  ` : '';
   if (spend.usd > quote.high) {
     const pct = quote.high > 0 ? Math.round(((spend.usd - quote.high) / quote.high) * 100) : null;
     // `<1% over`, never `0% over`: the comparison is on the raw dollars, so a rounded 0 would read as "not over".
     const over = pct === null ? 'over' : pct < 1 ? '<1% over' : `${pct}% over`;
-    return [usd, `${over} quote ${range}`, tok].filter(Boolean).join(' · ');
+    return `${bar}${[usd, `${over} ${range}`, sessions].filter(Boolean).join(' · ')}`;
   }
-  return [`${usd} of quote ${range}`, tok, sessions].filter(Boolean).join(' · ');
+  return `${bar}${[`${usd} of ${range}`, sessions].filter(Boolean).join(' · ')}`;
 }
 
 /**
@@ -459,12 +481,17 @@ export function targetOf(readme) {
   const metric = text(readme.target_metric);
   const from = num(readme.target_from);
   const to = num(readme.target_to);
+  const intent = readme.intent_match;
   return {
     hypothesis: text(readme.hypothesis),
     metric: metric !== null && from !== null && to !== null ? metric : null,
     from,
     to,
     read_date: isDay(readme.read_date) ? readme.read_date : null,
+    // build-view-one-story D5 — what we know when there is no target, and how well the pitch matched the ask.
+    grounded_reason: text(readme.grounded_reason),
+    intent_match: typeof intent === 'number' && Number.isFinite(intent) ? Math.round(intent) : null,
+    verdict: ['proven', 'disproven', 'unclear'].includes(readme.verdict) ? readme.verdict : null,
   };
 }
 
@@ -505,7 +532,10 @@ export function boardState({ root, facts, state, now = new Date() }) {
   const slug = state.in_flight ? (state.epic?.slug ?? state.seed?.slug ?? null) : null;
   const row = slug ? rows.find((r) => r.grain !== 'Sprint' && r.slug === slug) : null;
   const cols = groupByStage(rows);
-  const next = cols['Ready to build'][0] ?? null;
+  // build-view-one-story D8 — the next to pull is never the work this view is about.
+  const next = cols['Ready to build'].find((r) => r.slug !== slug) ?? null;
+  // The counts leave out the work in view too: "Around" is everything else.
+  const others = (stage) => cols[stage].filter((r) => r.slug !== slug).length;
   const hub = getKey('board.hubUrl', { root });
   const hubUrl = typeof hub === 'string' && /^https:\/\//.test(hub) ? hub.replace(/\/+$/, '') : null;
   return {
@@ -515,10 +545,12 @@ export function boardState({ root, facts, state, now = new Date() }) {
       facts?.mode === 'live' ? 'just now' : facts?.generated_at ? ageOf(facts.generated_at, now) : null,
     facts_mode: facts?.mode ?? 'docs',
     board: {
-      building: cols.Building.length,
-      qa: cols.QA.length,
-      ready: cols['Ready to build'].length,
-      next: next ? { name: next.name, slug: next.slug, build_order: next.build_order_num ?? null } : null,
+      building: others('Building'),
+      qa: others('QA'),
+      ready: others('Ready to build'),
+      next: next
+        ? { name: next.name, slug: next.slug, build_order: next.build_order_num ?? null, grain: next.grain ?? null }
+        : null,
       // build-view-upgrade D4 — the work's own page when the board has a row for it, else the board.
       url: hubUrl ? (slug && row ? `${hubUrl}/epic/${encodeURIComponent(slug)}` : `${hubUrl}/board`) : null,
     },
@@ -557,6 +589,11 @@ export function resolveBuildState(opts = {}) {
       // A roadmap this extractor cannot read (an out-of-enum status) leaves the view without a stage, never blank.
     }
   }
+  try {
+    state.repo = repoName(opts.root, opts.git || makeGit(opts.root));
+  } catch {
+    state.repo = null;
+  }
   if (opts.elsewhere === false) return state;
   try {
     state.elsewhere = elsewhere_({ root: opts.root, git: opts.git || makeGit(opts.root), state });
@@ -564,6 +601,17 @@ export function resolveBuildState(opts = {}) {
     state.elsewhere = { worktrees: [], open_epics: [] };
   }
   return state;
+}
+
+/**
+ * The repo's own name for the header (build-view-one-story D2): `origin`'s, else the main checkout's folder — never the
+ * worktree's folder, and never the plugin's name (the band hard-coded `golden-frijoles` before this).
+ */
+export function repoName(root, git) {
+  const url = tryGit(git, ['remote', 'get-url', 'origin']);
+  const m = url ? /([^/:]+?)(?:\.git)?\/?$/.exec(url) : null;
+  if (m) return m[1];
+  return basename(mainCheckoutOf(git, root || '.')) || null;
 }
 
 /** `git worktree list --porcelain` → [{ path, branch, bare, prunable }]. Pure. */
@@ -662,7 +710,10 @@ function seedState({ root, git, gh, offline, branch, seed, match }) {
       appetite: seed.appetite,
       risk: seed.risk,
       path: seed.path,
+      status: seed.status,
+      quote: seed.quote,
     },
+    target: seed.target,
     sprint: null,
     story: null,
     story_source: 'n/a',
@@ -685,12 +736,15 @@ function seedState({ root, git, gh, offline, branch, seed, match }) {
 function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh } = {}) {
   gh = gh ?? ((_root, branch) => prFromFacts(facts, branch));
   if (tryGit(git, ['rev-parse', '--is-inside-work-tree']) !== 'true')
-    return notInFlight('not inside a git checkout (or git is not installed)');
+    return notInFlight('not inside a git checkout (or git is not installed)', { where: 'not a git checkout' });
   const branch = tryGit(git, ['symbolic-ref', '-q', '--short', 'HEAD']);
-  if (!branch) return notInFlight('detached HEAD — no branch, so no epic in flight');
+  if (!branch) return notInFlight('detached HEAD — no branch, so no epic in flight', { where: 'detached HEAD' });
   const cands = branchCandidates(branch);
   if (!cands.length)
-    return notInFlight(`on ${branch} — not an epic branch (feat/<slug>…), so no epic in flight`, { branch });
+    return notInFlight(`on ${branch} — not an epic branch (feat/<slug>…), so no epic in flight`, {
+      branch,
+      quiet: true, // build-view-one-story D6: the plain case — the header says it, Now does not repeat it
+    });
   // The LONGEST reading that names something wins: with both `aws` and `aws-s3` on the board, `feat/aws-s3`
   // is the `aws-s3` epic, never sprint 3 of `aws` (codex, on a consumer copy-in).
   const target = resolveTarget(root, branch);
@@ -780,12 +834,29 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     : unlisted
       ? `the newest story commit names ${unlisted.join(', ')}, which no sprint of this epic lists`
       : foreign.length
-        ? `commits here name ${foreign.join(', ')} — none of them ${scope}'s; no journal entry names one either`
-        : `no commit on this branch names a story of ${scope}, and the session journal names none either`;
+        ? `commits here name ${foreign.join(', ')}, none of them ${scope}'s`
+        : 'no story started yet';
 
   // The sprint: the story's, else the branch's -s<N>, else none — never "the first unshipped one".
   const sprintN = story ? story.sprint : parsed.sprint;
   const sprint = epic.sprints.find((s) => s.n === sprintN) || null;
+  // build-view-one-story D6 — the next story in this branch's scope with no commit yet, and whether the work is BETWEEN
+  // stories: the tree is clean and HEAD itself is the in-flight story's commit (story `status:` is ticked at close, so
+  // it cannot say this — measured on the last four epics).
+  const shipped = epic.lifecycle === 'shipped';
+  const nextStory = allStories.find((st) => accepts(st.id) && !withCommits.has(st.id)) ?? null;
+  const clean = story && storySource === 'commit' ? tryGit(git, ['status', '--porcelain']) === '' : false;
+  const between = !!(clean && subjects[0] && storyIdsIn(subjects[0]).includes(story.id));
+  // D2 — the header's sprint: the story's, else the branch's, else the first with a story left, else the last.
+  const headerSprint =
+    sprint ??
+    (shipped ? null : epic.sprints.find((s) => s.stories.some((st) => !withCommits.has(st.id)))) ??
+    epic.sprints.at(-1) ??
+    null;
+  // D7 — the ship day: the newest commit touching the README's `status: shipped` line. One git call, shipped only.
+  const shippedOn = shipped
+    ? tryGit(git, ['log', '-1', '--format=%cs', '-G^status:[[:space:]]*shipped', '--', epic.path]) || null
+    : null;
   // A sprint whose frontmatter could not be read is not "a sprint with no stories": say so, rather than
   // serving the epic's phase as if it were the sprint's (codex, consumer copy-in).
   const unreadableSprint =
@@ -846,17 +917,24 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
     story_note: unreadableSprint ? `${unreadableSprint}${storyNote ? ` — ${storyNote}` : ''}` : storyNote,
     warning: unreadableSprint,
     target: epic.target,
+    size: epic.size ?? readSeed(root, epic.slug)?.appetite ?? null,
+    between,
+    next_story: nextStory ? { id: nextStory.id, title: nextStory.title ?? null } : null,
+    shipped_on: isDay(shippedOn) ? shippedOn : null,
     progress: {
-      stories_with_commits: withCommits.size,
+      // D7 — a shipped epic has done every story (the extractor's floorSprintDone rule): its commits are on main now,
+      // outside base..HEAD, and "0 of 6 done" on a close-out branch was the bug.
+      stories_with_commits: shipped ? allStories.length : withCommits.size,
       // build-view-upgrade D2 — the same measure per sprint, in build order: [done, total] for each.
       by_sprint: epic.sprints.map((sp) => ({
         n: sp.n,
-        done: sp.stories.filter((st) => withCommits.has(st.id)).length,
+        done: shipped ? sp.stories.length : sp.stories.filter((st) => withCommits.has(st.id)).length,
         total: sp.stories.length,
       })),
       story: story ? story.ordinal : null,
       stories: allStories.length,
       sprint: sprint ? epic.sprints.indexOf(sprint) + 1 : null,
+      header_sprint: headerSprint ? epic.sprints.indexOf(headerSprint) + 1 : null,
       sprints: epic.sprints.length,
     },
     status,
@@ -873,35 +951,6 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
   };
 }
 
-const HEADINGS = {
-  bug: 'Currently fixing',
-  chore: 'Currently on a chore',
-  spike: 'Currently investigating',
-  feature: 'Currently shaping',
-};
-const clip = (t, n = 56) => (String(t).length > n ? `${String(t).slice(0, n - 1)}…` : String(t));
-
-/** One line per piece of work elsewhere, worktrees first, capped — the JSON carries the full lists. */
-function elsewhereLines(state, pad) {
-  const e = state.elsewhere || { worktrees: [], open_epics: [] };
-  const items = [
-    ...e.worktrees.map(
-      (w) =>
-        `${pad('Worktree')}${clip(w.title)}${w.story ? ` · ${w.story}` : ''}${w.status ? ` · ${w.status}` : ''} · ${w.branch}`
-    ),
-    ...e.open_epics.map((o) => `${pad('Open')}${clip(o.title)}${o.phase ? ` · ${o.phase}` : ''} · ${o.area}`),
-  ];
-  if (items.length <= MAX_ELSEWHERE_LINES) return items;
-  const shown = items.slice(0, MAX_ELSEWHERE_LINES - 1);
-  return [...shown, `${pad('')}+${items.length - shown.length} more — node scripts/build-state.mjs --json`];
-}
-
-/**
- * The build view as the CLI shows it — a pure function of resolveBuildState's output (Sprint 4's mod
- * renders exactly these lines and nothing else: D3). Five lines under the heading for an epic, no box;
- * work in other worktrees appears as one `Also` line when this checkout is building, and as the list
- * itself when it isn't.
- */
 /**
  * The stage, said with where it came from and how old that is (board-sinks-and-scrumban S3.1): "Building · from git:
  * feat/x · facts from the snapshot, 3h ago". The written `phase:` stays only as a detail (D12). Without a stage (the
@@ -926,6 +975,8 @@ function stageParts(state) {
     state.stage === 'Building' &&
     !state.epic?.locked_at &&
     [null, 'Shaping', 'Locking architecture'].includes(state.epic?.phase ?? null) &&
+    // build-view-one-story D4 (b): story commits mean the build has started; the ⚑ line names the missing stamp.
+    !(state.evidence?.story_commits > 0) &&
     /^(?:git: |github: PR #\d+ draft)/.test(source);
   const stage = locking ? 'Locking architecture' : state.stage;
   const age =
@@ -951,15 +1002,6 @@ export function stageTrack(stage, locking = false) {
     .join(' ─ ');
 }
 
-/** The Status line and its continuation (D3): the track, then where the stage came from. No stage → one plain line. */
-function statusLines(state, pad, cont) {
-  if (!state.stage || !STAGES.includes(state.stage)) return [`${pad('Status')}${statusValue(state)}`];
-  const { locking, source, age, phase } = stageParts(state);
-  return [`${pad('Status')}${stageTrack(state.stage, locking)}`, `${cont}from ${source} (${age})${phase}`];
-}
-
-// build-view-upgrade D1 — why we are building it: the result record's target, or "no target set".
-const WIDTH = 80;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** `2026-12-04` → `4 Dec` (with the year when it is not `now`'s), read in UTC like every result-record day. */
@@ -975,22 +1017,6 @@ const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Number(n.toPreci
 // why-as-a-story D4 — the Why is read in full: it wraps (lib/roadmap-contract's wrapWords, the guard's own wrap).
 export { wrapWords, WHY_LINES_MAX };
 
-/** The Why, wrapped over as many lines as it needs (D4), then the target. Every line fits 80 columns. */
-export function whyLines(target, pad, cont, now = new Date()) {
-  const room = WIDTH - cont.length;
-  const t = target || {};
-  const story = t.hypothesis
-    ? wrapWords(t.hypothesis, room).map((l, i) => (i === 0 ? `${pad('Why')}${l}` : `${cont}${l}`))
-    : [];
-  if (!t.metric) {
-    if (!t.hypothesis) return [`${pad('Why')}no target set`];
-    return [...story, `${cont}no target set`];
-  }
-  const read = t.read_date ? `read ${shortDay(t.read_date, now)}` : 'read 30 days after shipping';
-  const numbers = ` ${fmtNum(t.from)} ━━▸ ${fmtNum(t.to)} · ${read}`;
-  const metric = `${clip(t.metric, Math.max(8, room - numbers.length))}${numbers}`;
-  return t.hypothesis ? [...story, `${cont}${clip(metric, room)}`] : [`${pad('Why')}${clip(metric, room)}`];
-}
 
 // build-view-upgrade D2 — one cell per story, sprint by sprint: ▰ has a commit, ▱ not yet, │ between sprints.
 export const SPRINT_CELLS_MAX = 8;
@@ -1011,75 +1037,272 @@ export function sprintBars(bySprint) {
     .join('│');
 }
 
-/** The board around this work in one line, and the link to it when `board.hubUrl` is set (S3.1). */
-function boardLines(state, pad) {
-  const b = state.board;
-  if (!b) return [];
-  const next = b.next
-    ? ` · next to pull: ${clip(b.next.name, 40)}${b.next.build_order !== null ? ` (#${b.next.build_order})` : ''}`
-    : '';
-  const counts = `Building ${b.building} · QA ${b.qa} · Ready to build ${b.ready}${next}`;
-  return [`${pad('Board')}${counts}`, ...(b.url ? [`${pad('')}↗ ${b.url}`] : [])];
+// ── The view (build-view-one-story) ──────────────────────────────────────────────────────────────────────
+// Top to bottom it answers what is being built, how far it has got, why, what is happening now, what it costs and what
+// else is going on (the design approved 2026-10-14, the seed's *The design*). Each fact appears once; a bar is drawn
+// only for an amount against a known total. The text is the band's: the mod colours it and never adds a fact (D3).
+
+/** One glyph per meaning, every one single-width (D11: the glyph spec fails a wide or emoji-presentation one). */
+export const GLYPHS = Object.freeze({
+  Why: '❝',
+  Target: '⌖',
+  Now: '▸',
+  Spend: '$',
+  Around: '⋯',
+  Next: '→',
+  link: '↗',
+  flag: '⚑',
+  risk: '▲',
+});
+/** The header's state symbol, by stage (D2). `none` is nothing in flight. */
+export const STATE_SYMBOLS = Object.freeze({
+  'To groom': '❧',
+  Grooming: '❧',
+  'Ready to build': '◇',
+  Building: '▶',
+  QA: '◎',
+  Shipped: '✓',
+  none: '○',
+});
+const WIDTH = 100;
+const CONT = ' '.repeat(13);
+const ROOM = WIDTH - CONT.length;
+const cols = (t) => [...String(t)].length; // every glyph is single-width (D11), so a code point is a column
+const clip = (t, n = 56) => (cols(t) > n ? `${[...String(t)].slice(0, Math.max(1, n - 1)).join('')}…` : String(t));
+/** `  ❝ Why      <value>` — the glyph, the label padded to 9, then the value at column 13 (D1). */
+const field = (label, value) => `  ${GLYPHS[label]} ${label.padEnd(9)}${value}`;
+/** A field over as many lines as it needs: the first beside the label, the rest at column 13. */
+const fieldLines = (label, text) => wrapWords(text, ROOM, 20).map((l, i) => (i ? `${CONT}${l}` : field(label, l)));
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * The stage this view draws and whether it is the Locking refinement of Building (live-build-view D11). The extractor's
+ * stage when there is one; a shipped README is Shipped whatever the board says (stage.mjs rule 2).
+ */
+export function stageOf(state) {
+  const stage =
+    state.lifecycle === 'shipped'
+      ? 'Shipped'
+      : STAGES.includes(state.stage)
+        ? state.stage
+        : (STAGE_FROM_STATUS[state.status] ?? null);
+  return { stage, locking: !!stage && stageParts({ ...state, stage }).locking };
+}
+// With no board row (the extractor could not read the roadmap), the resolver's own status names the stage; a status it
+// does not know stays unknown, said as such.
+const STAGE_FROM_STATUS = {
+  raw: 'To groom',
+  ready: 'Grooming',
+  Shaping: 'Ready to build',
+  'Locking architecture': 'Ready to build',
+  Building: 'Building',
+  Verifying: 'QA',
+  'In review': 'QA',
+  Shipped: 'Shipped',
+};
+
+/**
+ * build-view-one-story D4 — the one place a source is named: a sentence when the docs and the live facts disagree,
+ * else null. Four pairs, a spec each.
+ */
+export function disagreement(state) {
+  if (!state.in_flight || state.kind !== 'epic') return null;
+  if (state.warning) return state.warning; // (d) a sprint whose frontmatter could not be read
+  const commits = state.evidence?.story_commits ?? 0;
+  const phase = state.epic?.phase ?? null;
+  if (state.lifecycle === 'shipped')
+    // (a) — a close-out branch carries no story commit, so it never trips this.
+    return commits > 0
+      ? `the epic's docs say Shipped, but this branch has ${plural(commits, 'story commit')} not on main`
+      : null;
+  // (b) — the lock was never stamped, yet stories are being committed.
+  if (commits > 0 && !state.epic?.locked_at && [null, 'Shaping', 'Locking architecture'].includes(phase))
+    return `the epic's docs say ${phase ?? 'no phase'}, but this branch has story commits`;
+  // (c) — the written phase claims more than the board shows.
+  const written = state.phase_written;
+  const ahead =
+    (['Verifying', 'In review', 'Shipped'].includes(written) && ['Ready to build', 'Building'].includes(state.stage)) ||
+    (written === 'Shipped' && state.stage === 'QA');
+  if (ahead)
+    return `${state.sprint ? `sprint ${state.sprint.n}'s` : "the epic's"} docs say ${written}, but the board has it at ${stageWord(state.stage)}`;
+  return null;
 }
 
-export function renderLines(state, now = new Date()) {
-  const pad = (label) => `  ${label.padEnd(9)}`;
-  if (!state.in_flight)
-    return [`No epic in flight — ${state.reason}`, ...elsewhereLines(state, pad), ...boardLines(state, pad)];
-  const others = state.elsewhere?.worktrees?.length || 0;
-  const also = others
-    ? [
-        `${pad('Also')}${others} more in other worktrees: ${state.elsewhere.worktrees.map((w) => w.branch).join(', ')}`,
-      ]
-    : [];
-  if (state.seed) {
-    const { seed } = state;
-    const meta = [
-      seed.appetite && `appetite ${seed.appetite}`,
-      seed.risk && `risk ${String(seed.risk).toUpperCase()}`,
-    ]
-      .filter(Boolean)
-      .join(' · ');
-    const label = seed.type.charAt(0).toUpperCase() + seed.type.slice(1);
-    return [
-      HEADINGS[seed.type] || 'Currently working on',
-      `${pad(label)}${seed.title}${meta ? `    ${meta}` : ''}`,
-      `${pad('Seed')}${seed.path}`,
-      ...statusLines(state, pad, ' '.repeat(11)),
-      ...also,
-      ...boardLines(state, pad),
-    ];
-  }
-  const { epic, story, progress } = state;
-  const cont = ' '.repeat(11);
-  const risk = epic.risk ? ` · risk ${epic.risk.toUpperCase()}` : '';
-  const lines = [
-    'Currently building',
-    `${pad('Epic')}${epic.title}    ${epic.area}${risk}`,
-    ...whyLines(state.target, pad, cont, now),
-  ];
-  if (story) {
-    lines.push(`${pad('Story')}${story.id}${story.title ? ` — ${story.title}` : ''}`);
-    lines.push(
-      story.as_a && story.i_want && story.so_that
-        ? `${cont}As ${story.as_a}, I want ${story.i_want}, so that ${story.so_that}.`
-        : `${cont}(the docs carry no user story for ${story.id})`
-    );
-  } else {
-    lines.push(`${pad('Story')}unknown`);
-    lines.push(`${cont}${state.story_note}`);
-  }
-  // S2.2 — stories DONE (with commits), not the in-flight story's position: "Story 1 of 7" at the end of a sprint
-  // was a position, and read as progress.
-  // build-view-upgrade D2: "done" is the same measure, a story with a commit — the bars draw it per sprint.
+/**
+ * `<repo> <symbol> <lead> · <title> · <size> · ▲ risk <LEVEL>`, the right part pushed to column 100 (D2). When the whole
+ * title and the right part cannot share 100 columns, the right part takes its own line under the header — the band's
+ * narrow layout — rather than cutting the title down to a stub; only a title wider than the line itself is clipped.
+ * Returns one line or two.
+ */
+function headerLines({ repo, symbol, lead, title, size, risk, right }) {
+  const risky = risk ? `${GLYPHS.risk} risk ${String(risk).toUpperCase()}` : null;
+  const build = (t) => [`${repo} ${symbol} ${lead}`, t, size, risky].filter(Boolean).join(' · ');
+  const full = build(title || null);
+  if (!right) return [cols(full) > WIDTH ? build(clip(title, WIDTH - cols(build(null)) - 3)) : full];
+  if (cols(full) + 4 + cols(right) <= WIDTH)
+    return [`${full}${' '.repeat(WIDTH - cols(full) - cols(right))}${right}`];
+  const left = cols(full) > WIDTH ? build(clip(title, WIDTH - cols(build(null)) - 3)) : full;
+  return [left, `  ${right}`];
+}
+
+/** `▰▰▱│▱▱▱  2 of 8 stories done` — the header's right part for an epic. */
+function storiesRight(progress) {
   const bars = sprintBars(progress.by_sprint);
   const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} stories done`;
-  const inFlight = story ? ` · in flight ${story.id}` : '';
-  const sprintPart = `Sprint ${progress.sprint ?? '?'} of ${progress.sprints}`;
-  lines.push(`${pad('Progress')}${bars ? `${bars} ` : ''}${done}${inFlight} · ${sprintPart}`);
-  if (state.spend) lines.push(`${pad('Spend')}${spendValue(state.spend, state.quote ?? null)}`);
-  lines.push(...statusLines(state, pad, cont));
-  return [...lines, ...also, ...boardLines(state, pad)];
+  return bars ? `${bars}  ${done}` : done;
+}
+
+/** ❝ Why, then ⌖ Target (D5). A seed being refined has a Why and no Target yet. */
+function whyTargetLines(target, now, { withTarget = true } = {}) {
+  const t = target || {};
+  const lines = t.hypothesis ? fieldLines('Why', t.hypothesis) : [];
+  if (!withTarget) return lines;
+  return [...lines, ...fieldLines('Target', targetValue(t, now))];
+}
+
+/** The Target's words (D5): the target, or what we know when there is none, then the verdict and intent match. */
+export function targetValue(target, now = new Date()) {
+  const t = target || {};
+  let head;
+  if (t.metric) {
+    const read = t.read_date ? `read ${shortDay(t.read_date, now)}` : 'read 30 days after shipping';
+    head = `${t.metric}: ${fmtNum(t.from)} → ${fmtNum(t.to)} · ${read}`;
+  } else head = t.grounded_reason ? `none yet: ${t.grounded_reason}` : 'none set';
+  const tail = [t.verdict && `verdict ${t.verdict}`, Number.isFinite(t.intent_match) && `intent match ${t.intent_match}`];
+  return [head, ...tail.filter(Boolean)].join(' · ');
+}
+
+/** ▸ Now (D6, D7): what is happening this minute, as a first line and, for a story, its user story. */
+function nowLines(state, now) {
+  const { story } = state;
+  const next = state.next_story?.id ?? null;
+  if (state.lifecycle === 'shipped') {
+    const day = state.shipped_on ? shortDay(state.shipped_on, now) : null;
+    const t = state.target || {};
+    const due = readDateOf({ readDate: t.read_date, targetMetric: t.metric, shippedAt: state.shipped_on });
+    const after = t.verdict
+      ? `verdict ${t.verdict}`
+      : due.readDate
+        ? `verdict due ${shortDay(due.readDate, now)}`
+        : 'no target to read';
+    return [field('Now', [day ? `shipped ${day}` : 'shipped', after].join(' · '))];
+  }
+  if (stageOf(state).locking) return [field('Now', `locking the architecture${next ? ` · ${next} next` : ''}`)];
+  if (story && state.between)
+    return [field('Now', `between stories: ${story.id} done, ${next ? `${next} next` : 'every story has a commit'}`)];
+  if (story) {
+    const said = story.as_a && story.i_want && story.so_that;
+    return [
+      field('Now', `${story.id}${story.title ? ` ${story.title}` : ''}`),
+      ...wrapWords(
+        said
+          ? `As ${story.as_a}, I want ${story.i_want}, so that ${story.so_that}.`
+          : `(the docs carry no user story for ${story.id})`,
+        ROOM,
+        20
+      ).map((l) => `${CONT}${l}`),
+    ];
+  }
+  const note = state.story_note || 'no story started yet';
+  return [field('Now', note === 'no story started yet' && next ? `${note} · ${next} next` : note)];
+}
+
+/** ⋯ Around and → Next (D8): everything else on the board, then — with nothing in flight — the next command. */
+function aroundLines(state) {
+  const b = state.board;
+  const wts = state.elsewhere?.worktrees ?? [];
+  const counts = b
+    ? [b.building && `${b.building} building`, b.qa && `${b.qa} in QA`, b.ready && `${b.ready} ready`].filter(Boolean)
+    : [];
+  const next = b?.next ?? null;
+  const command = !state.in_flight && next?.grain === 'Epic';
+  const upNext = next && !command ? `next up: ${clip(next.name, 40)}${next.build_order !== null ? ` (#${next.build_order})` : ''}` : null;
+  const first = [...counts, upNext].filter(Boolean);
+  const items = wts.map((w) => `${clip(w.title, 48)}${w.story || w.status ? ` (${[w.story, w.status].filter(Boolean).join(', ')})` : ''}`);
+  const shown = items.length > MAX_ELSEWHERE_LINES ? [...items.slice(0, MAX_ELSEWHERE_LINES - 1), `+${items.length - MAX_ELSEWHERE_LINES + 1} more`] : items;
+  const lines = [];
+  if (first.length || shown.length || b) {
+    const head = first.length ? first.join(' · ') : shown.length ? null : 'nothing else on the board';
+    const there = shown.length ? wrapWords(`in other worktrees: ${shown.join(' · ')}`, ROOM, 20) : [];
+    const all = [...(head ? [head] : []), ...there];
+    lines.push(...all.map((l, i) => (i ? `${CONT}${l}` : field('Around', l))));
+  }
+  if (command) lines.push(field('Next', `/build ${next.slug}   (top of the ready list)`));
+  return lines;
+}
+
+/** The view as the CLI and the band show it — a pure function of resolveBuildState's output (D1). */
+export function renderLines(state, now = new Date()) {
+  const repo = state.repo || 'this repo';
+  const link = (target) => (target ? [`  ${GLYPHS.link} ${target}`] : []);
+  if (!state.in_flight) {
+    const where = state.where ?? state.branch ?? null;
+    return [
+      `${repo} ${STATE_SYMBOLS.none} No epic on this branch${where ? ` · ${where}` : ''}`,
+      ...link(state.board?.url),
+      ...(state.quiet || state.where ? [] : [field('Now', state.reason)]),
+      ...aroundLines(state),
+    ];
+  }
+  const { stage, locking } = stageOf(state);
+  const track = stage ? `  ${stageTrack(stage, locking)}` : '  stage unknown: the board could not be read';
+  const flag = disagreement(state);
+  const flagged = flag ? [`  ${GLYPHS.flag} ${flag}`] : [];
+  const symbol = STATE_SYMBOLS[stage] ?? STATE_SYMBOLS['Ready to build'];
+  if (state.seed) {
+    const { seed } = state;
+    const refining = ['raw', 'ready'].includes(seed.status) && !state.evidence?.commits;
+    const lead = seed.type === 'feature' ? 'Idea' : seed.type.charAt(0).toUpperCase() + seed.type.slice(1);
+    const commits = state.evidence?.commits ?? 0;
+    const now_ =
+      seed.status === 'raw' && refining
+        ? 'shaping the plan'
+        : seed.status === 'ready' && refining
+          ? 'plan ready, waiting for your approval'
+          : commits
+            ? `${plural(commits, 'commit')} on this branch`
+            : 'no commits on this branch yet';
+    return [
+      ...headerLines({
+        repo,
+        symbol,
+        lead,
+        title: seed.title,
+        size: seed.appetite,
+        risk: seed.risk,
+        right: seed.quote ? `quote $${seed.quote.low}–${seed.quote.high}` : null,
+      }),
+      track,
+      ...flagged,
+      ...link(seed.path),
+      // A seed shows a Target only when it says something (a bug or a chore has none to read).
+      ...whyTargetLines(state.target, now, {
+        withTarget: !refining && !!(state.target?.metric || state.target?.grounded_reason),
+      }),
+      field('Now', now_),
+      ...aroundLines(state),
+    ];
+  }
+  const { epic, progress } = state;
+  const n = progress.header_sprint ?? progress.sprint;
+  return [
+    ...headerLines({
+      repo,
+      symbol,
+      lead: `Sprint ${n ?? '?'} of ${progress.sprints}`,
+      title: epic.title,
+      size: state.size,
+      risk: epic.risk,
+      right: storiesRight(progress),
+    }),
+    track,
+    ...flagged,
+    ...link(state.board?.url ?? epic.path),
+    ...whyTargetLines(state.target, now),
+    ...nowLines(state, now),
+    ...(state.spend ? [field('Spend', spendValue(state.spend, state.quote ?? null))] : []),
+    ...aroundLines(state),
+  ];
 }
 
 // realpath on both sides: a plugin or checkout reached through a symlink (macOS /tmp → /private/tmp) would

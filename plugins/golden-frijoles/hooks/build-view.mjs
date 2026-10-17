@@ -96,28 +96,15 @@ export function shouldRefreshUsage(lastAt, root, now = Date.now()) {
   return !(Number.isFinite(lastAt) && now - lastAt < USAGE_REFRESH_MS);
 }
 
-// ── The band's rows (fix/build-view-band) ────────────────────────────────────────────────────────────
-// The view used to go to `$.ui.status`, a ONE-line status row: the resolver's newlines were drawn as U+FFFD
-// and everything past the terminal's width was cut off. It is now drawn as a band above the prompt, one
-// wrapped row per resolver line. These rows only DECORATE the resolver's own lines — a glyph and a tone per
-// label — and never add or drop a fact (D3): every row's `label` + `value` is its source line, trimmed.
+// ── The band's rows (fix/build-view-band; build-view-one-story D10) ─────────────────────────────────────────────────
+// The view is drawn as a band above the prompt, one row per resolver line. These rows only DECORATE the resolver's own
+// lines — a tone, a layout, the glyph it already wrote, coloured — and never add or drop a fact (D3): every word drawn is
+// a word of the resolver's text. The glyphs live in the resolver (build-state.mjs GLYPHS); this file only knows which
+// labels are fields.
 
-const LABEL_GLYPHS = {
-  Epic: '◆',
-  Feature: '◆',
-  Bug: '◆',
-  Spike: '◆',
-  Chore: '◆',
-  Story: '▸',
-  Seed: '❧',
-  Progress: '▰',
-  Spend: '$', // finops S1.3
-  Status: '●',
-  Open: '○',
-  Also: '↳',
-  Board: '▦',
-  Plugin: '⬆', // live-build-view D5 — the installed plugin is older than the published one
-};
+const FIELD_LABELS = ['Why', 'Target', 'Now', 'Spend', 'Around', 'Next', 'Plugin'];
+/** The header's state symbol → its stage's tone (the same tone toneOf gives the stage's word on the track). */
+export const SYMBOL_TONES = Object.freeze({ '❧': 'busy', '◇': 'busy', '▶': 'busy', '◎': 'info', '✓': 'good', '○': 'plain' });
 
 /** A tone for a status/phase word — a colour hint only; the word itself is always shown as written. */
 export function toneOf(value) {
@@ -125,17 +112,17 @@ export function toneOf(value) {
   if (/^unknown|blocked|failed|stale/.test(v)) return 'bad';
   if (/shipped|done|live|merged|complete/.test(v)) return 'good';
   if (/^qa\b|verifying|review|smoke/.test(v)) return 'info';
-  if (/building|locking|in progress|refine|planning|ready|backlog/.test(v)) return 'busy';
+  if (/building|locking|in progress|refine|refining|planning|ready|backlog/.test(v)) return 'busy';
   return 'plain';
 }
 
 /**
- * The Progress row's bars (build-view-upgrade D2), read from the resolver's OWN glyphs — never computed here (D3):
- * `▰▰▱│▱▱ 2 of 5 stories done · …` → runs of `▰` (done), `▱` (not yet) and `│` (between sprints), and the rest of the
- * value. Anything without a leading bar → null, and the row draws as plain text.
+ * The stories bar (build-view-upgrade D2), read from the resolver's OWN glyphs — never computed here (D3):
+ * `▰▰▱│▱▱  2 of 5 stories done` → runs of `▰` (done), `▱` (not yet) and `│` (between sprints), and the rest of the
+ * value. Anything without a leading bar → null, and it draws as plain text.
  */
 export function barsOf(value) {
-  const m = /^([▰▱│]+) (.*)$/.exec(String(value || ''));
+  const m = /^([▰▱│]+) +(.*)$/.exec(String(value || ''));
   if (!m) return null;
   const runs = [...m[1].matchAll(/▰+|▱+|│+/g)].map(([text]) => ({
     kind: text[0] === '▰' ? 'done' : text[0] === '▱' ? 'todo' : 'sep',
@@ -145,8 +132,8 @@ export function barsOf(value) {
 }
 
 /**
- * The Status row's stage track (build-view-upgrade D3): `Grooming ─ Ready ─ ◉ Building ─ QA ─ Shipped` → the words
- * before the mark, the marked word (`◉ Building`) and the words after it. No mark → null (the old one-line status).
+ * The stage track (build-view-upgrade D3): `Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped` → the words before the mark,
+ * the marked word (`◉ Building`) and the words after it. No mark → null.
  */
 export function trackOf(value) {
   const v = String(value || '');
@@ -157,57 +144,107 @@ export function trackOf(value) {
   return { before: v.slice(0, at), mark, after: end === -1 ? '' : v.slice(end), word: mark.slice(2) };
 }
 
-export const SPEND_BAR_WIDTH = 10;
-
 /**
- * The Spend row's decoration (finops S2.4), parsed from the resolver's OWN words — never computed from anything else
- * (D3): `≈$38 of quote $30–55 (M) …` → a bar of 38 ÷ 55, tone good; `… % over quote …` → a full bar, tone bad (D8);
- * anything else (`no quote`, Sprint 1's line) → no bar, tone plain.
+ * The Spend value's decoration, read from the resolver's own bar and words (D8, D10): `▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68
+ * quote …` → the bar's runs, tone good; `… 29% over the $30–55 quote …` → tone bad, with the `29% over` words to draw
+ * red; no bar (`no quote`) → tone plain.
  */
 export function spendOf(value) {
   const v = String(value || '');
-  if (/(?:<1|\d+)% over quote \$/.test(v) || /· over quote \$/.test(v))
-    return { tone: 'bad', bar: { filled: SPEND_BAR_WIDTH, width: SPEND_BAR_WIDTH } };
-  const m = /^[≈≥]\$(\d+(?:\.\d+)?) of quote \$(\d+(?:\.\d+)?)–(\d+(?:\.\d+)?)/.exec(v);
-  if (!m) return { tone: 'plain', bar: null };
-  const actual = Number(m[1]);
-  const high = Number(m[3]);
-  const filled = high > 0 ? Math.max(0, Math.min(SPEND_BAR_WIDTH, Math.round((actual / high) * SPEND_BAR_WIDTH))) : 0;
-  return { tone: 'good', bar: { filled, width: SPEND_BAR_WIDTH } };
+  const m = /^([▰▱]+) +(.*)$/.exec(v);
+  if (!m) return { tone: 'plain', bar: null, rest: v, over: null };
+  const filled = (m[1].match(/▰/g) || []).length;
+  const over = /(?:<1|\d+)% over|· over the \$/.exec(m[2])?.[0]?.replace(/^· /, '') ?? null;
+  return { tone: over ? 'bad' : 'good', bar: { filled, width: m[1].length }, rest: m[2], over };
 }
 
 /**
- * The view text (the resolver's lines, joined) as band rows:
- *   heading — the first line (`Currently building`, `No epic in flight — …`)
- *   field   — `  <Label>   <value>` (the resolver pads labels to 9); `main` + `meta` split the value at the
- *             resolver's four-space gap, `risk` is the meta's `risk X` word when there is one
- *   note    — a continuation line (the user story), indented under the value
+ * The header line (build-view-one-story D2/D3): `<repo> <symbol> <lead> · <title> · <size> · ▲ risk <LEVEL>`, then the
+ * right part after 4+ spaces. Split into its parts so the band can colour each and clip only the title. A header with
+ * nothing in flight (`○`) has a lead and no title.
+ */
+export function headerOf(line) {
+  const m = /^(\S+) (\S) (.*?)(?: {4,}(\S.*))?$/.exec(String(line || ''));
+  if (!m) return null;
+  const [, repo, symbol, rest, right = null] = m;
+  const parts = rest.split(' · ');
+  if (symbol === '○') return { repo, symbol, lead: rest, title: null, size: null, risk: null, right };
+  let end = parts.length;
+  const risk = /^▲ risk (\w+)$/.exec(parts[end - 1] ?? '')?.[1] ?? null;
+  if (risk) end -= 1;
+  const size = end > 2 && /^(?:XS|S|M|L|XL)$/.test(parts[end - 1]) ? parts[--end] : null;
+  return { repo, symbol, lead: parts[0], title: parts.slice(1, end).join(' · ') || null, size, risk, right };
+}
+
+/** Code points, which are columns here: every glyph the view draws is single-width (D11). */
+export const columnsOf = (t) => [...String(t ?? '')].length;
+export const HEADER_NARROW = 90;
+
+/**
+ * Where the header's parts go in `columns` (D3) — the resolver's own rule, at the band's real width: one row when the
+ * whole header fits beside the right part, else the right part takes its own row (always, under HEADER_NARROW
+ * columns); the title is clipped with `…` only to the row it ends up on — never the bar, never the risk. `columns` is
+ * the band's body width; 2 of it are the band's padding.
+ */
+export function headerLayout(h, columns) {
+  const width = Math.max(20, (Number.isFinite(columns) ? columns : 100) - 2);
+  const left =
+    columnsOf(`${h.repo} ${h.symbol} ${h.lead}`) +
+    (h.title ? 3 : 0) +
+    (h.size ? 3 + columnsOf(h.size) : 0) +
+    (h.risk ? 3 + columnsOf(`▲ risk ${h.risk}`) : 0);
+  const oneRow =
+    !!h.right && width >= HEADER_NARROW - 2 && left + columnsOf(h.title) + 2 + columnsOf(h.right) <= width;
+  return { title: h.title ? clipTo(h.title, width - left) : null, rightRow: !!h.right && !oneRow };
+}
+
+function clipTo(t, n) {
+  const c = [...String(t)];
+  return c.length > n ? `${c.slice(0, Math.max(1, n - 1)).join('')}…` : String(t);
+}
+
+/**
+ * The view text (the resolver's lines, joined) as band rows (D10):
+ *   header — line 1, split by headerOf; a stories bar or quote the resolver put on its own line joins it as `right`
+ *   track  — the stage track;  link — `↗ …`;  flag — `⚑ …` (sources disagree);  note — anything else
+ *   field  — `  <glyph> <Label>   <value>`, its continuation lines joined into one value so the band wraps it; the Now
+ *            field's user story is its own `story` row
  * An empty or null text gives no rows, so the band draws nothing.
  */
 export function bandRowsFrom(text) {
   if (typeof text !== 'string' || !text.trim()) return [];
-  return text.split('\n').map((line, i) => {
+  const rows = [];
+  const lines = text.split('\n');
+  lines.forEach((line, i) => {
+    const last = rows.at(-1);
     if (i === 0) {
-      const idle = /^No epic in flight/.test(line);
-      return { kind: 'heading', glyph: idle ? '◇' : '◆', value: line, tone: idle ? 'plain' : 'busy' };
+      const h = headerOf(line);
+      if (h) return rows.push({ kind: 'header', ...h, tone: SYMBOL_TONES[h.symbol] ?? 'plain', value: line });
+      return rows.push({ kind: 'note', value: line.trim() });
     }
-    const field = /^ {2}([A-Z][A-Za-z]*) +(\S.*)$/.exec(line);
-    if (field && field[1] in LABEL_GLYPHS) {
-      const [, label, value] = field;
-      const tone =
-        label === 'Status' || label === 'Open'
-          ? toneOf(label === 'Open' ? value.split(' · ')[1] : (trackOf(value)?.word ?? value))
-          : label === 'Spend'
-            ? spendOf(value).tone
-            : 'plain';
-      // `title    area · risk X`: the resolver separates the meta with four spaces; drawn dim beside it.
-      const [main, ...rest] = value.split(/ {4,}/);
-      const meta = rest.join('  ') || null;
-      const risk = /risk (\w+)/.exec(meta || '')?.[1] || null;
-      return { kind: 'field', glyph: LABEL_GLYPHS[label], label, value, main, meta, risk, tone };
+    const right = /^ {2}((?:[▰▱│]+ {2}\d+ of \d+ stories done)|(?:quote \$\S+))$/.exec(line);
+    if (right && last?.kind === 'header' && !last.right) {
+      last.right = right[1];
+      return;
     }
-    return { kind: 'note', glyph: '│', value: line.trim(), tone: 'plain' };
+    const cont = /^ {13}(\S.*)$/.exec(line);
+    if (cont && last && (last.kind === 'field' || last.kind === 'story')) {
+      if (last.kind === 'field' && last.label === 'Now') return rows.push({ kind: 'story', value: cont[1] });
+      last.value = `${last.value} ${cont[1]}`;
+      return;
+    }
+    const f = /^ {2}(\S) ([A-Z][a-z]+) +(\S.*)$/.exec(line);
+    if (f && FIELD_LABELS.includes(f[2])) {
+      const [, glyph, label, value] = f;
+      return rows.push({ kind: 'field', glyph, label, value, tone: label === 'Spend' ? spendOf(value).tone : 'plain' });
+    }
+    if (/^ {2}↗ /.test(line)) return rows.push({ kind: 'link', glyph: '↗', value: line.slice(4) });
+    if (/^ {2}⚑ /.test(line)) return rows.push({ kind: 'flag', glyph: '⚑', value: line.slice(4) });
+    const t = trackOf(line.trim());
+    if (t) return rows.push({ kind: 'track', value: line.trim(), tone: toneOf(t.word) });
+    return rows.push({ kind: 'note', value: line.trim() });
   });
+  return rows;
 }
 
 // ── Engines without `$.state` (fix/build-view-no-state-at-start) ────────────────────────────────────────
@@ -325,7 +362,7 @@ export function semverGt(a, b) {
 /** The band's Plugin row, or null when the installed copy is not older than the published one. */
 export function versionRow(installed, published) {
   if (!semverGt(published, installed)) return null;
-  return `  ${'Plugin'.padEnd(9)}${installed} installed · ${published} published — /plugin to update`;
+  return `  ⬆ ${'Plugin'.padEnd(9)}${installed} installed · ${published} published — /plugin to update`;
 }
 
 /**

@@ -46,6 +46,7 @@ import {
   isOnlineTrigger,
   kickoffArgv,
   barsOf,
+  headerLayout,
   publishedManifestPath,
   trackOf,
   shouldRefreshUsage,
@@ -70,7 +71,7 @@ const COUNTDOWN_MS = 60_000; // the reset countdown's redraw (D5): its smallest 
 
 const TONE_COLORS = { busy: 'yellow', info: 'cyan', good: 'green', warn: 'yellow', bad: 'red', plain: undefined } as const;
 const RISK_COLORS = { LOW: 'green', MEDIUM: 'yellow', HIGH: 'red' } as const;
-const LABEL_WIDTH = 12; // glyph + space + the longest label (`Progress`) + gap
+const LABEL_WIDTH = 13; // build-view-one-story D1: 2 + glyph + space + the label padded to 9 — the resolver's column 13
 
 // The session line's inputs. Module variables, but a hot reload does not start the figures over: `$.state` keeps them
 // (the hint row keeps drawing them), so session.start reads them back into `measured` — otherwise the countdown would
@@ -297,11 +298,12 @@ export const register: Register = (on) => {
     const rows = bandRowsFrom(value ?? null);
     if (!rows.length) return next(e);
     const { Box, Text } = $.ui.resolve(e);
+    const columns = e.props.bodyColumns;
 
     // build-view-upgrade D2/D3 — the resolver's own glyphs and words, coloured; nothing computed here.
-    const progress = (value: string) => {
+    const bars = (value: string) => {
       const b = barsOf(value);
-      if (!b) return null;
+      if (!b) return <Text dimColor>{value}</Text>;
       return (
         <Text>
           {b.runs.map((r, j) =>
@@ -310,14 +312,15 @@ export const register: Register = (on) => {
             ) : (
               <Text key={`b${j}`} dimColor>{r.text}</Text>
             ),
-          )}{' '}
+          )}
+          {'  '}
           <Text>{b.rest}</Text>
         </Text>
       );
     };
     const track = (value: string, tone: keyof typeof TONE_COLORS) => {
       const t = trackOf(value);
-      if (!t) return null;
+      if (!t) return <Text>{value}</Text>;
       return (
         <Text>
           <Text dimColor>{t.before}</Text>
@@ -326,65 +329,99 @@ export const register: Register = (on) => {
         </Text>
       );
     };
-
-    // finops S2.4 — the Spend row's bar, from the resolver's own words (spendOf): green inside the quote, red when over.
-    const spendBar = (value: string) => {
-      const { bar, tone } = spendOf(value);
-      if (!bar) return null;
+    // finops S2.4 / build-view-one-story D8 — the Spend bar the resolver wrote: green inside the quote, full and red when
+    // over, the rest dim; the `N% over` words red too.
+    const spend = (value: string) => {
+      const { bar, tone, rest, over } = spendOf(value);
+      if (!bar) return <Text>{value}</Text>;
+      const [before, after] = over ? rest.split(over) : [rest, ''];
       return (
         <Text>
           <Text color={TONE_COLORS[tone as keyof typeof TONE_COLORS]}>{'▰'.repeat(bar.filled)}</Text>
-          <Text dimColor>{'▱'.repeat(bar.width - bar.filled)}</Text>{' '}
+          <Text dimColor>{'▱'.repeat(bar.width - bar.filled)}</Text>
+          {'  '}
+          <Text>{before}</Text>
+          {over ? <Text color="red">{over}</Text> : null}
+          {over ? <Text>{after}</Text> : null}
         </Text>
       );
     };
+    // → Next: the command bold, its reason dim (`/build <slug>   (top of the ready list)`).
+    const nextCommand = (value: string) => {
+      const [command, ...why] = value.split(/ {3,}/);
+      return (
+        <Text>
+          <Text bold>{command}</Text>
+          {why.length ? <Text dimColor>{`   ${why.join(' ')}`}</Text> : null}
+        </Text>
+      );
+    };
+    const indent = (key: string, child: unknown) => (
+      <Box key={key} flexDirection="row">
+        <Box width={LABEL_WIDTH} flexShrink={0} />
+        <Box flexShrink={1}>{child as never}</Box>
+      </Box>
+    );
 
     return (
-      <Box flexDirection="column" paddingX={1} width={e.props.bodyColumns}>
-        {rows.map((row, i) => {
-          if (row.kind === 'heading') {
-            return (
-              <Text key={`r${i}`} bold color={TONE_COLORS[row.tone]} wrap="wrap">
-                {row.glyph} golden-frijoles · {row.value}
+      <Box flexDirection="column" paddingX={1} width={columns}>
+        {rows.flatMap((row, i) => {
+          if (row.kind === 'header') {
+            // build-view-one-story D2/D3 — what, and how far: the title clipped to fit, never the bar.
+            const lay = headerLayout(row, columns);
+            const left = (
+              <Text wrap="truncate">
+                <Text dimColor>{row.repo}</Text>{' '}
+                <Text bold color={TONE_COLORS[row.tone as keyof typeof TONE_COLORS]}>{row.symbol}</Text>{' '}
+                <Text>{row.lead}</Text>
+                {lay.title ? <Text>{' · '}<Text bold>{lay.title}</Text></Text> : null}
+                {row.size ? <Text dimColor>{` · ${row.size}`}</Text> : null}
+                {row.risk ? (
+                  <Text>
+                    <Text dimColor>{' · '}</Text>
+                    <Text bold color={RISK_COLORS[row.risk as keyof typeof RISK_COLORS] ?? 'yellow'}>{`▲ risk ${row.risk}`}</Text>
+                  </Text>
+                ) : null}
               </Text>
             );
+            const right = row.right ? bars(row.right) : null;
+            if (!right) return [<Box key={`r${i}`}>{left}</Box>];
+            if (lay.rightRow)
+              return [
+                <Box key={`r${i}`}>{left}</Box>,
+                <Box key={`r${i}b`} paddingLeft={2}>{right}</Box>,
+              ];
+            return [
+              <Box key={`r${i}`} flexDirection="row" justifyContent="space-between">
+                <Box flexShrink={1}>{left}</Box>
+                <Box flexShrink={0} marginLeft={2}>{right}</Box>
+              </Box>,
+            ];
           }
-          if (row.kind === 'note') {
-            return (
-              <Box key={`r${i}`} flexDirection="row">
-                <Box width={LABEL_WIDTH} flexShrink={0}>
-                  <Text dimColor>{'  '}{row.glyph}</Text>
-                </Box>
-                <Box flexShrink={1}>
-                  <Text dimColor italic wrap="wrap">{row.value}</Text>
-                </Box>
-              </Box>
-            );
-          }
-          return (
+          if (row.kind === 'track')
+            return [<Box key={`r${i}`} paddingLeft={2}><Text wrap="truncate">{track(row.value, row.tone)}</Text></Box>];
+          if (row.kind === 'link' || row.kind === 'flag')
+            return [
+              <Box key={`r${i}`} flexDirection="row" paddingLeft={2}>
+                <Text color={row.kind === 'flag' ? 'red' : 'cyan'} bold={row.kind === 'flag'}>{`${row.glyph} `}</Text>
+                <Box flexShrink={1}><Text wrap="wrap">{row.value}</Text></Box>
+              </Box>,
+            ];
+          if (row.kind === 'story') return [indent(`r${i}`, <Text dimColor italic wrap="wrap">{row.value}</Text>)];
+          if (row.kind === 'note') return [indent(`r${i}`, <Text dimColor wrap="wrap">{row.value}</Text>)];
+          return [
             <Box key={`r${i}`} flexDirection="row">
               <Box width={LABEL_WIDTH} flexShrink={0}>
                 <Text color="cyan">{'  '}{row.glyph} </Text>
                 <Text dimColor>{row.label}</Text>
               </Box>
               <Box flexShrink={1}>
-                <Text wrap={row.label === 'Status' ? 'truncate' : 'wrap'}>
-                  {row.label === 'Spend' ? spendBar(row.main) : null}
-                  {(row.label === 'Progress' && progress(row.main)) ||
-                    (row.label === 'Status' && track(row.main, row.tone)) || (
-                      <Text bold={row.label === 'Epic'} color={TONE_COLORS[row.tone]}>{row.main}</Text>
-                    )}
-                  {row.meta ? <Text dimColor>{'  ·  '}{row.risk ? row.meta.replace(/ ?· ?risk \w+/, '') : row.meta}</Text> : null}
-                  {row.risk ? (
-                    <Text>
-                      <Text dimColor>{'  ·  '}</Text>
-                      <Text bold color={RISK_COLORS[row.risk as keyof typeof RISK_COLORS] ?? 'yellow'}>{`▲ risk ${row.risk}`}</Text>
-                    </Text>
-                  ) : null}
+                <Text wrap="wrap">
+                  {row.label === 'Spend' ? spend(row.value) : row.label === 'Next' ? nextCommand(row.value) : <Text>{row.value}</Text>}
                 </Text>
               </Box>
-            </Box>
-          );
+            </Box>,
+          ];
         })}
       </Box>
     );
