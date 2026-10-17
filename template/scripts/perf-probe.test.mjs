@@ -3,6 +3,8 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import { createServer } from 'node:http'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { assertResolvedAllowed, guardedLookup, isPrivateAddress, loadProbeConfig, decodeBodyForInspection, extractClientScriptUrls, fixtureUrls, formatReport, measureFixture, parseArgs, probeExitCode, rawRequest, requestTransport, runProbe } from './perf-probe.mjs'
 
 const TARGETS = [
@@ -334,4 +336,41 @@ test('loadProbeConfig: only a literal true opts in', () => {
   for (const v of ['true', 1, 'yes', null]) {
     assert.equal(loadProbeConfig({ exists: () => true, read: read({ ...base, allowPrivate: v }) }).allowPrivate, false, String(v))
   }
+})
+
+test('never through an environment proxy: NODE_USE_ENV_PROXY cannot route a refused name around the check', async () => {
+  const seen = []
+  const proxy = createServer((req, res) => { seen.push(req.url); res.end('via proxy') })
+  await new Promise((r) => proxy.listen(0, '127.0.0.1', r))
+  const url = `http://127.0.0.1:${proxy.address().port}`
+  const child = `import { rawRequest } from ${JSON.stringify(fileURLToPath(new URL('./perf-probe.mjs', import.meta.url)))};
+const dnsLookup = (_h, o, cb) => cb(null, o.all ? [{ address: '10.0.0.1', family: 4 }] : '10.0.0.1', 4);
+try { const r = await rawRequest('http://looks-public.example/', { timeoutMs: 3000 }, { dnsLookup }); console.log('STATUS', r.statusCode) } catch (e) { console.log('REFUSED', e.message) }`
+  try {
+    const out = await new Promise((resolve) => {
+      const c = spawn(process.execPath, ['--input-type=module', '-e', child], { env: { ...process.env, NODE_USE_ENV_PROXY: '1', HTTP_PROXY: url, http_proxy: url } })
+      let o = ''
+      c.stdout.on('data', (d) => (o += d))
+      c.stderr.on('data', (d) => (o += d))
+      c.on('close', () => resolve(o))
+    })
+    assert.match(out, /REFUSED refusing .*10\.0\.0\.1/, out)
+    assert.deepEqual(seen, [], 'the proxy must receive nothing')
+  } finally {
+    proxy.close()
+  }
+})
+
+test('rawRequest refuses a private IP literal itself, before the transport is called (Node skips lookup for literals)', async () => {
+  let called = 0
+  const transport = () => { called += 1 }
+  await assert.rejects(rawRequest('http://169.254.169.254/latest/meta-data/', {}, { transport }), /refusing .*169\.254\.169\.254/)
+  assert.equal(called, 0)
+})
+
+test('guardedLookup: an empty answer is ENOTFOUND, never a crash; IPv4-compatible ::/96 is refused', async () => {
+  const empty = guardedLookup({ lookup: (_h, _o, cb) => cb(null, []) })
+  const err = await new Promise((r) => empty('x.example', {}, (e) => r(e)))
+  assert.equal(err.code, 'ENOTFOUND')
+  assert.equal(isPrivateAddress('::a9fe:a9fe'), true)
 })

@@ -25,9 +25,11 @@
 //   2. Client scripts only from the page's own origin. One on another origin is refused and the fixture is
 //      red, never silently skipped (skipping would under-count the bytes).
 //   3. Redirects are never followed (node:http/https do not; a 3xx is already `absent`).
-// Residuals: node:http ignores HTTP(S)_PROXY, so a proxy cannot route around the check; NAT64 64:ff9b::/96
-// is not refused (it embeds a public IPv4 on a NAT64 network); whatever sits behind `allowPrivate: true` is
-// the operator's choice.
+//   4. Never through an environment proxy: each request gets its own direct agent (directAgent), because under
+//      Node 24's NODE_USE_ENV_PROXY the global agent would hand the request to HTTP(S)_PROXY, and the lookup
+//      would then check the proxy's address instead of the target's (reproduced by the verifier on #399).
+// Residuals: NAT64 64:ff9b::/96 is not refused (it embeds a public IPv4 on a NAT64 network); whatever sits
+// behind `allowPrivate: true` is the operator's choice.
 
 import dns from 'node:dns'
 import http from 'node:http'
@@ -65,7 +67,8 @@ const PRIVATE_RANGES = [
   ['0.0.0.0', 8, 'ipv4'], ['10.0.0.0', 8, 'ipv4'], ['100.64.0.0', 10, 'ipv4'], ['127.0.0.0', 8, 'ipv4'],
   ['169.254.0.0', 16, 'ipv4'], ['172.16.0.0', 12, 'ipv4'], ['192.0.0.0', 24, 'ipv4'], ['192.168.0.0', 16, 'ipv4'],
   ['198.18.0.0', 15, 'ipv4'], ['224.0.0.0', 4, 'ipv4'], ['240.0.0.0', 4, 'ipv4'],
-  ['::', 128, 'ipv6'], ['::1', 128, 'ipv6'], ['64:ff9b:1::', 48, 'ipv6'], ['100::', 64, 'ipv6'],
+  ['::', 96, 'ipv6'], // ::, ::1 and the deprecated IPv4-compatible ::a.b.c.d
+  ['::1', 128, 'ipv6'], ['64:ff9b:1::', 48, 'ipv6'], ['100::', 64, 'ipv6'],
   ['2001:db8::', 32, 'ipv6'], ['fc00::', 7, 'ipv6'], ['fe80::', 10, 'ipv6'], ['ff00::', 8, 'ipv6'],
 ]
 const PRIVATE = new net.BlockList()
@@ -125,6 +128,7 @@ export function guardedLookup({ allowPrivate = false, lookup = dns.lookup } = {}
       if (error) return cb(error)
       const bad = !allowPrivate && addresses.find((a) => isPrivateAddress(a.address))
       if (bad) return cb(refusal(`//${hostname}`, `${bad.address} (${hostname})`))
+      if (!addresses?.length) return cb(Object.assign(new Error(`no address for ${hostname}`), { code: 'ENOTFOUND' }))
       if (opts.all) return cb(null, addresses)
       const first = addresses[0]
       return cb(null, first.address, first.family)
@@ -187,6 +191,11 @@ export function requestTransport(url, deps = {}) {
   throw new Error(`unsupported URL protocol '${protocol}'`)
 }
 
+/** An agent that connects directly: no keep-alive, no environment proxy. */
+export function directAgent(url) {
+  return new URL(url).protocol === 'https:' ? new https.Agent({ proxyEnv: null }) : new http.Agent({ proxyEnv: null })
+}
+
 export function rawRequest(url, { headers = {}, timeoutMs = 30_000, allowPrivate = false } = {}, deps = {}) {
   return new Promise((resolve, reject) => {
     // An IP-literal host never reaches `lookup` (Node connects to it directly), so it is checked here.
@@ -196,6 +205,9 @@ export function rawRequest(url, { headers = {}, timeoutMs = 30_000, allowPrivate
     const req = transport(url, {
       method: 'GET',
       lookup: guardedLookup({ allowPrivate, ...(deps.dnsLookup ? { lookup: deps.dnsLookup } : {}) }),
+      // A fresh agent per request, never the global one: under NODE_USE_ENV_PROXY (Node 24) the global agent sends
+      // the request to HTTP(S)_PROXY, and the guarded lookup would then resolve the PROXY, not the target (verifier, #399).
+      agent: directAgent(url),
       headers: {
         // https.request does not auto-decompress. Explicitly negotiate normal
         // CDN encodings so the collected chunks are the real transfer payload.
