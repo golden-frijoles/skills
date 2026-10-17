@@ -215,3 +215,12 @@ test('the template ships the block init merges, and MERGED names it', () => {
   assert.ok(shipped.includes('scripts/lib/is-main.mjs'));
   assert.ok(!SKELETON.includes('.prettierignore'), 'never in SKELETON, whose rule is never-overwrite');
 });
+
+test('mergePrettierBlock keeps a CRLF file CRLF, and a current CRLF block is never rewritten (verifier, #399)', () => {
+  const crlf = `dist\r\n\r\n${BLOCK_A.split('\n').join('\r\n')}\r\n`;
+  assert.equal(mergePrettierBlock(crlf, BLOCK_A), crlf);
+  const updated = mergePrettierBlock(crlf, BLOCK_B);
+  assert.equal(updated, `dist\r\n\r\n${BLOCK_B.split('\n').join('\r\n')}\r\n`);
+  assert.doesNotMatch(updated.replace(/\r\n/g, ''), /\n/, 'no bare LF in a CRLF file');
+  assert.equal(mergePrettierBlock('dist\r\n', BLOCK_A), `dist\r\n\r\n${BLOCK_A.split('\n').join('\r\n')}\r\n`);
+});

@@ -89,7 +89,7 @@ export function renderPrettierBlock(paths) {
  * malformed block, which a merge must never guess about. Pure.
  */
 export function findBlock(text) {
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   const opens = lines.flatMap((l, i) => (l.trim() === BLOCK_OPEN ? [i] : []));
   const closes = lines.flatMap((l, i) => (l.trim() === BLOCK_CLOSE ? [i] : []));
   if (!opens.length && !closes.length) return null;
@@ -102,13 +102,18 @@ export function findBlock(text) {
   return { start: opens[0], end: closes[0] };
 }
 
-/** `existing` (or null: no file) with `block` merged in. Pure; returns the text unchanged when current. */
+/**
+ * `existing` (or null: no file) with `block` merged in, in the file's own line endings (a CRLF file stays CRLF).
+ * Pure; returns the text unchanged when the block is current.
+ */
 export function mergePrettierBlock(existing, block) {
   if (existing == null || existing === '') return `${block}\n`;
+  const eol = existing.includes('\r\n') ? '\r\n' : '\n';
+  const blockLines = block.split(/\r?\n/);
   const at = findBlock(existing);
-  if (!at) return `${existing}${existing.endsWith('\n') ? '' : '\n'}\n${block}\n`;
-  const lines = existing.split('\n');
-  return [...lines.slice(0, at.start), ...block.split('\n'), ...lines.slice(at.end + 1)].join('\n');
+  if (!at) return `${existing}${/\r?\n$/.test(existing) ? '' : eol}${eol}${blockLines.join(eol)}${eol}`;
+  const lines = existing.split(/\r?\n/);
+  return [...lines.slice(0, at.start), ...blockLines, ...lines.slice(at.end + 1)].join(eol);
 }
 
 /**
@@ -132,7 +137,7 @@ export function upsertPrettierBlock({
   const src = read(from);
   const at = findBlock(src);
   if (!at) throw new Error(`${from} carries no rails block — the kit is malformed`);
-  const block = src.split('\n').slice(at.start, at.end + 1).join('\n');
+  const block = src.split(/\r?\n/).slice(at.start, at.end + 1).join('\n');
   const before = exists(dest) ? read(dest) : null;
   const after = mergePrettierBlock(before, block);
   if (after === before) {

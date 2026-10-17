@@ -24,7 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative } from 'node:path';
 import { listSkills, parseRequiresScripts } from './check-skill-scripts.mjs';
-import { SKELETON } from '../template/scripts/init.mjs';
+import { MERGED, SKELETON } from '../template/scripts/init.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -93,7 +93,9 @@ export function changelogSection(changelogText, version) {
  * Before kickoff-generator-path S2 the skeleton was missing here, so an edit to `template/Roadmap/WAYS-OF-WORKING.md`
  * changed what the kit hands a new project without asking for the version that would publish it.
  */
-export function kitClosureFiles({ skillsDir = SKILLS_DIR, read = readFileSync, skeleton = SKELETON } = {}) {
+// + MERGED (template-scripts-consumer-gates D3): build-kit ships the .prettierignore block init merges, so an edit to it
+// alone is a release too — the same list build-kit copies (verifier, #399).
+export function kitClosureFiles({ skillsDir = SKILLS_DIR, read = readFileSync, skeleton = [...SKELETON, ...MERGED] } = {}) {
   const files = new Set();
   for (const skill of listSkills(skillsDir)) {
     const declared = parseRequiresScripts(read(join(skillsDir, skill, 'SKILL.md'), 'utf8'));

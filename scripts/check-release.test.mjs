@@ -161,3 +161,7 @@ test('consistencyErrors: plugin, CHANGELOG and kit move in lockstep — a plugin
   assert.match(drift[0], /kit\/package\.json version "0\.2\.0" != plugin\.json version "0\.2\.1"/);
   assert.equal(consistencyErrors({ plugin: '0.2.1', changelog: '0.2.0', kit: '0.2.1' }).length, 1);
 });
+
+test('the merged .prettierignore block is shipped surface: editing it alone needs a release (verifier, #399)', () => {
+  assert.ok(kitClosureFiles().has('template/.prettierignore'));
+});
