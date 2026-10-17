@@ -29,6 +29,21 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   through a guarded `lookup`, so a name re-resolving to a private address is refused. It refuses client scripts on
   another origin, which makes the run red (it never skips them). It does not follow redirects.
 
+## [1.11.1] - 2026-10-17
+
+### Fixed
+- The build view's `❝ Why` read only the frontmatter `hypothesis`, so an epic with `hypothesis: null` (every chore
+  and bug) showed no Why line at all. It now falls back to the doc's own goal paragraph through the extractor's
+  `firstParagraph`, with the Hub's headings: an epic's Why, else Goal, else Problem; a seed's Problem first. An epic
+  with neither says `not written yet` rather than dropping the line. The line stops at five lines (`WHY_LINES_MAX`).
+- `firstParagraph` (the Hub's `goal` too) skips HTML comments, so a freshly scaffolded README's `<!-- One paragraph…
+  -->` is never shown as its Why or goal. It also drops bullet markers, so a listed Problem reads as text. On main
+  this changes 17 seed goals (each loses its leading `- `) and blanks none. The headings are exported once per doc
+  kind (`EPIC_GOAL_HEADINGS`, `SEED_GOAL_HEADINGS`).
+- `⌖ Target` on a chore or a bug says `none: a chore carries no target` instead of `none set`.
+- The header's title is no longer cut to fit 100 columns in the resolver's text. The band clips it to the
+  terminal's real width, and a wide band now shows the whole title.
+
 ## [1.11.0] - 2026-10-17
 
 ### Changed

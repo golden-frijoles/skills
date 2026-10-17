@@ -514,8 +514,15 @@ const GOAL_MAX = 600;
  * The first paragraph under the first of `headings` (`## Why`, `## Problem` …): whitespace collapsed, bold markers
  * dropped, clipped at a word to GOAL_MAX. null when none of the headings has a paragraph under it.
  */
+// The headings a doc's goal is read from, by kind — the Hub's goal and the build view's Why read the same section.
+export const EPIC_GOAL_HEADINGS = Object.freeze(['Why', 'Goal', 'Problem']);
+export const SEED_GOAL_HEADINGS = Object.freeze(['Problem', 'Why', 'Outcome & signal', 'The ask, as given']);
+
 export function firstParagraph(md, headings) {
-  const lines = String(md).split('\n');
+  // An HTML comment is a note to the writer, never the paragraph: a scaffolded README's `## Why` holds only the
+  // template's `<!-- One paragraph: … -->` until someone writes it (#398 verifier). Bullet markers are dropped so a
+  // listed Problem reads as text.
+  const lines = String(md).replace(/<!--[\s\S]*?-->/g, '').split('\n');
   for (const heading of headings) {
     const at = lines.findIndex((l) => l.trim().toLowerCase() === `## ${heading}`.toLowerCase());
     if (at === -1) continue;
@@ -526,7 +533,7 @@ export function firstParagraph(md, headings) {
         if (para.length) break;
         continue;
       }
-      para.push(line.trim());
+      para.push(line.trim().replace(/^[-*+]\s+/, ''));
     }
     if (!para.length) continue;
     const text = para.join(' ').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
@@ -664,7 +671,7 @@ export function buildRows({
       build_order_num: buildOrderNum(buildOrder),
       doc_link: readmePath,
       epic_slug: null,
-      goal: firstParagraph(readme, ['Why', 'Goal', 'Problem']),
+      goal: firstParagraph(readme, EPIC_GOAL_HEADINGS),
       sprints: boardSprints.map((sp) => ({ n: sp.n, title: sp.title, done: sp.done, total: sp.total })),
       links: {
         readme: readmePath,
@@ -731,12 +738,7 @@ export function buildRows({
       build_order_num: buildOrderNum(s.build_order),
       doc_link: s._file,
       epic_slug: null,
-      goal: firstParagraph(readFileSync(join(root, s._file), 'utf8'), [
-        'Problem',
-        'Why',
-        'Outcome & signal',
-        'The ask, as given',
-      ]),
+      goal: firstParagraph(readFileSync(join(root, s._file), 'utf8'), SEED_GOAL_HEADINGS),
       links: { readme: null, seed: s._file, sprints: [], retro: null },
       pr: prOf(pr),
       kickoff:

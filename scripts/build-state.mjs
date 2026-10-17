@@ -59,7 +59,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { PHASES, isDay, parseDocFrontmatter, wrapWords, WHY_LINES_MAX } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
-import { buildRows } from './roadmap-extract.mjs';
+import { buildRows, firstParagraph, EPIC_GOAL_HEADINGS, SEED_GOAL_HEADINGS } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
@@ -237,7 +237,7 @@ function readEpic(root, slug) {
     locked_at: readme.data.locked_at ?? null, // live-build-view D10 — stamped by scripts/epic-phase.mjs lock
     lifecycle: readme.data.status ?? null,
     quote: quoteOf(readme.data),
-    target: targetOf(readme.data),
+    target: withWhy(targetOf(readme.data), readme, readme.data.type, EPIC_GOAL_HEADINGS),
     // build-view-one-story D2 — 3 of 92 READMEs carry `appetite:`; the quote's basis (`M, n=24, …`) names it in 42.
     size: sizeOf(readme.data.appetite) ?? sizeOf(String(readme.data.quote_basis ?? '').split(',')[0]),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
@@ -270,7 +270,7 @@ function readSeed(root, slug) {
     status: unquoteNull(d.status),
     epic: unquoteNull(d.epic),
     path: `${SEEDS_DIR.join('/')}/${slug}.md`,
-    target: targetOf(d),
+    target: withWhy(targetOf(d), p, d.type, SEED_GOAL_HEADINGS),
     quote: q && Number(q[1]) <= Number(q[2]) ? { low: Number(q[1]), high: Number(q[2]), basis: q[3] } : null,
   };
 }
@@ -494,6 +494,16 @@ export function targetOf(readme) {
     intent_match: typeof intent === 'number' && Number.isFinite(intent) ? Math.round(intent) : null,
     verdict: ['proven', 'disproven', 'unclear'].includes(readme.verdict) ? readme.verdict : null,
   };
+}
+
+/**
+ * The Why the view reads (build-view-one-story, fixed after a chore showed no Why line at all): the frontmatter
+ * `hypothesis` when there is one, else the doc's own goal paragraph (an epic's Why, Goal or Problem; a seed's Problem
+ * first) — the extractor's reading of the Hub's goal, with its headings. `hypothesis` itself is left as written: it is the result record's field.
+ */
+function withWhy(target, doc, type, headings) {
+  const why = target.hypothesis ?? firstParagraph(doc.body ?? '', headings);
+  return { ...target, why: why || null, type: typeof type === 'string' ? type : null };
 }
 
 /** The epic's quote off its README frontmatter, or null (an unquoted epic — never a $0 quote, D4). */
@@ -1075,7 +1085,8 @@ const clip = (t, n = 56) => (cols(t) > n ? `${[...String(t)].slice(0, Math.max(1
 /** `  ❝ Why      <value>` — the glyph, the label padded to 9, then the value at column 13 (D1). */
 const field = (label, value) => `  ${GLYPHS[label]} ${label.padEnd(9)}${value}`;
 /** A field over as many lines as it needs: the first beside the label, the rest at column 13. */
-const fieldLines = (label, text) => wrapWords(text, ROOM, 20).map((l, i) => (i ? `${CONT}${l}` : field(label, l)));
+const fieldLines = (label, text, max = 20) =>
+  wrapWords(text, ROOM, max).map((l, i) => (i ? `${CONT}${l}` : field(label, l)));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
@@ -1144,18 +1155,16 @@ export function disagreement(state) {
 /**
  * `<repo> <symbol> <lead> · <title> · <size> · ▲ risk <LEVEL>`, the right part pushed to column 100 (D2). When the whole
  * title and the right part cannot share 100 columns, the right part takes its own line under the header — the band's
- * narrow layout — rather than cutting the title down to a stub; only a title wider than the line itself is clipped.
- * Returns one line or two.
+ * narrow layout. Returns one line or two.
  */
 function headerLines({ repo, symbol, lead, title, size, risk, right }) {
   const risky = risk ? `${GLYPHS.risk} risk ${String(risk).toUpperCase()}` : null;
-  const build = (t) => [`${repo} ${symbol} ${lead}`, t, size, risky].filter(Boolean).join(' · ');
-  const full = build(title || null);
-  if (!right) return [cols(full) > WIDTH ? build(clip(title, WIDTH - cols(build(null)) - 3)) : full];
-  if (cols(full) + 4 + cols(right) <= WIDTH)
-    return [`${full}${' '.repeat(WIDTH - cols(full) - cols(right))}${right}`];
-  const left = cols(full) > WIDTH ? build(clip(title, WIDTH - cols(build(null)) - 3)) : full;
-  return [left, `  ${right}`];
+  // The title is never cut here: the band clips it to the terminal's real width, and a title cut to fit 100 columns
+  // could not be restored on a wider band (seen on a 170-column band, fixed 2026-10-17).
+  const full = [`${repo} ${symbol} ${lead}`, title || null, size, risky].filter(Boolean).join(' · ');
+  if (!right) return [full];
+  if (cols(full) + 4 + cols(right) <= WIDTH) return [`${full}${' '.repeat(WIDTH - cols(full) - cols(right))}${right}`];
+  return [full, `  ${right}`];
 }
 
 /** `▰▰▱│▱▱▱  2 of 8 stories done` — the header's right part for an epic. */
@@ -1166,9 +1175,12 @@ function storiesRight(progress) {
 }
 
 /** ❝ Why, then ⌖ Target (D5). A seed being refined has a Why and no Target yet. */
-function whyTargetLines(target, now, { withTarget = true } = {}) {
+function whyTargetLines(target, now, { withTarget = true, always = true } = {}) {
   const t = target || {};
-  const lines = t.hypothesis ? fieldLines('Why', t.hypothesis) : [];
+  const why = t.why ?? t.hypothesis ?? null;
+  // An epic always says its Why, even when none was written: a missing line reads as a missing feature.
+  // At most WHY_LINES_MAX lines (the Why guard's own limit): a README's Why section can run to 600 characters.
+  const lines = why ? fieldLines('Why', why, WHY_LINES_MAX) : always ? [field('Why', 'not written yet')] : [];
   if (!withTarget) return lines;
   return [...lines, ...fieldLines('Target', targetValue(t, now))];
 }
@@ -1180,7 +1192,12 @@ export function targetValue(target, now = new Date()) {
   if (t.metric) {
     const read = t.read_date ? `read ${shortDay(t.read_date, now)}` : 'read 30 days after shipping';
     head = `${t.metric}: ${fmtNum(t.from)} → ${fmtNum(t.to)} · ${read}`;
-  } else head = t.grounded_reason ? `none yet: ${t.grounded_reason}` : 'none set';
+  } else
+    head = t.grounded_reason
+      ? `none yet: ${t.grounded_reason}`
+      : ['chore', 'bug'].includes(t.type)
+        ? `none: a ${t.type} carries no target`
+        : 'none set';
   const tail = [t.verdict && `verdict ${t.verdict}`, Number.isFinite(t.intent_match) && `intent match ${t.intent_match}`];
   return [head, ...tail.filter(Boolean)].join(' · ');
 }
@@ -1291,6 +1308,7 @@ export function renderLines(state, now = new Date()) {
       // A seed shows a Target only when it says something (a bug or a chore has none to read).
       ...whyTargetLines(state.target, now, {
         withTarget: !refining && !!(state.target?.metric || state.target?.grounded_reason),
+        always: false,
       }),
       field('Now', now_),
       ...aroundLines(state),

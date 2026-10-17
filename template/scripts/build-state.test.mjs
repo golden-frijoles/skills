@@ -509,16 +509,17 @@ for (const [name, lines] of Object.entries(GOLDEN))
     assert.equal(lines.filter((l) => l.startsWith('  ⚑')).length, name === 'disagreeing' ? 1 : 0);
   });
 
-test('build-view-one-story D2: a title too long to share the line moves the bar down; only one wider than the line is clipped', () => {
+test('build-view-one-story D2: a title too long to share the line moves the bar down; the text never cuts a title', () => {
   const long = { ...building, epic: { ...building.epic, title: 'The outcome report for any product and its pace' } };
   const lines = renderLines(long, NOW);
   assert.equal(lines[0], 'golden-frijoles ▶ Sprint 1 of 2 · The outcome report for any product and its pace · L · ▲ risk HIGH');
   assert.equal(lines[1], '  ▰▰▱│▱▱▱▱▱  2 of 8 stories done', 'the bar is never cut');
   assert.equal(lines[2], '  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped', 'the track is never cut');
-  const huge = { ...building, epic: { ...building.epic, title: 'word '.repeat(40).trim() } };
-  const head = renderLines(huge, NOW)[0];
-  assert.equal([...head].length, 100);
-  assert.match(head, /… · L · ▲ risk HIGH$/);
+  // Seen on a 170-column band: a title cut to fit 100 columns here cannot be restored by the band, which clips to its
+  // real width itself (headerLayout). So the text carries the whole title, however long.
+  const title = 'word '.repeat(40).trim();
+  const head = renderLines({ ...building, epic: { ...building.epic, title } }, NOW)[0];
+  assert.ok(head.includes(title) && !head.includes('…'), head);
 });
 
 test('build-view-one-story D4: a source is named only when two disagree — one spec per pair', async () => {
@@ -1337,7 +1338,8 @@ test('build-view-one-story D5: Why and Target say what we know — the target, e
       const at = lines.findIndex((l) => /^ {2}[❝⌖] /.test(l));
       return lines.slice(at, lines.findIndex((l) => l.startsWith('  ▸ Now')));
     };
-    assert.deepEqual(why(), ['  ⌖ Target   none set']);
+    // No hypothesis and no Why section: the line still says so, never vanishes.
+    assert.deepEqual(why(), ['  ❝ Why      not written yet', '  ⌖ Target   none set']);
     const withTarget = (fields) =>
       writeFileSync(readme, EPIC_README().replace('type: feature', `type: feature\n${fields}`));
     withTarget(
@@ -1352,7 +1354,7 @@ test('build-view-one-story D5: Why and Target say what we know — the target, e
     ]);
     for (const l of lines) assert.ok([...l].length <= 100, `${l.length}: ${l}`);
     withTarget('target_metric: "activation rate"\ntarget_from: 0.4\ntarget_to: 0.55\nread_date: null');
-    assert.deepEqual(why(), ['  ⌖ Target   activation rate: 0.4 → 0.55 · read 30 days after shipping']);
+    assert.deepEqual(why(), ['  ❝ Why      not written yet', '  ⌖ Target   activation rate: 0.4 → 0.55 · read 30 days after shipping']);
     // "no target set" said less than we know: a funded-anyway epic carries its reason.
     withTarget('hypothesis: "a sentence on its own"\ntarget_metric: null\ngrounded: false\ngrounded_reason: "A terminal surface; no North Star input counts it."\nintent_match: 81');
     assert.deepEqual(why(), [
@@ -1362,11 +1364,37 @@ test('build-view-one-story D5: Why and Target say what we know — the target, e
     withTarget('target_metric: tiny\ntarget_from: 0.004\ntarget_to: 0.006');
     assert.deepEqual(
       why(),
-      ['  ⌖ Target   tiny: 0.004 → 0.006 · read 30 days after shipping'],
+      ['  ❝ Why      not written yet', '  ⌖ Target   tiny: 0.004 → 0.006 · read 30 days after shipping'],
       'small numbers keep their digits'
     );
     withTarget('target_metric: half_a_target\ntarget_from: 1');
-    assert.deepEqual(why(), ['  ⌖ Target   none set'], 'a metric without both numbers is not a target');
+    assert.deepEqual(why(), ['  ❝ Why      not written yet', '  ⌖ Target   none set'], 'a metric without both numbers is not a target');
+    // Seen on a real chore (2026-10-17): `hypothesis: null`, but the README's own ## Why says it — that is the Why.
+    // A chore or a bug carries no target by design, and says so instead of "none set".
+    writeFileSync(
+      readme,
+      EPIC_README().replace('type: feature', 'type: chore\nhypothesis: null\nintent_match: 90') +
+        '\n## Why\nKeeps the plugin\'s shared scripts from breaking the projects that copy them.\n\n## Scope\nx\n'
+    );
+    assert.deepEqual(why(), [
+      "  ❝ Why      Keeps the plugin's shared scripts from breaking the projects that copy them.",
+      '  ⌖ Target   none: a chore carries no target · intent match 90',
+    ]);
+    const st = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    assert.equal(st.target.hypothesis, null, 'the result record field is left as written');
+    // #398 verifier: a freshly scaffolded chore's ## Why holds only the template's comment (refine
+    // templates/epic-README.md, copied here verbatim). That is not a Why.
+    writeFileSync(
+      readme,
+      EPIC_README().replace('type: feature', 'type: chore\nhypothesis: null') +
+        '\n## Why\n<!-- One paragraph: the outcome this epic delivers and for whom. Plain product language, no tech. -->\n\n## Platform-first note\n<!-- x -->\n'
+    );
+    assert.equal(why()[0], '  ❝ Why      not written yet');
+    // A Why section longer than the guard's five lines stops there.
+    writeFileSync(readme, EPIC_README().replace('type: feature', 'type: chore') + `\n## Why\n${'word '.repeat(150)}\n`);
+    const long = why().filter((l) => !l.startsWith('  ⌖'));
+    assert.equal(long.length, WHY_LINES_MAX);
+    assert.ok(long.at(-1).endsWith('…'));
     assert.ok(!renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).join('\n').includes('no target set'));
   } finally {
     f.done();
