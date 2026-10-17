@@ -27,8 +27,9 @@ const ENTRIES = [
   ['session-note.mjs', [], /usage|kind|note/i],
   ['session-resume.mjs', ['--help'], /session-resume\.mjs/],
   // One per spelling that DID break behind a link before lib/is-main.mjs (template-scripts-consumer-gates D6).
-  ['owed-ledger.mjs', ['--bogus'], /owed-ledger: \d+ owed/], // resolve(argv[1]) === fileURLToPath(…)
-  ['epic-dod.mjs', ['--bogus'], /usage: node scripts\/epic-dod\.mjs/], // the same, reversed
+  // (Entries whose proof only prints. owed-ledger was one, until it wrote a ledger into the project it resolved.)
+  ['epic-dod.mjs', ['--bogus'], /usage: node scripts\/epic-dod\.mjs/], // resolve(argv[1]) === fileURLToPath(…)
+  ['babysit-pr.mjs', ['--help'], /unknown argument/], // the same, reversed
   ['cold-read.mjs', ['--help'], /usage: cold-read\.mjs/], // fileURLToPath(…) === argv[1], no resolve at all
   ['perf-probe.mjs', ['--help'], /raw compressed transfer baseline/], // pathToFileURL(argv[1]).href
 ];
