@@ -64,6 +64,36 @@ jobs:
       - name: Rails read config through the one loader
         run: node scripts/check-config-reads.mjs
 
+      # template-scripts-consumer-gates D5: every shipped rail decides "was I run directly?" through lib/is-main.mjs. A
+      # lexical argv[1]/import.meta.url compare is false behind a symlink, and the script exits 0 having done nothing.
+      - name: Rails decide "run directly?" through the one helper
+        run: |
+          node scripts/check-is-main.mjs
+          node --test scripts/check-is-main.test.mjs
+
+      # template-scripts-consumer-gates D1/D2: consumers run `eslint --max-warnings=0` on the rails they copy, so an
+      # unused binding written here failed THEIR gate after a release. eslint.config.mjs is the one rule source (the
+      # monorepo's `npm run lint` spreads the same file). Core ESLint only, so a pinned global install is all it needs;
+      # an install that cannot happen SKIPS loudly, like every network install here — the monorepo's lockfile-pinned
+      # run is the deterministic copy of this gate. The teeth: a committed fixture with an unused import must FAIL.
+      # template-scripts-consumer-gates D3: the .prettierignore block `frijoles-kit init` merges into a consumer is
+      # GENERATED from template/scripts; a stale one leaves the newest rail formatted by the consumer's own config.
+      - name: The rails' .prettierignore block matches template/scripts
+        run: node scripts/render-prettier-block.mjs --check
+
+      - name: rails lint — unused bindings fail the release
+        run: |
+          if ! npm i -g eslint@9.39.5 --no-audit --no-fund; then
+            echo "::warning::could not install eslint — the rails lint was SKIPPED, not passed."
+            exit 0
+          fi
+          eslint . --max-warnings=0
+          if eslint --no-ignore scripts/fixtures/rails-lint-teeth.mjs > /dev/null; then
+            echo "the rails lint has no teeth: a fixture with an unused import linted clean" >&2
+            exit 1
+          fi
+          echo "rails lint: clean, and the seeded unused import fails it."
+
       # @golden-frijoles/kit is BUILT from the skills' declared closure, never committed (golden-frijoles-plugin
       # D1). Build it the way release.yml will, assert the built package holds every declared file and whole
       # import closures, and dry-run the publish so the package shape cannot rot between releases. The dry run

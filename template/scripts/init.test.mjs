@@ -8,7 +8,19 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFi
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { initSkeleton, isHomeDirectory, SKELETON, skeletonRoot } from './init.mjs';
+import {
+  BLOCK_CLOSE,
+  BLOCK_OPEN,
+  findBlock,
+  initSkeleton,
+  isHomeDirectory,
+  MERGED,
+  mergePrettierBlock,
+  renderPrettierBlock,
+  SKELETON,
+  skeletonRoot,
+  upsertPrettierBlock,
+} from './init.mjs';
 
 // git exports GIT_DIR & co. into hooks, and from a worktree they point at the REAL repo (LEARNINGS, 2026-09-23).
 function sealedEnv(overrides) {
@@ -144,4 +156,62 @@ test('the CLI refuses (exit 2) rather than write Roadmap/ into $HOME', () => {
   assert.equal(run.status, 2, `${run.stdout}\n${run.stderr}`);
   assert.match(run.stderr, /refusing to run/);
   assert.equal(existsSync(join(fakeHome, 'Roadmap')), false, 'must not have written into $HOME');
+});
+
+// ── The rails' .prettierignore block (template-scripts-consumer-gates D3) ──────────────────────────────────
+
+const BLOCK_A = renderPrettierBlock(['a.mjs', 'lib/b.mjs']);
+const BLOCK_B = renderPrettierBlock(['a.mjs', 'lib/b.mjs', 'lib/c.mjs']);
+
+test('mergePrettierBlock: creates, appends after the project\'s own lines, and replaces in place', () => {
+  assert.equal(mergePrettierBlock(null, BLOCK_A), `${BLOCK_A}\n`);
+  const own = 'node_modules\n.next\n';
+  const appended = mergePrettierBlock(own, BLOCK_A);
+  assert.equal(appended, `${own}\n${BLOCK_A}\n`);
+  assert.equal(mergePrettierBlock(appended, BLOCK_A), appended, 'a current block is never rewritten');
+  const sandwich = `top\n${BLOCK_A}\nbottom\n`;
+  assert.equal(mergePrettierBlock(sandwich, BLOCK_B), `top\n${BLOCK_B}\nbottom\n`, 'lines outside the markers are kept');
+  assert.equal(mergePrettierBlock('no-newline', BLOCK_A), `no-newline\n\n${BLOCK_A}\n`);
+});
+
+test('findBlock refuses a malformed block instead of guessing', () => {
+  assert.equal(findBlock('a\nb\n'), null);
+  assert.throws(() => findBlock(`${BLOCK_OPEN}\nx\n`), /1 rails-block opener\(s\) and 0 closer/);
+  assert.throws(() => findBlock(`${BLOCK_A}\n${BLOCK_A}\n`), /2 rails-block opener/);
+  assert.throws(() => findBlock(`${BLOCK_CLOSE}\n${BLOCK_OPEN}\n`), /in order/);
+});
+
+test('upsertPrettierBlock writes once, then is a no-op: running init twice changes nothing', () => {
+  const source = mkdtempSync(join(tmpdir(), 'init-pi-src-'));
+  const project = mkdtempSync(join(tmpdir(), 'init-pi-proj-'));
+  writeFileSync(join(source, '.prettierignore'), `${BLOCK_A}\n`);
+  writeFileSync(join(project, '.prettierignore'), 'dist\n');
+  assert.equal(upsertPrettierBlock({ project, source }), 'wrote');
+  const first = readFileSync(join(project, '.prettierignore'), 'utf8');
+  assert.equal(upsertPrettierBlock({ project, source }), 'current');
+  assert.equal(readFileSync(join(project, '.prettierignore'), 'utf8'), first);
+  assert.match(first, /^dist\n/);
+  assert.equal(first.split(BLOCK_OPEN).length - 1, 1, 'one marked block');
+  // a new release's block replaces the old one in place
+  writeFileSync(join(source, '.prettierignore'), `${BLOCK_B}\n`);
+  assert.equal(upsertPrettierBlock({ project, source }), 'wrote');
+  assert.equal(readFileSync(join(project, '.prettierignore'), 'utf8'), `dist\n\n${BLOCK_B}\n`);
+});
+
+test('upsertPrettierBlock: no source is a skip, a source without a block is an error', () => {
+  const source = mkdtempSync(join(tmpdir(), 'init-pi-none-'));
+  const project = mkdtempSync(join(tmpdir(), 'init-pi-proj-'));
+  assert.equal(upsertPrettierBlock({ project, source }), 'no-source');
+  assert.equal(existsSync(join(project, '.prettierignore')), false);
+  writeFileSync(join(source, '.prettierignore'), 'just a line\n');
+  assert.throws(() => upsertPrettierBlock({ project, source }), /carries no rails block/);
+});
+
+test('the template ships the block init merges, and MERGED names it', () => {
+  assert.deepEqual(MERGED, ['.prettierignore']);
+  const shipped = readFileSync(join(fileURLToPath(new URL('..', import.meta.url)), '.prettierignore'), 'utf8');
+  const at = findBlock(shipped);
+  assert.ok(at, 'template/.prettierignore carries the rails block');
+  assert.ok(shipped.includes('scripts/lib/is-main.mjs'));
+  assert.ok(!SKELETON.includes('.prettierignore'), 'never in SKELETON, whose rule is never-overwrite');
 });

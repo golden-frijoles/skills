@@ -20,7 +20,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listSkills, parseRequiresScripts } from './check-skill-scripts.mjs';
-import { SKELETON } from '../template/scripts/init.mjs';
+import { MERGED, SKELETON } from '../template/scripts/init.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const SKILLS_DIR = join(repoRoot, 'plugins', 'golden-frijoles', 'skills');
@@ -52,7 +52,7 @@ export function buildKit({
   manifest = kitManifest(),
   sourceDir = SOURCE_DIR,
   templateDir = TEMPLATE_DIR,
-  skeleton = SKELETON,
+  skeleton = [...SKELETON, ...MERGED],
   kitDir = KIT_DIR,
   legalDir = repoRoot,
   exists = existsSync,

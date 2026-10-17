@@ -19,8 +19,18 @@
 //
 // ── The one rule ──────────────────────────────────────────────────────────────────────────────
 // It NEVER overwrites a file that already exists (it prints `skipped <path> (exists)`), so it is safe
-// to run on a partially-adopted repo. It writes nothing outside `Roadmap/`. Its own exit code is 0
-// whether it wrote anything or not — "already adopted" is success, not a no-op failure.
+// to run on a partially-adopted repo. It writes nothing outside `Roadmap/`, with ONE exception: the marked
+// rails block in `.prettierignore` (below). Its own exit code is 0 whether it wrote anything or not —
+// "already adopted" is success, not a no-op failure.
+//
+// ── The one exception: the rails' `.prettierignore` block (template-scripts-consumer-gates D3) ─────
+// A project that copies template/scripts runs its OWN Prettier config over them, and configs differ, so a
+// release formatted here can still fail a consumer's check (it did, twice). Decided 2026-10-14 (Daniel):
+// consumers ignore the vendored rails. The block lists every rail file; `init` creates `.prettierignore`,
+// appends the block, or replaces the block in place. Lines outside the markers are never touched, a
+// current block is never rewritten, and a malformed one (two openers, an opener with no closer) is refused,
+// never guessed at. The block's source is `<skeleton root>/.prettierignore`, GENERATED from template/scripts
+// by skills/scripts/render-prettier-block.mjs.
 //
 // ── Two guards found by cross-review on #47 ───────────────────────────────────────────────────
 // (1) COPIED mode, source === destination: `skeletonRoot()` in copied mode is `kitRoot()/..`, the
@@ -39,10 +49,11 @@
 //
 // Zero deps — Node 18+.
 
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { isInstalled, kitRoot, projectRoot } from './lib/project-root.mjs';
+import { isMain } from './lib/is-main.mjs';
 
 /**
  * The Roadmap skeleton `frijoles-kit init` writes, relative both to its source root (template/, or
@@ -57,6 +68,81 @@ export const SKELETON = [
   'Roadmap/00-ideas/seeds/.gitkeep',
   'Roadmap/00-ideas/audits/.gitkeep',
 ];
+
+/**
+ * Files `init` MERGES rather than copies: it owns only a marked block inside each (D3), never the file. A
+ * second list beside SKELETON, because SKELETON's rule is "never overwrite". `build-kit.mjs` copies these
+ * into `kit/dist/skeleton/` too.
+ */
+export const MERGED = ['.prettierignore'];
+
+export const BLOCK_OPEN = '# >>> golden-frijoles rails (written by frijoles-kit init; edit outside this block) >>>';
+export const BLOCK_CLOSE = '# <<< golden-frijoles rails <<<';
+
+/** The rails' block for these `scripts/`-relative paths, sorted. Pure. */
+export function renderPrettierBlock(paths) {
+  return [BLOCK_OPEN, ...[...paths].sort().map((p) => `scripts/${p}`), BLOCK_CLOSE].join('\n');
+}
+
+/**
+ * Where the block sits in `text`: `{ start, end }` line indexes (inclusive), `null` when absent. Throws on a
+ * malformed block, which a merge must never guess about. Pure.
+ */
+export function findBlock(text) {
+  const lines = text.split('\n');
+  const opens = lines.flatMap((l, i) => (l.trim() === BLOCK_OPEN ? [i] : []));
+  const closes = lines.flatMap((l, i) => (l.trim() === BLOCK_CLOSE ? [i] : []));
+  if (!opens.length && !closes.length) return null;
+  if (opens.length !== 1 || closes.length !== 1 || closes[0] < opens[0]) {
+    throw new Error(
+      `.prettierignore has ${opens.length} rails-block opener(s) and ${closes.length} closer(s) — expected one of each, in order. ` +
+        'Fix the markers by hand (or delete the block), then run init again.'
+    );
+  }
+  return { start: opens[0], end: closes[0] };
+}
+
+/** `existing` (or null: no file) with `block` merged in. Pure; returns the text unchanged when current. */
+export function mergePrettierBlock(existing, block) {
+  if (existing == null || existing === '') return `${block}\n`;
+  const at = findBlock(existing);
+  if (!at) return `${existing}${existing.endsWith('\n') ? '' : '\n'}\n${block}\n`;
+  const lines = existing.split('\n');
+  return [...lines.slice(0, at.start), ...block.split('\n'), ...lines.slice(at.end + 1)].join('\n');
+}
+
+/**
+ * Merge the rails' block from `source/.prettierignore` into `project/.prettierignore`. Returns 'wrote',
+ * 'current' or 'no-source'. Throws on a malformed block in either file.
+ */
+export function upsertPrettierBlock({
+  project = projectRoot(),
+  source = skeletonRoot(),
+  exists = existsSync,
+  read = (p) => readFileSync(p, 'utf8'),
+  write = writeFileSync,
+  log = () => {},
+} = {}) {
+  const from = join(source, '.prettierignore');
+  const dest = join(project, '.prettierignore');
+  if (!exists(from)) {
+    log('skipped .prettierignore (source is absent)');
+    return 'no-source';
+  }
+  const src = read(from);
+  const at = findBlock(src);
+  if (!at) throw new Error(`${from} carries no rails block — the kit is malformed`);
+  const block = src.split('\n').slice(at.start, at.end + 1).join('\n');
+  const before = exists(dest) ? read(dest) : null;
+  const after = mergePrettierBlock(before, block);
+  if (after === before) {
+    log('skipped .prettierignore (rails block current)');
+    return 'current';
+  }
+  write(dest, after);
+  log(`wrote .prettierignore (rails block${before == null ? ', new file' : ''})`);
+  return 'wrote';
+}
 
 /** Where the skeleton's SOURCE files live: `kitRoot()/skeleton` when installed, `kitRoot()/..` when copied. */
 export function skeletonRoot({ root = kitRoot(), installed = isInstalled({ root }) } = {}) {
@@ -124,9 +210,14 @@ function main() {
     return 2;
   }
   const { wrote, skipped } = initSkeleton({ project, log: (line) => console.log(line) });
+  try {
+    upsertPrettierBlock({ project, log: (line) => console.log(line) });
+  } catch (e) {
+    console.error(`frijoles-kit init: ${e.message}`);
+    return 1;
+  }
   console.log(`frijoles-kit init: ${wrote.length} written, ${skipped.length} already present.`);
   return 0;
 }
 
-const isMain = process.argv[1] && process.argv[1].endsWith('init.mjs');
-if (isMain) process.exitCode = main();
+if (isMain(import.meta.url)) process.exitCode = main();
