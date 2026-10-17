@@ -442,6 +442,80 @@ test('build-view-one-story D2: a title too long to share the line moves the bar 
   assert.match(head, /… · L · ▲ risk HIGH$/);
 });
 
+test('build-view-one-story D4: a source is named only when two disagree — one spec per pair', async () => {
+  const { disagreement } = await import('./build-state.mjs');
+  // (a) shipped docs, unmerged story commits — and a close-out branch (no story commit) is NOT a disagreement.
+  assert.equal(
+    disagreement({ ...shipped, evidence: { story_commits: 2 } }),
+    "the epic's docs say Shipped, but this branch has 2 story commits not on main"
+  );
+  assert.equal(disagreement(shipped), null);
+  // (b) story commits before the lock was stamped.
+  assert.equal(disagreement(disagreeing), "the epic's docs say Shaping, but this branch has story commits");
+  assert.equal(
+    disagreement({ ...disagreeing, evidence: { story_commits: 0 } }),
+    null,
+    'no story commit yet: that is Locking, not a disagreement'
+  );
+  // (c) a written phase ahead of the board.
+  assert.equal(
+    disagreement({ ...building, phase_written: 'Shipped', sprint: { n: 1 } }),
+    "sprint 1's docs say Shipped, but the board has it at Building"
+  );
+  assert.equal(
+    disagreement({ ...building, phase_written: 'In review', sprint: null }),
+    "the epic's docs say In review, but the board has it at Building"
+  );
+  assert.equal(disagreement({ ...qa, phase_written: 'Building' }), null, 'docs lagging the board is the cadence');
+  // (d) an unreadable sprint.
+  assert.equal(
+    disagreement({ ...building, warning: 'Roadmap/…/sprint-1.md frontmatter could not be read' }),
+    'Roadmap/…/sprint-1.md frontmatter could not be read'
+  );
+  assert.equal(disagreement(building), null);
+  assert.equal(disagreement(idle), null);
+});
+
+test('build-view-one-story D7: a shipped epic reads shipped on its close-out branch — N of N, the ship day, the read', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only');
+    f.commit('S1.1 — contract');
+    f.git('switch', '-q', 'main');
+    f.git('merge', '-q', '--no-ff', '-m', 'merge', 'feat/arranged-only');
+    f.git('switch', '-qc', 'docs/arranged-only-close');
+    const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
+    writeFileSync(
+      readme,
+      EPIC_README('Shipped')
+        .replace('status: in-progress', 'status: shipped')
+        .replace('type: feature', 'type: feature\ntarget_metric: arranged_rate\ntarget_from: 1\ntarget_to: 2')
+    );
+    f.git('commit', '-qam', 'docs(arranged-only): close');
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    const day = f.git('log', '-1', '--format=%cs');
+    assert.equal(s.shipped_on, day, 'the commit that wrote status: shipped');
+    const lines = renderLines(s, new Date(`${day}T12:00:00Z`));
+    assert.match(lines[0], /^\S+ ✓ Sprint 2 of 2 · Arranged-only delivery · ▲ risk HIGH/);
+    assert.ok(lines.includes('  ▰│▰▰  3 of 3 stories done'), 'never "1 of 3" on a branch whose stories are on main');
+    assert.ok(lines.includes('  Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped'));
+    const due = new Date(Date.parse(`${day}T00:00:00Z`) + 30 * 86_400_000);
+    const short = (d) => `${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]}`;
+    const shippedDay = new Date(`${day}T00:00:00Z`);
+    assert.ok(lines.includes(`  ▸ Now      shipped ${short(shippedDay)} · verdict due ${short(due)}`), lines.join('\n'));
+    assert.ok(!lines.some((l) => l.startsWith('  ⚑')), 'a close-out branch carries no story commit: nothing disagrees');
+    writeFileSync(readme, EPIC_README('Shipped').replace('status: in-progress', 'status: shipped'));
+    f.git('commit', '-qam', 'docs: drop the target');
+    assert.ok(
+      renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).some((l) =>
+        / · no target to read$/.test(l)
+      )
+    );
+  } finally {
+    f.done();
+  }
+});
+
 test("#27 review: a stacked sprint branch never inherits the previous sprint's commits as its story", () => {
   const f = fixture();
   try {
