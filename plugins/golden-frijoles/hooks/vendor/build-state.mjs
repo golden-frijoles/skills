@@ -59,7 +59,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { PHASES, isDay, parseDocFrontmatter, wrapWords, WHY_LINES_MAX } from './lib/roadmap-contract.mjs';
 import { parseJournal, JOURNAL_BRANCH, JOURNAL_PATH } from './lib/session-journal.mjs';
 import { branchCandidates, parseBranch } from './lib/work-branch.mjs';
-import { buildRows, firstParagraph } from './roadmap-extract.mjs';
+import { buildRows, firstParagraph, EPIC_GOAL_HEADINGS, SEED_GOAL_HEADINGS } from './roadmap-extract.mjs';
 import { gatherFacts } from './lib/stage-facts.mjs';
 import { STAGES, groupByStage, stageWord } from './lib/stage.mjs';
 import { getKey } from './lib/config.mjs';
@@ -236,7 +236,7 @@ function readEpic(root, slug) {
     locked_at: readme.data.locked_at ?? null, // live-build-view D10 — stamped by scripts/epic-phase.mjs lock
     lifecycle: readme.data.status ?? null,
     quote: quoteOf(readme.data),
-    target: withWhy(targetOf(readme.data), readme, readme.data.type),
+    target: withWhy(targetOf(readme.data), readme, readme.data.type, EPIC_GOAL_HEADINGS),
     // build-view-one-story D2 — 3 of 92 READMEs carry `appetite:`; the quote's basis (`M, n=24, …`) names it in 42.
     size: sizeOf(readme.data.appetite) ?? sizeOf(String(readme.data.quote_basis ?? '').split(',')[0]),
     contract: readme.hasFrontmatter && !readme.error && 'phase' in readme.data,
@@ -269,7 +269,7 @@ function readSeed(root, slug) {
     status: unquoteNull(d.status),
     epic: unquoteNull(d.epic),
     path: `${SEEDS_DIR.join('/')}/${slug}.md`,
-    target: withWhy(targetOf(d), p, d.type),
+    target: withWhy(targetOf(d), p, d.type, SEED_GOAL_HEADINGS),
     quote: q && Number(q[1]) <= Number(q[2]) ? { low: Number(q[1]), high: Number(q[2]), basis: q[3] } : null,
   };
 }
@@ -497,11 +497,11 @@ export function targetOf(readme) {
 
 /**
  * The Why the view reads (build-view-one-story, fixed after a chore showed no Why line at all): the frontmatter
- * `hypothesis` when there is one, else the doc's own `## Why` (or Goal, or Problem) paragraph — the same reading the
- * extractor gives the Hub's goal. `hypothesis` itself is left as written: it is the result record's field.
+ * `hypothesis` when there is one, else the doc's own goal paragraph (an epic's Why, Goal or Problem; a seed's Problem
+ * first) — the extractor's reading of the Hub's goal, with its headings. `hypothesis` itself is left as written: it is the result record's field.
  */
-function withWhy(target, doc, type) {
-  const why = target.hypothesis ?? firstParagraph(doc.body ?? '', ['Why', 'Goal', 'Problem']);
+function withWhy(target, doc, type, headings) {
+  const why = target.hypothesis ?? firstParagraph(doc.body ?? '', headings);
   return { ...target, why: why || null, type: typeof type === 'string' ? type : null };
 }
 
@@ -1084,7 +1084,8 @@ const clip = (t, n = 56) => (cols(t) > n ? `${[...String(t)].slice(0, Math.max(1
 /** `  ❝ Why      <value>` — the glyph, the label padded to 9, then the value at column 13 (D1). */
 const field = (label, value) => `  ${GLYPHS[label]} ${label.padEnd(9)}${value}`;
 /** A field over as many lines as it needs: the first beside the label, the rest at column 13. */
-const fieldLines = (label, text) => wrapWords(text, ROOM, 20).map((l, i) => (i ? `${CONT}${l}` : field(label, l)));
+const fieldLines = (label, text, max = 20) =>
+  wrapWords(text, ROOM, max).map((l, i) => (i ? `${CONT}${l}` : field(label, l)));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
@@ -1177,7 +1178,8 @@ function whyTargetLines(target, now, { withTarget = true, always = true } = {}) 
   const t = target || {};
   const why = t.why ?? t.hypothesis ?? null;
   // An epic always says its Why, even when none was written: a missing line reads as a missing feature.
-  const lines = why ? fieldLines('Why', why) : always ? [field('Why', 'not written yet')] : [];
+  // At most WHY_LINES_MAX lines (the Why guard's own limit): a README's Why section can run to 600 characters.
+  const lines = why ? fieldLines('Why', why, WHY_LINES_MAX) : always ? [field('Why', 'not written yet')] : [];
   if (!withTarget) return lines;
   return [...lines, ...fieldLines('Target', targetValue(t, now))];
 }

@@ -1382,6 +1382,19 @@ test('build-view-one-story D5: Why and Target say what we know — the target, e
     ]);
     const st = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(st.target.hypothesis, null, 'the result record field is left as written');
+    // #398 verifier: a freshly scaffolded chore's ## Why holds only the template's comment (refine
+    // templates/epic-README.md, copied here verbatim). That is not a Why.
+    writeFileSync(
+      readme,
+      EPIC_README().replace('type: feature', 'type: chore\nhypothesis: null') +
+        '\n## Why\n<!-- One paragraph: the outcome this epic delivers and for whom. Plain product language, no tech. -->\n\n## Platform-first note\n<!-- x -->\n'
+    );
+    assert.equal(why()[0], '  ❝ Why      not written yet');
+    // A Why section longer than the guard's five lines stops there.
+    writeFileSync(readme, EPIC_README().replace('type: feature', 'type: chore') + `\n## Why\n${'word '.repeat(150)}\n`);
+    const long = why().filter((l) => !l.startsWith('  ⌖'));
+    assert.equal(long.length, WHY_LINES_MAX);
+    assert.ok(long.at(-1).endsWith('…'));
     assert.ok(!renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).join('\n').includes('no target set'));
   } finally {
     f.done();

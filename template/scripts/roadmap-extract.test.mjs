@@ -108,3 +108,11 @@ test('floorSprintDone: a Shipped sprint counts ALL its stories done; other statu
   assert.equal(floorSprintDone('Planned', 4, 0), 0);
   assert.equal(floorSprintDone('Archived', 4, 1), 1);  // archived stories were dropped, not done
 });
+
+test('firstParagraph: a template comment is never the goal, and a listed Problem reads as text (#398 verifier)', async () => {
+  const { firstParagraph, EPIC_GOAL_HEADINGS, SEED_GOAL_HEADINGS } = await import('./roadmap-extract.mjs');
+  const scaffolded = '## Why\n<!-- One paragraph: the outcome this epic delivers and for whom. -->\n\n## Scope\nx\n';
+  assert.equal(firstParagraph(scaffolded, EPIC_GOAL_HEADINGS), null);
+  assert.equal(firstParagraph('## Why\n<!-- a\nmulti-line note -->\nThe real why.\n', EPIC_GOAL_HEADINGS), 'The real why.');
+  assert.equal(firstParagraph('## Problem\n- Lint.\n- Symlinks.\n', SEED_GOAL_HEADINGS), 'Lint. Symlinks.');
+});
