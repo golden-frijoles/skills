@@ -31,8 +31,10 @@ test('fires when the comparison is split across lines (the window, not one line)
     'const isMain = (() => {',
     '  if (!process.argv[1]) return false;',
     '  try {',
-    '    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));',
+    '    return realpathSync(process.argv[1]) ===',
+    '      realpathSync(fileURLToPath(import.meta.url));',
   ].join('\n');
+  // argv[1] and import.meta.url on DIFFERENT lines: only the window catches it (WINDOW = 0 must fail this; verifier, #399)
   assert.ok(scan('plugins/a.mjs', split).length >= 1);
 });
 

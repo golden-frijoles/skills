@@ -56,11 +56,11 @@ test('lib/is-main.mjs: true through a symlinked path, false when imported', () =
   try {
     const run = spawnSync(process.execPath, [join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`)], { encoding: 'utf8' });
     assert.equal(run.stdout.trim(), 'main', run.stderr);
-    const imported = spawnSync(
-      process.execPath,
-      ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`)).href)});`],
-      { encoding: 'utf8' }
-    );
+    // Imported by a REAL file run as main, so argv[1] is set (the importer) and only the realpath compare can say
+    // false — under `-e` argv[1] is empty and isMain would be false for the wrong reason (verifier, #399).
+    const importer = join(TMP, 'importer.mjs');
+    writeFileSync(importer, `await import(${JSON.stringify(pathToFileURL(join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`)).href)});\n`);
+    const imported = spawnSync(process.execPath, [importer], { encoding: 'utf8' });
     assert.equal(imported.stdout.trim(), 'imported', imported.stderr);
   } finally {
     rmSync(probe, { force: true });
