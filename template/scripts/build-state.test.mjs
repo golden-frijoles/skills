@@ -1429,6 +1429,25 @@ test('finops 1.3: a lower bound reads ≥, and cents show only under $1', async 
   );
 });
 
+// ── finops S2.4's four states, in the words of the design approved 2026-10-14 (build-view-one-story D8) ──────────────
+test('build-view-one-story D8: the Spend line carries its own bar and the approved words', async () => {
+  const { spendValue } = await import('./build-state.mjs');
+  const q = { low: 30, high: 55, basis: 'M, n=6, p25–p75', appetite: 'M' };
+  const spend = (usd, mtok, sessions) => ({ usd, usd_known: true, mtok, sessions, basis: 'this machine' });
+  assert.equal(spendValue(spend(38, 1.9, 4), q), '▰▰▰▰▰▰▰▱▱▱  ≈$38 of the $30–55 quote · 4 sessions');
+  assert.equal(spendValue(spend(71, 3.4, 9), q), '▰▰▰▰▰▰▰▰▰▰  ≈$71 · 29% over the $30–55 quote · 9 sessions');
+  assert.equal(spendValue(spend(22, 1.1, 2), null), '≈$22 · no quote · 2 sessions', 'no quote, no bar');
+  assert.equal(
+    spendValue(spend(55.1, 1, 1), q),
+    '▰▰▰▰▰▰▰▰▰▰  ≈$55 · <1% over the $30–55 quote · 1 session',
+    'never "0% over"'
+  );
+  assert.equal(
+    spendValue(spend(9, 0.4, 1), { low: 25, high: 90, basis: 'M, n=2, wide', appetite: 'M' }),
+    '▰▱▱▱▱▱▱▱▱▱  ≈$9 of the $25–90 quote (2 past epics, wide) · 1 session'
+  );
+});
+
 test('finops 2.4: a quote comes off the README only when both ends are numbers in order — else no quote, never $0', async () => {
   const { quoteOf } = await import('./build-state.mjs');
   assert.deepEqual(
