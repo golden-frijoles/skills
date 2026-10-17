@@ -1147,6 +1147,56 @@ test('build-view-upgrade D4: the link opens the epic page; with no board row it 
   }
 });
 
+test('build-view-one-story D5: Why and Target say what we know — the target, else the reason, then intent match', () => {
+  const f = fixture();
+  try {
+    const readme = join(f.root, 'Roadmap', '04-shipping', 'arranged-only', 'README.md');
+    const now = new Date('2026-10-08T00:00:00Z');
+    f.git('checkout', '-qb', 'feat/arranged-only-s2');
+    const why = () => {
+      const lines = renderLines(
+        resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }),
+        now
+      );
+      const at = lines.findIndex((l) => /^ {2}[❝⌖] /.test(l));
+      return lines.slice(at, lines.findIndex((l) => l.startsWith('  ▸ Now')));
+    };
+    assert.deepEqual(why(), ['  ⌖ Target   none set']);
+    const withTarget = (fields) =>
+      writeFileSync(readme, EPIC_README().replace('type: feature', `type: feature\n${fields}`));
+    withTarget(
+      'hypothesis: "Sellers who can mark a listing arranged-only stop losing orders to carrier rails they cannot fulfil at checkout time"\ntarget_metric: arranged_checkout_rate\ntarget_from: 12\ntarget_to: 30\nread_date: 2026-12-04\nintent_match: 84'
+    );
+    const lines = why();
+    // why-as-a-story D4: the Why wraps in full; the Target is its own line.
+    assert.deepEqual(lines, [
+      '  ❝ Why      Sellers who can mark a listing arranged-only stop losing orders to carrier rails they',
+      '             cannot fulfil at checkout time',
+      '  ⌖ Target   arranged_checkout_rate: 12 → 30 · read 4 Dec · intent match 84',
+    ]);
+    for (const l of lines) assert.ok([...l].length <= 100, `${l.length}: ${l}`);
+    withTarget('target_metric: "activation rate"\ntarget_from: 0.4\ntarget_to: 0.55\nread_date: null');
+    assert.deepEqual(why(), ['  ⌖ Target   activation rate: 0.4 → 0.55 · read 30 days after shipping']);
+    // "no target set" said less than we know: a funded-anyway epic carries its reason.
+    withTarget('hypothesis: "a sentence on its own"\ntarget_metric: null\ngrounded: false\ngrounded_reason: "A terminal surface; no North Star input counts it."\nintent_match: 81');
+    assert.deepEqual(why(), [
+      '  ❝ Why      a sentence on its own',
+      '  ⌖ Target   none yet: A terminal surface; no North Star input counts it. · intent match 81',
+    ]);
+    withTarget('target_metric: tiny\ntarget_from: 0.004\ntarget_to: 0.006');
+    assert.deepEqual(
+      why(),
+      ['  ⌖ Target   tiny: 0.004 → 0.006 · read 30 days after shipping'],
+      'small numbers keep their digits'
+    );
+    withTarget('target_metric: half_a_target\ntarget_from: 1');
+    assert.deepEqual(why(), ['  ⌖ Target   none set'], 'a metric without both numbers is not a target');
+    assert.ok(!renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).join('\n').includes('no target set'));
+  } finally {
+    f.done();
+  }
+});
+
 test('why-as-a-story D4: the Why wraps at word boundaries, up to five lines, and is never cut mid-sentence', () => {
   const story =
     "Today the Why lists the parts being built and is cut off on screen, so a founder approves bets they cannot easily explain. Written as a short story from the strategy we already agreed, and shown in full, it becomes a bet they can defend. We'll know when every new Why is read in full and approved without a rewrite.";
