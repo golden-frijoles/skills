@@ -8,7 +8,7 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +34,10 @@ const ENTRIES = [
 ];
 
 for (const [entry, args, proof] of ENTRIES) {
-  test(`${entry} runs through a symlinked path`, () => {
+  // A project that copied only some rails (this test travels with them) skips, by name, an entry it does not have.
+  // In the template every entry exists, so the source never skips.
+  const absent = !existsSync(join(HERE, entry));
+  test(`${entry} runs through a symlinked path`, { skip: absent && `${entry} is not in this project's scripts/` }, () => {
     const r = spawnSync(process.execPath, [join(LINK, entry), ...args], { encoding: 'utf8' });
     assert.match(
       `${r.stdout}${r.stderr}`,
