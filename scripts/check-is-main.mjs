@@ -14,7 +14,7 @@
 // Zero deps. `node scripts/check-is-main.mjs` (CI). Exit 0 clean, 1 a finding, 2 could not look.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { basename, dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isMain } from './lib/is-main.mjs';
 
@@ -35,7 +35,7 @@ function code(line) {
 
 /** Pure — the hand-rolled entry checks in one file (1-based lines). */
 export function scan(rel, text) {
-  if (rel.split('/').pop() === OWNER) return [];
+  if (basename(rel) === OWNER) return [];
   const lines = text.split('\n').map(code);
   const hits = [];
   lines.forEach((line, i) => {

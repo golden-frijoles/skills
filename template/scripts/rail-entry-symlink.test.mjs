@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TMP = mkdtempSync(join(tmpdir(), 'rail-link-'));
@@ -58,7 +58,7 @@ test('lib/is-main.mjs: true through a symlinked path, false when imported', () =
     assert.equal(run.stdout.trim(), 'main', run.stderr);
     const imported = spawnSync(
       process.execPath,
-      ['--input-type=module', '-e', `await import(${JSON.stringify(join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`))});`],
+      ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(join(LINK, 'lib', `.is-main-probe-${process.pid}.mjs`)).href)});`],
       { encoding: 'utf8' }
     );
     assert.equal(imported.stdout.trim(), 'imported', imported.stderr);
