@@ -430,6 +430,85 @@ const disagreeing = {
   phase_written: 'Shaping',
 };
 
+const GOLDEN = {
+  building: [
+    "golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done",
+    "  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
+    "             over its whole life. We'll know when members open funnel trends.",
+    "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
+    "  ▸ Now      S1.3 The trend on the flag page and the epic page",
+    "             As a founder reading a feature, I want the trend where I read its funnel, so that I",
+    "             judge the bet over its whole life.",
+    "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
+    "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
+  ],
+  refining: [
+    "golden-frijoles ❧ Idea · Owed on screen · M · ▲ risk HIGH                               quote $15–34",
+    "  ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped",
+    "  ↗ Roadmap/00-ideas/seeds/owed-on-screen.md",
+    "  ❝ Why      Owed checks live only in a file nobody opens. Showing them where you already look cuts",
+    "             the open count. We'll know when it falls.",
+    "  ▸ Now      plan ready, waiting for your approval",
+    "  ⋯ Around   1 building · 6 ready · next up: A delivery whose settle fails is reclai… (#87)",
+  ],
+  idle: [
+    "golden-frijoles ○ No epic on this branch · docs/seed-consolidation",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/board",
+    "  ⋯ Around   1 building · 1 in QA · 7 ready",
+    "             in other worktrees: The outcome report for any product (S1.3, Building) · A golden",
+    "             welcome and recovery pages (QA)",
+    "  → Next     /build delivery-stale-reclaim-uncounted   (top of the ready list)",
+  ],
+  qa: [
+    "golden-frijoles ◎ Sprint 2 of 2 · Owed on screen · M · ▲ risk HIGH      ▰▰│▰▰▰▰  6 of 6 stories done",
+    "  Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
+    "             over its whole life. We'll know when members open funnel trends.",
+    "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
+    "  ▸ Now      between stories: S2.4 done, every story has a commit",
+    "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
+    "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
+  ],
+  shipped: [
+    "golden-frijoles ✓ Sprint 2 of 2 · One bet, wired · L · ▲ risk HIGH      ▰▰▰│▰▰▰  6 of 6 stories done",
+    "  Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/one-bet-wired",
+    "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
+    "             over its whole life. We'll know when members open funnel trends.",
+    "  ⌖ Target   flags with a funnel: 0 → 2 · read 30 days after shipping · intent match 84",
+    "  ▸ Now      shipped 10 Oct · verdict due 9 Nov",
+    "  $ Spend    ▰▰▰▰▰▰▰▰▱▱  ≈$61 of the $49–79 quote · 4 sessions",
+    "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
+  ],
+  disagreeing: [
+    "golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done",
+    "  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
+    "  ⚑ the epic's docs say Shaping, but this branch has story commits",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
+    "             over its whole life. We'll know when members open funnel trends.",
+    "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
+    "  ▸ Now      S1.3 The trend on the flag page and the epic page",
+    "             As a founder reading a feature, I want the trend where I read its funnel, so that I",
+    "             judge the bet over its whole life.",
+    "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
+    "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
+  ],
+};
+
+for (const [name, lines] of Object.entries(GOLDEN))
+  test(`build-view-one-story golden: the ${name} state reads as the design draws it`, () => {
+    const state = { building, refining, idle, qa, shipped, disagreeing }[name];
+    assert.deepEqual(renderLines(state, NOW), lines);
+    for (const l of lines) assert.ok([...l].length <= 100, `${[...l].length}: ${l}`);
+    // One fact, one place: the stage is said by the track alone, and no line names a source unless two disagree.
+    assert.ok(!lines.some((l) => /from (git|github|docs)|snapshot|session journal|no target set/.test(l)), lines.join('\n'));
+    assert.equal(lines.filter((l) => l.startsWith('  ⚑')).length, name === 'disagreeing' ? 1 : 0);
+  });
+
 test('build-view-one-story D2: a title too long to share the line moves the bar down; only one wider than the line is clipped', () => {
   const long = { ...building, epic: { ...building.epic, title: 'The outcome report for any product and its pace' } };
   const lines = renderLines(long, NOW);

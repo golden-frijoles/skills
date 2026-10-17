@@ -630,3 +630,43 @@ test('#240 review r2: a cache write that fails still draws the view (the store f
   assert.deepEqual(io.shown, ['Currently building']);
   assert.ok(io.logs.some((l) => /could not cache the view/.test(l)));
 });
+
+// ── build-view-one-story S1.7 (D11) — no glyph the view draws is wide or an emoji ────────────────────────────────────
+// A wide or emoji glyph takes two columns in some terminals and shifts every column after it, so the band's layout
+// (which counts code points as columns) and the CLI's alignment would both break. The rule: no code point whose East
+// Asian Width is W or F, and none with Emoji_Presentation. Ambiguous-width glyphs (`◇ ─ │ ▶`) stay allowed.
+// The W and F ranges of Unicode's EastAsianWidth.txt (15.1), collapsed; the SMP emoji blocks are taken whole.
+const WIDE = [
+  [0x1100, 0x115f], [0x231a, 0x231b], [0x2329, 0x232a], [0x23e9, 0x23ec], [0x23f0, 0x23f0], [0x23f3, 0x23f3],
+  [0x25fd, 0x25fe], [0x2614, 0x2615], [0x2648, 0x2653], [0x267f, 0x267f], [0x2693, 0x2693], [0x26a1, 0x26a1],
+  [0x26aa, 0x26ab], [0x26bd, 0x26be], [0x26c4, 0x26c5], [0x26ce, 0x26ce], [0x26d4, 0x26d4], [0x26ea, 0x26ea],
+  [0x26f2, 0x26f3], [0x26f5, 0x26f5], [0x26fa, 0x26fa], [0x26fd, 0x26fd], [0x2705, 0x2705], [0x270a, 0x270b],
+  [0x2728, 0x2728], [0x274c, 0x274c], [0x274e, 0x274e], [0x2753, 0x2755], [0x2757, 0x2757], [0x2795, 0x2797],
+  [0x27b0, 0x27b0], [0x27bf, 0x27bf], [0x2b1b, 0x2b1c], [0x2b50, 0x2b50], [0x2b55, 0x2b55], [0x2e80, 0x303e],
+  [0x3041, 0x33ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xa960, 0xa97f], [0xac00, 0xd7a3],
+  [0xf900, 0xfaff], [0xfe10, 0xfe19], [0xfe30, 0xfe6f], [0xff00, 0xff60], [0xffe0, 0xffe6], [0x16fe0, 0x16fe4],
+  [0x17000, 0x18cff], [0x1b000, 0x1b2ff], [0x1f004, 0x1f004], [0x1f0cf, 0x1f0cf], [0x1f18e, 0x1f18e],
+  [0x1f191, 0x1f19a], [0x1f200, 0x1f251], [0x1f300, 0x1f64f], [0x1f680, 0x1f6ff], [0x1f7e0, 0x1f7eb],
+  [0x1f90c, 0x1f9ff], [0x1fa70, 0x1faff], [0x20000, 0x3fffd],
+];
+const tooWide = (ch) => {
+  const cp = ch.codePointAt(0);
+  return WIDE.some(([lo, hi]) => cp >= lo && cp <= hi) || /\p{Emoji_Presentation}/u.test(ch);
+};
+
+test('D11: the width rule itself — it catches emoji and CJK, and lets the view\'s own ambiguous glyphs through', () => {
+  for (const bad of ['✅', '🚀', '中', '⌚', '⭐', '❌']) assert.equal(tooWide(bad), true, bad);
+  for (const ok of ['▶', '◇', '─', '│', '◉', '▰', '▱', '⚑', '❝', '⌖', '⋯', '↗', '❧', '✓', '◎', '○', '▲', '⬆', '$'])
+    assert.equal(tooWide(ok), false, ok);
+});
+
+test('D11: every glyph in the band, the session line and the bundled resolver is single-width text', async () => {
+  const { GLYPHS, STATE_SYMBOLS } = await import('./vendor/build-state.mjs');
+  const drawn = [...Object.values(GLYPHS), ...Object.values(STATE_SYMBOLS), ...Object.keys(view.SYMBOL_TONES), ...BUILDING, ...IDLE];
+  for (const file of ['index.tsx', 'build-view.mjs', 'vendor/build-state.mjs', '../skills/refine/session-budget.mjs'])
+    drawn.push(readFileSync(join(HERE, file), 'utf8'));
+  const offenders = new Set();
+  for (const text of drawn) for (const ch of text) if (ch.codePointAt(0) > 127 && tooWide(ch)) offenders.add(ch);
+  assert.deepEqual([...offenders], [], `wide or emoji glyphs: ${[...offenders].join(' ')}`);
+  assert.equal(new Set(Object.values(GLYPHS)).size, Object.values(GLYPHS).length, 'one glyph per meaning');
+});
