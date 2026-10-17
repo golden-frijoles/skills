@@ -7,6 +7,27 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-17
+
+### Changed
+- The build view tells one story (build-view-one-story). Top to bottom it says what is being built, how far it has
+  got, why, what is happening now, what it costs and what else is going on, each fact once:
+  a header (`<repo> <state> Sprint N of M · <title> · <size> · ▲ risk <LEVEL>` with the stories bar on the right),
+  the stage track under it (its old `Status` row is gone), the epic's link, then `❝ Why`, `⌖ Target`, `▸ Now`,
+  `$ Spend`, `⋯ Around` and, with nothing in flight, `→ Next /build <top of the ready list>`.
+- A source is named only when two disagree (`⚑`): shipped docs with unmerged story commits, story commits before
+  the lock was stamped, a written phase ahead of the board, an unreadable sprint.
+- A shipped epic reads shipped on its close-out branch: `✓`, "N of N stories done", `shipped <day> · verdict due
+  <day>`. It used to say "0 of N".
+- `⌖ Target` says what we know: the target, else `none yet: <grounded_reason>`, then `intent match N`. It no longer
+  says "no target set" when a reason exists. `▸ Now` never says "session journal". Between stories it says so.
+- The Spend line carries its own bar: `▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session`. Tokens and the quote's
+  size stay in `--json`.
+- The 5-hour line is a meter, to the minute: `5h ▰▰▰▰▰▰▱▱▱▱ 62% · resets 9:20 pm (in 1h 29m)`. `-1h` read as "an
+  hour ago" for a reset 1 h 29 m away. The 7-day figure reads `(in 3d 4h)`.
+- Every glyph the view draws is single-width text, pinned by a test (no East Asian Width W/F, no emoji
+  presentation), and every colour of the band is pinned in `build-view.mod.test.ts`.
+
 ## [1.10.4] - 2026-10-16
 
 ### Changed

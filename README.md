@@ -45,24 +45,35 @@ Every skill here **runs** in a project spawned from `template/`. The scripts it 
 
 ## The build view — a Claude Mod
 
-While an agent builds, the CLI can show what it is working on at an executive level:
+While an agent builds, the CLI shows what is being built, how far it has got, why, what is happening now, what it
+costs and what else is going on, each fact once:
 
 ```
-Currently building
-  Epic     Arranged-only delivery            04-shipping · risk HIGH
-  Story    S2.1 — Agent surface parity
-           As a buyer's agent, I want checkout options to reflect arranged-only listings, so that I'm never offered a carrier rail the seller can't fulfil.
-  Progress Story 4 of 7 · Sprint 2 of 2
-  Status   Building
+golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done
+  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped
+  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth
+  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet
+             over its whole life. We'll know when members open funnel trends.
+  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84
+  ▸ Now      S1.3 The trend on the flag page and the epic page
+             As a founder reading a feature, I want the trend where I read its funnel, so that I
+             judge the bet over its whole life.
+  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session
+  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)
 ```
+
+A source is named only when two disagree (a `⚑` line under the track). With nothing in flight the view is the board
+link, one `⋯ Around` line and `→ Next  /build <top of the ready list>`. Under the prompt, the session line draws the
+5-hour budget as a meter: `5h ▰▰▰▰▰▰▱▱▱▱ 62% · resets 9:20 pm (in 1h 29m)`.
 
 Every line comes from `scripts/build-state.mjs`, which reads the epic docs' **frontmatter contract**, git,
 and (outside the hook) one `gh` call. `plugins/golden-frijoles/hooks/` is a thin renderer on top of it: it
 runs the bundled resolver offline on `turn.start`, after every Bash call and every 30 s. It re-resolves only when
 the key moved (every worktree's HEAD + branch, the newest `Roadmap/` mtime), caches the view in `$.store` and draws
-it as a band above the prompt. The PR facts behind the Status row are refreshed online on a separate timer (60 s
-after start, then every 5 min, and once after a `git push`/`gh pr …`), never on a turn's path. When the installed
-plugin is older than the marketplace clone's copy, the band adds a `Plugin` row. It never parses a doc itself.
+it as a band above the prompt, colouring the resolver's own glyphs and words. The PR facts behind the stage are
+refreshed online on a separate timer (60 s after start, then every 5 min, and once after a `git push`/`gh pr …`),
+never on a turn's path. When the installed plugin is older than the marketplace clone's copy, the band adds a
+`⬆ Plugin` row. It never parses a doc itself.
 
 - **It needs `scripts/build-state.mjs` in the project** — a project spawned from `template/` has it.
 - **It needs Claude Code ≥ 2.1.287**, where mods are on by default. On an older engine `hooks/hooks.json` is
