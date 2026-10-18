@@ -7,6 +7,15 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-17
+
+### Added
+- **A bet can say what score counts as satisfied** (satisfied-ask). `satisfied_min_score:` (a whole number 1–5, null =
+  4) sits beside `satisfied_event:` in the seed and epic README templates; `scaffold-epic.mjs` copies it from the
+  seed, the contract refuses anything else (`contract-bet-invalid`), and the roadmap push carries it. It applies only
+  when `satisfied_event` is `satisfaction_rated`, the SDK's standard rating (`rateSatisfaction(flagKey, score)`, SDK
+  1.3.0); any other event counts every answer, as before. A push without the field stays valid.
+
 ## [1.12.0] - 2026-10-17
 
 ### Changed
