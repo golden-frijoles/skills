@@ -250,7 +250,7 @@ function personaValue() {
 function betValue(key) {
   const v = fromSeed(key);
   if (v == null) return 'null';
-  if (key === 'retention_days') return /^\d+$/.test(v) ? v : yaml(v);
+  if (key === 'retention_days' || key === 'satisfied_min_score') return /^\d+$/.test(v) ? v : yaml(v);
   return /^[A-Za-z0-9_.:$-]{1,200}$/.test(v) ? v : yaml(v);
 }
 const baseVars = {
@@ -261,7 +261,7 @@ const baseVars = {
   GROUNDED: groundedValue(), GROUNDED_REASON: groundedReasonValue(), PERSONA: personaValue(),
   TARGET_SEGMENT: betValue('target_segment'), ADOPTED_EVENT: betValue('adopted_event'),
   RETAINED_EVENT: betValue('retained_event'), RETENTION_DAYS: betValue('retention_days'),
-  SATISFIED_EVENT: betValue('satisfied_event'),
+  SATISFIED_EVENT: betValue('satisfied_event'), SATISFIED_MIN_SCORE: betValue('satisfied_min_score'),
   SLUG: slug, TITLE: title, TITLE_YAML: yaml(title), AREA: area, MACRO: macro, RISK: risk, TYPE: type,
   TYPE_KEY: typeRaw, DATE: date, INTENT_MATCH: intentMatch,
   // Born with one placeholder story per sprint, so the totals are true on day one.

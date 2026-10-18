@@ -100,14 +100,25 @@ test('grounded-bets D9: the push carries the grounding as recorded, the reason o
 });
 
 test('one-bet-wired D1: the push carries the bet as written when well-formed, else null', () => {
-  assert.deepEqual(betFields({}), { target_segment: null, adopted_event: null, retained_event: null, retention_days: null, satisfied_event: null });
+  assert.deepEqual(betFields({}), {
+    target_segment: null,
+    adopted_event: null,
+    retained_event: null,
+    retention_days: null,
+    satisfied_event: null,
+    satisfied_min_score: null,
+  });
   assert.deepEqual(betFields({ target_segment: 'everyone', adopted_event: 'order_placed', retention_days: '14', satisfied_event: 'rated_5' }), {
     target_segment: 'everyone',
     adopted_event: 'order_placed',
     retained_event: null,
     retention_days: 14,
     satisfied_event: 'rated_5',
+    satisfied_min_score: null,
   });
+  // satisfied-ask D3 — the bar travels as a whole number 1–5, else null (the contract names a bad one).
+  assert.equal(betFields({ satisfied_min_score: 3 }).satisfied_min_score, 3);
+  for (const bad of [0, 6, 4.5, 'four', null]) assert.equal(betFields({ satisfied_min_score: bad }).satisfied_min_score, null);
   assert.deepEqual(betFields({ target_segment: 'power', adopted_event: 'has space', retention_days: 400 }).retention_days, null);
   // funnel-truth D13 — a named segment travels from the README to the push as written; a malformed one is null.
   assert.equal(betFields({ target_segment: 'power-users', adopted_event: 'x' }).target_segment, 'power-users');

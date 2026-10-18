@@ -458,6 +458,11 @@ test('one-bet-wired D1: a bet measures with a flag and an adoption event; everyo
     rules({ flag_key: 'a', adopted_event: 'has space' }),
     /adopted_event: "has space" is not an event name/
   );
+  // satisfied-ask D3 — the bar is a whole number 1–5; it alone makes a bet measured, so it needs the flag + adoption.
+  assert.equal(rules({ flag_key: 'a', adopted_event: 'x', satisfied_min_score: 3 }), '');
+  for (const bad of [0, 6, 4.5, '4'])
+    assert.match(rules({ flag_key: 'a', adopted_event: 'x', satisfied_min_score: bad }), /satisfied_min_score: .* from 1 to 5/);
+  assert.match(rules({ satisfied_min_score: 4 }), /needs a flag_key/);
 });
 
 // why-as-a-story D2/D4 — the guard and the build view share one wrap, so "passes" means "shows in full".

@@ -16,7 +16,9 @@ with nothing guessed. On yes, write the bet's measurement into the seed's frontm
 - `adopted_event:`: the event that means the feature was really used (not a view of it). Ask; never guess a name.
 - `retained_event:` (leave null for "the adoption event again") and `retention_days:` (default 7): what repeating looks
   like, and within how long.
-- `satisfied_event:` (optional): a rating or survey event; null means satisfaction is "not measured", never zero.
+- `satisfied_event:` (optional): a rating or survey event; null means satisfaction is "not measured", never zero. The
+  standard one is `satisfaction_rated` (the SDK's `rateSatisfaction(flagKey, score)`, a 1–5 score); with it,
+  `satisfied_min_score:` (1–5, null = 4) is the score that counts. Any other event counts every answer.
 
 **Report each evaluation, or the funnel stays empty.** The flag is read through the SDK's flag provider, which does not
 report on its own: the code that reads it calls `trackFlagEvaluation` (the SDK README's *Flag evaluation telemetry*),

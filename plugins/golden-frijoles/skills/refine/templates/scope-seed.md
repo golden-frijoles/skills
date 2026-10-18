@@ -25,6 +25,7 @@ adopted_event: null    # the event that means "adopted" (Stage 6b, Measure) · n
 retained_event: null   # the repeat that means "retained" · null = the adoption event again
 retention_days: null   # the retention window in days (1–90) · null = 7
 satisfied_event: null  # optional: the event that means "satisfied" (a rating) · null = not measured
+satisfied_min_score: null  # with satisfied_event: satisfaction_rated, the score (1–5) that counts as satisfied · null = 4
 intent_match: null     # written by `node scripts/intent-match.mjs <this seed> --write` (refine Stage 3.5) — advisory
 ---
 

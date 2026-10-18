@@ -189,6 +189,7 @@ export function betFields(fm) {
   const token = (v) =>
     typeof v === 'string' && /^[A-Za-z0-9_.:$-]{1,200}$/.test(v.trim()) ? v.trim() : null;
   const days = Number(fm.retention_days);
+  const bar = Number(fm.satisfied_min_score);
   return {
     // funnel-truth D13 (verifier, #379): `everyone` or a segment key travels as written; a malformed one is null (the
     // contract names it), never rewritten to everyone.
@@ -197,6 +198,9 @@ export function betFields(fm) {
     retained_event: token(fm.retained_event),
     retention_days: Number.isInteger(days) && days >= 1 && days <= 90 ? days : null,
     satisfied_event: token(fm.satisfied_event),
+    // satisfied-ask D3 — null when absent or malformed (the contract names a bad one); the reader's default is 4.
+    satisfied_min_score:
+      fm.satisfied_min_score != null && Number.isInteger(bar) && bar >= 1 && bar <= 5 ? bar : null,
   };
 }
 

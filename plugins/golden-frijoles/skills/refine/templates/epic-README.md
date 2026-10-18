@@ -31,6 +31,7 @@ adopted_event: {{ADOPTED_EVENT}}
 retained_event: {{RETAINED_EVENT}}
 retention_days: {{RETENTION_DAYS}}
 satisfied_event: {{SATISFIED_EVENT}}
+satisfied_min_score: {{SATISFIED_MIN_SCORE}}   # the score (1–5) a satisfaction_rated answer needs to count as satisfied · null = 4
 build_order: null    # integer position in the ONE global build sequence — the SSOT once the epic
                      # exists (the seed's value is only a fallback). Fill it in at the betting
                      # table; plain integers, no "#2a" suffixes. See 00-ideas/README.md → Ordering.

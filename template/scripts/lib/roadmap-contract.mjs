@@ -171,13 +171,15 @@ export function validateFlagKey(fm) {
 // one-bet-wired D1 — a bet's measurement: what its flag funnel reads. Optional as a whole; once any field is set it
 // needs a flag and an adoption event, the segment is `everyone` or a key the project defines (funnel-truth D13: an
 // unknown key is accepted here and read as "not defined" on screen, never as everyone), and the window
-// is 1–90 whole days. Event names are tokens: what the SDK sends.
+// is 1–90 whole days. Event names are tokens: what the SDK sends. satisfied-ask D3: `satisfied_min_score` (a whole
+// number 1–5) is the score a `satisfaction_rated` answer needs to count as satisfied; the reader defaults it to 4.
 export const BET_FIELDS = [
   'target_segment',
   'adopted_event',
   'retained_event',
   'retention_days',
   'satisfied_event',
+  'satisfied_min_score',
 ];
 export const BET_SEGMENTS = ['everyone'];
 /** funnel-truth D13 — a segment key a project defines with `frijoles segments define` (lowercase words and hyphens). */
@@ -205,6 +207,11 @@ export function validateBet(fm) {
     !(Number.isInteger(fm.retention_days) && fm.retention_days >= 1 && fm.retention_days <= 90)
   )
     bad(`retention_days: "${fm.retention_days}" is not a whole number of days from 1 to 90`);
+  if (
+    has('satisfied_min_score') &&
+    !(Number.isInteger(fm.satisfied_min_score) && fm.satisfied_min_score >= 1 && fm.satisfied_min_score <= 5)
+  )
+    bad(`satisfied_min_score: "${fm.satisfied_min_score}" is not a whole number from 1 to 5`);
   return offenses;
 }
 
