@@ -16,6 +16,10 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   when `satisfied_event` is `satisfaction_rated`, the SDK's standard rating (`rateSatisfaction(flagKey, score)`, SDK
   1.3.0); any other event counts every answer, as before. A push without the field stays valid.
 
+### Changed
+- **The Antigravity CLI pin is 1.4.2** (was 1.4.0), re-verified against the live contract by `cross-agent-doctor.mjs agy
+  --fix` (both models probed green).
+
 ## [1.12.0] - 2026-10-17
 
 ### Changed
