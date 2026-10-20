@@ -76,10 +76,9 @@ export function fitPieces(catalog, { maxRows, bandRows = 0, columns }) {
  *   tick({busy})     the clock: start if quiet long enough
  *   start()/stop()   /screensaver now, /screensaver stop
  *   configure(...)   /screensaver on|off|<minutes>, and the saved setting
- *   fault()          the drawing failed on this surface: off for this load
  */
 export function createSaver({ now = Date.now, random = Math.random } = {}) {
-  const s = { enabled: true, idleMs: IDLE_MINUTES * 60_000, last: now(), active: false, mode: 'idle', seed: 0, faulted: false };
+  const s = { enabled: true, idleMs: IDLE_MINUTES * 60_000, last: now(), active: false, mode: 'idle', seed: 0 };
   const wait = () => (s.mode === 'flight' ? s.idleMs * IN_FLIGHT_FACTOR : s.idleMs);
   const begin = () => {
     s.active = true;
@@ -106,20 +105,15 @@ export function createSaver({ now = Date.now, random = Math.random } = {}) {
       return end();
     },
     tick({ busy = false } = {}) {
-      if (!s.enabled || s.faulted || s.active || busy) return false;
+      if (!s.enabled || s.active || busy) return false;
       return now() - s.last >= wait() ? begin() : false;
     },
     start() {
       if (!s.enabled) return { ok: false, reason: 'off' };
-      if (s.faulted) return { ok: false, reason: 'faulted' };
       begin();
       return { ok: true };
     },
     stop: end,
-    fault() {
-      s.faulted = true;
-      return end();
-    },
     configure({ enabled, minutes } = {}) {
       let changed = false;
       if (typeof enabled === 'boolean') {
@@ -134,7 +128,7 @@ export function createSaver({ now = Date.now, random = Math.random } = {}) {
     },
     /** Draw it now? `isWorking` is the band's own prop: a turn is running. */
     visible({ isWorking = false, hasSurvey = false } = {}) {
-      return s.enabled && !s.faulted && s.active && !isWorking && !hasSurvey;
+      return s.enabled && s.active && !isWorking && !hasSurvey;
     },
     get state() {
       return {
@@ -143,16 +137,14 @@ export function createSaver({ now = Date.now, random = Math.random } = {}) {
         active: s.active,
         mode: s.mode,
         seed: s.seed,
-        faulted: s.faulted,
       };
     },
   };
 }
 
 /** `/screensaver` with no argument, and after each change: one line saying how it stands. */
-export function statusText({ enabled, minutes, active, mode, faulted }) {
+export function statusText({ enabled, minutes, active, mode }) {
   if (!enabled) return 'screensaver: off. `/screensaver on` turns it back on.';
-  if (faulted) return 'screensaver: this surface could not draw it — off until Claude Code restarts.';
   const when = active
     ? 'playing now'
     : mode === 'flight'

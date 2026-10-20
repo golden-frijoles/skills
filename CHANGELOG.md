@@ -18,7 +18,7 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   credited in `NOTICE`), each drawn at its own size and centred — never scaled; a short band crops a piece by at most a
   quarter of its height from the side it keeps (a fire its base, a tree its pot), and skips it below that or when the
   terminal is too narrow. `/screensaver` turns it on or off, sets the minutes (`/screensaver 10`), plays it now
-  (`now`) or stops it (`stop`); a surface that cannot draw it turns it off for the session and says so once. The rules
+  (`now`) or stops it (`stop`); a surface that cannot draw the region leaves it out, and the band stays. The rules
   are `hooks/screensaver.mjs` (pure, `node --test`); `index.tsx` feeds it events and draws the `Client` region.
 - **A repo with no Roadmap/ is told how to light the band up**: `→ Next  /golden-frijoles:setup`.
 

@@ -99,7 +99,6 @@ let usageRefreshedAt: number | null = null; // finops D24 — the last usage ref
 // The screensaver's state machine (screensaver D1). Module-level like `viewer`; a hot reload starts it fresh, which at
 // worst delays the next start by one quiet window. The two setting fields survive reloads in `$.store`.
 const SAVER_KEY = 'golden-frijoles/screensaver';
-const SAVER_MODULE = './screensaver-view.mjs';
 const SAVER_HINT = 'goldenfrijoles.com'; // the caption's tail when there is no band at all: where the rest of it lives
 // Time is the engine's: quiet time is counted in the saver's own `$.clock` ticks, never the wall clock — so a test's
 // clock drives it, and a machine asleep for an hour is not an hour away.
@@ -563,15 +562,6 @@ export const register: Register = (on) => {
     );
   });
 
-  // screensaver D4 — a surface that cannot draw the region (its module did not load, or a piece threw past the module's
-  // own guard): off for this load, said once, and the band is drawn again without it.
-  on('ui.fault', async ($, e, next) => {
-    if (e.module.endsWith(SAVER_MODULE.slice(2)) && saver.fault()) {
-      note($, `screensaver: off for this session — the ${e.surface} surface could not draw it (${e.reason})`);
-      $.ui.invalidate('ui.render');
-    }
-    return next(e);
-  });
   // build-view-upgrade D5/D6 — the session line, coloured, on its own row under the engine's hint line. The engine's
   // drawing is kept as it is (`next(e)`); with no figures, or no `$.state`, the hint is left alone.
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {

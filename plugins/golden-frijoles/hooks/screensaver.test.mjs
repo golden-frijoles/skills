@@ -103,7 +103,7 @@ test('visible: not under a turn (isWorking) or a survey, even when armed', () =>
   assert.equal(saver.visible({ isWorking: false, hasSurvey: false }), true);
 });
 
-test('start() (/screensaver now): plays at once in or out of flight; refuses when off or faulted', () => {
+test('start() (/screensaver now): plays at once in or out of flight; refuses when off', () => {
   const { saver } = world();
   saver.onView(BUILDING);
   assert.deepEqual(saver.start(), { ok: true }, 'the person asked: in flight too (the screenshot case)');
@@ -114,17 +114,6 @@ test('start() (/screensaver now): plays at once in or out of flight; refuses whe
   assert.deepEqual(saver.start(), { ok: true });
   assert.equal(saver.visible(), true);
   assert.equal(saver.state.seed, 500_000, 'the seed comes from the injected random');
-});
-
-test('D4: a fault ends it and keeps it off for the load — the clock never restarts it', () => {
-  const { saver, advance } = world();
-  saver.start();
-  assert.equal(saver.fault(), true);
-  assert.equal(saver.visible(), false);
-  advance(60 * MIN);
-  assert.equal(saver.tick(), false);
-  assert.deepEqual(saver.start(), { ok: false, reason: 'faulted' });
-  assert.match(statusText(saver.state), /could not draw it/);
 });
 
 test('configure: off ends a running saver; minutes move the threshold and restart the count', () => {
@@ -206,7 +195,7 @@ test('parseArgs and statusText', () => {
   assert.equal(parseArgs('  NOW ').action, 'now');
   assert.deepEqual(parseArgs('12'), { action: 'minutes', minutes: 12, error: null });
   for (const bad of ['0', '241', 'soon', '5 min', '-3']) assert.ok(parseArgs(bad).error, bad);
-  const base = { enabled: true, minutes: 3, active: false, mode: 'idle', faulted: false };
+  const base = { enabled: true, minutes: 3, active: false, mode: 'idle' };
   assert.match(statusText({ ...base, enabled: false }), /off/);
   assert.match(statusText({ ...base, mode: 'flight' }), /after 9 min away \(an epic is in flight; 3 min when nothing is\)/);
   assert.match(statusText({ ...base, active: true }), /playing now/);
