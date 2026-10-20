@@ -13,7 +13,6 @@
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stripTypeScriptTypes } from 'node:module';
 import { isMain } from '../template/scripts/lib/is-main.mjs';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'plugins', 'golden-frijoles', 'hooks', 'scenes');
@@ -26,7 +25,9 @@ export function refusal(src) {
   return bad ? `uses ${bad[1] ?? 'import()'}` : null;
 }
 
-function main(argv) {
+async function main(argv) {
+  // Loaded here, not at the top: it exists from Node 22.13, and refusal() above is imported by a spec CI runs on Node 20.
+  const { stripTypeScriptTypes } = await import('node:module');
   const at = argv.indexOf('--from');
   if (at === -1 || !argv[at + 1]) {
     process.stderr.write('usage: vendor-ascii-scenes.mjs --from <ascii checkout>\n');
@@ -58,4 +59,4 @@ function main(argv) {
   process.stdout.write(`vendor-ascii-scenes: wrote ${scenes.length} scenes to ${OUT}\n`);
 }
 
-if (isMain(import.meta.url)) main(process.argv.slice(2));
+if (isMain(import.meta.url)) await main(process.argv.slice(2));
