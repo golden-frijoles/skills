@@ -7,6 +7,37 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-10-19
+
+### Added
+- **Claude Code screensavers** (screensaver). When you have been away — no typing, no submit, no turn running, no
+  question waiting — for 3 minutes with nothing in flight, or 9 with an epic in flight, an
+  [ascii.rest](https://ascii.rest) animation plays in the band above the prompt, under the build rows. The first
+  keystroke, submit or turn ends it; it never starts under a running turn (a subagent's turns do not count either way).
+  It plays in any folder the plugin is loaded in, Golden Frijoles repo or not. Ten text pieces (`hooks/ascii/`, MIT,
+  credited in `NOTICE`), each drawn at its own size and centred — never scaled; a short band crops a piece by at most a
+  quarter of its height from the side it keeps (a fire its base, a tree its pot), and skips it below that or when the
+  terminal is too narrow. `/screensaver` turns it on or off, sets the minutes (`/screensaver 10`), plays it now
+  (`now`) or stops it (`stop`); a surface that cannot draw it turns it off for the session and says so once. The rules
+  are `hooks/screensaver.mjs` (pure, `node --test`); `index.tsx` feeds it events and draws the `Client` region.
+- **A repo with no Roadmap/ is told how to light the band up**: `→ Next  /golden-frijoles:setup`.
+
+### Changed
+- **The build view reads top to bottom as what, why, then where it stands** (mod layout v2, 2026-10-19). The
+  header is `<repo> <symbol> Epic: <title> · <size> · ▲ risk` (the kind of work, then what it is); the Why and Target
+  follow it, then a rule, then `◆ Status` (the stage track), the link, `∑ Stories` (every sprint's cells and the
+  epic's count), `» Sprint` (this sprint's cells and count), `▸ Now` (`Sprint 3, Story 2: <title>` and its user
+  story), Spend and Around. The stories bar left the header.
+
+### Fixed
+- **The band no longer flips between an old layout and the new one.** Every session in one checkout shares one cache
+  slot, and a session still running an older copy of the plugin wrote its layout into it under the same key, which
+  this session served back until the key moved. Each entry now carries the resolver that wrote it (its installed path,
+  which carries the version), and an entry another copy wrote is re-resolved.
+- **Stories already merged to main count as done.** The count read only `main..HEAD`, so once a sprint's PR merged its
+  stories dropped out: Sprint 4 of 5 read "1 of 18 stories done". A commit on main counts when its subject names the
+  epic's slug (a bare `S1.1` on main says nothing: every epic has one).
+
 ## [1.13.0] - 2026-10-17
 
 ### Added

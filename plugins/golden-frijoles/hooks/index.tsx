@@ -28,6 +28,13 @@
 // THE SPEND ROW (finops S1.3, D5/D24): the resolver prints it from `.golden-frijoles/usage-summary.json`; this module
 // only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
 //
+// THE SCREENSAVER (screensaver D1–D6): when the person has been away a few minutes — 3 with nothing in flight (or no
+// view at all: any repo, any folder), 9 with an epic in flight — an ascii.rest animation plays under the band, in a
+// `Client` region (screensaver-view.mjs). WHEN it runs and WHAT fits is decided in screensaver.mjs (pure, tested); this
+// file only feeds it events — typing (`prompt.edit`), a submit, a turn starting or ending, a question opening — and the
+// view's own text, and draws or drops the region. Any of those ends it at once; it never starts under a running turn.
+// `/screensaver` turns it on or off, sets the minutes, or plays it now. It never changes the build view's rows.
+//
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
 import type { EngineInterface, Register } from 'claude-code';
 import {
@@ -54,6 +61,8 @@ import {
   versionOf,
   versionRow,
 } from './build-view.mjs';
+import { CHECK_MS, ROTATE_S, bandHeight, createSaver, fitPieces, parseArgs, statusText } from './screensaver.mjs';
+import { pieces as saverPieces } from './ascii/index.ts';
 import {
   LOG_FILE,
   LOG_GITIGNORE,
@@ -87,6 +96,17 @@ let viewer: ReturnType<typeof createViewer> | null = null;
 let warnedNoState = false; // log an engine without `$.state` once per load, not on every draw
 let usageRefreshedAt: number | null = null; // finops D24 — the last usage refresh attempt, ok or not
 
+// The screensaver's state machine (screensaver D1). Module-level like `viewer`; a hot reload starts it fresh, which at
+// worst delays the next start by one quiet window. The two setting fields survive reloads in `$.store`.
+const SAVER_KEY = 'golden-frijoles/screensaver';
+const SAVER_MODULE = './screensaver-view.mjs';
+const SAVER_HINT = 'goldenfrijoles.com'; // the caption's tail when there is no band at all: where the rest of it lives
+// Time is the engine's: quiet time is counted in the saver's own `$.clock` ticks, never the wall clock — so a test's
+// clock drives it, and a machine asleep for an hour is not an hour away.
+let saverMs = 0;
+const saver = createSaver({ now: () => saverMs });
+let turnRunning = false; // a model turn is in flight: the saver never starts under one (AbovePrompt `isWorking` too)
+
 // D6 — the figures go to `$.state`, where the hint row reads them; on an engine without it, the plain status line.
 // Resolves true when the state write landed. Never throws.
 async function showSession($: EngineInterface) {
@@ -119,6 +139,11 @@ function note($: EngineInterface, msg: string) {
 }
 const debug = ($: EngineInterface, msg: string) => $.ui.log(msg, { to: 'debug' });
 
+// The person did something: the screensaver ends, and the band redraws only if it was up.
+const wake = ($: EngineInterface) => {
+  if (saver.touch()) $.ui.invalidate('ui.render');
+};
+
 // The view's I/O, spelled at its own call sites. The cache is one `$.store` slot PER CHECKOUT ROOT: the store is shared
 // by every session of the plugin, and one slot let two sessions in two worktrees serve each other's view (#240 review).
 function ioFor($: EngineInterface) {
@@ -127,7 +152,11 @@ function ioFor($: EngineInterface) {
     list: (path: string) => $.fs.list(path),
     getCached: (root: string) => $.store.get(`${STORE_KEY}@${root}`),
     setCached: (root: string, entry: unknown) => $.store.set(`${STORE_KEY}@${root}`, entry),
-    show: (text: string | null) => $.state.set(VIEW, text),
+    // screensaver D1 — the view text is the ONLY place "in flight" is read from. The state write redraws the band.
+    show: (text: string | null) => {
+      saver.onView(text);
+      return $.state.set(VIEW, text);
+    },
     log: (msg: string) => note($, msg),
     debug: (msg: string) => debug($, msg),
     now: () => Date.now(),
@@ -160,6 +189,22 @@ export const register: Register = (on) => {
     } catch (err) {
       note($, `build view: /build not registered: ${String(err)}`);
     }
+    // screensaver D5 — the command, the saved setting, and the quiet clock.
+    try {
+      await $.command.register({
+        name: 'screensaver',
+        description: 'Play an ascii.rest animation when no epic is in flight (golden-frijoles)',
+        argumentHint: '[on|off|now|stop|<minutes>]',
+      });
+    } catch (err) {
+      note($, `screensaver: /screensaver not registered: ${String(err)}`);
+    }
+    const savedSaver = (await attempt(() => $.store.get(SAVER_KEY))) as { enabled?: boolean; minutes?: number } | null;
+    if (savedSaver) saver.configure(savedSaver);
+    $.clock.every(CHECK_MS, () => {
+      saverMs += CHECK_MS;
+      if (saver.tick({ busy: turnRunning || questionsWaiting > 0 })) $.ui.invalidate('ui.render');
+    });
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
     // build-view-upgrade D5 — the reset countdown moves with the clock, not only when a figure does.
@@ -186,8 +231,59 @@ export const register: Register = (on) => {
     // Awaited here (unlike the tick): the band should be right when the turn begins. Never throws (createViewer). A load
     // whose session.start never ran (its hook failed, or a chain stopped short) still gets a view — just no timers.
     if (!viewer) viewer = createViewer(ioFor($));
+    // A subagent's turn is not the person's: only the main conversation's turns move the screensaver.
+    if (!e.agentId) {
+      turnRunning = true;
+      wake($);
+    }
     await viewer.check('turn');
     return next(e);
+  });
+
+  // screensaver D2 — the other ways the person is there: the turn ended (they will read it), they typed, they sent.
+  on('turn.complete', async ($, e, next) => {
+    if (e.agentId) return next(e);
+    turnRunning = false;
+    wake($);
+    return next(e);
+  });
+  on('prompt.edit', async ($, e, next) => {
+    wake($);
+    return next(e);
+  });
+  on('prompt.submit', async ($, e, next) => {
+    wake($);
+    return next(e);
+  });
+
+  // /screensaver [on|off|now|stop|<minutes>] (screensaver D5) — the setting is two fields in `$.store`.
+  on('command.run', { command: 'screensaver' }, async ($, e) => {
+    const a = parseArgs(e.args);
+    if (a.error) return { text: a.error };
+    if (a.action === 'now') {
+      const started = saver.start();
+      if (!started.ok)
+        return {
+          text:
+            started.reason === 'off'
+              ? 'screensaver: it is off — `/screensaver on` first.'
+              : statusText(saver.state),
+        };
+      $.ui.invalidate('ui.render');
+      return { text: 'screensaver: playing — type, or send anything, to wake it.' };
+    }
+    if (a.action === 'stop') {
+      if (saver.stop()) $.ui.invalidate('ui.render');
+    } else if (a.action === 'on' || a.action === 'off') {
+      if (saver.configure({ enabled: a.action === 'on' })) $.ui.invalidate('ui.render');
+    } else if (a.minutes) {
+      saver.configure({ minutes: a.minutes });
+    }
+    if (a.action !== 'status' && a.action !== 'stop') {
+      const { enabled, minutes } = saver.state;
+      await attempt(() => $.store.set(SAVER_KEY, { enabled, minutes }));
+    }
+    return { text: statusText(saver.state) };
   });
 
   // D1 — after every Bash call: the agent's own `git switch`/`git commit` moves the band mid-turn. The check is queued on
@@ -272,10 +368,12 @@ export const register: Register = (on) => {
     // Everything inside the try, so the count always comes back down even if drawing the line fails.
     try {
       questionsWaiting += 1;
+      wake($);
       await showSession($);
       return await next(e);
     } finally {
       questionsWaiting = Math.max(0, questionsWaiting - 1);
+      wake($); // answering is the person being there: the quiet window starts over
       await showSession($);
     }
   });
@@ -296,9 +394,25 @@ export const register: Register = (on) => {
     if (!read) return next(e);
     const { value } = read;
     const rows = bandRowsFrom(value ?? null);
-    if (!rows.length) return next(e);
-    const { Box, Text } = $.ui.resolve(e);
+    // screensaver D6 — no band (a folder with no git, or a view that failed) still gets the screensaver.
+    const saving = saver.visible({ isWorking: e.props.isWorking, hasSurvey: e.props.hasSurvey });
+    if (!rows.length && !saving) return next(e);
+    const resolved = $.ui.resolve(e);
+    const { Box, Text } = resolved;
+    // `Client` is in some surfaces' element tables and not others': absent, the screensaver is simply not drawn.
+    const Client = 'Client' in resolved ? resolved.Client : undefined;
     const columns = e.props.bodyColumns;
+    // screensaver D3 — the pieces that fit what the band leaves, each at its own size (cropped, never scaled).
+    const fits = saving && Client ? fitPieces(saverPieces, { maxRows: e.props.maxRows, bandRows: bandHeight(rows, columns), columns }) : [];
+    const saverRegion = fits.length ? (
+      <Client
+        key="screensaver"
+        module="./screensaver-view.mjs"
+        props={{ fits, rotateS: ROTATE_S, seed: saver.state.seed, hint: rows.length ? null : SAVER_HINT }}
+        width="100%"
+      />
+    ) : null;
+    if (!rows.length) return saverRegion ?? next(e);
 
     // build-view-upgrade D2/D3 — the resolver's own glyphs and words, coloured; nothing computed here.
     const bars = (value: string) => {
@@ -306,6 +420,7 @@ export const register: Register = (on) => {
       if (!b) return <Text dimColor>{value}</Text>;
       return (
         <Text>
+          {b.lead ? <Text>{b.lead}</Text> : null}
           {b.runs.map((r, j) =>
             r.kind === 'done' ? (
               <Text key={`b${j}`} color="green">{r.text}</Text>
@@ -363,7 +478,7 @@ export const register: Register = (on) => {
       </Box>
     );
 
-    return (
+    const band = (
       <Box flexDirection="column" paddingX={1} width={columns}>
         {rows.flatMap((row, i) => {
           if (row.kind === 'header') {
@@ -374,7 +489,7 @@ export const register: Register = (on) => {
                 <Text dimColor>{row.repo}</Text>{' '}
                 <Text bold color={TONE_COLORS[row.tone as keyof typeof TONE_COLORS]}>{row.symbol}</Text>{' '}
                 <Text>{row.lead}</Text>
-                {lay.title ? <Text>{' · '}<Text bold>{lay.title}</Text></Text> : null}
+                {lay.title ? <Text>{': '}<Text bold>{lay.title}</Text></Text> : null}
                 {row.size ? <Text dimColor>{` · ${row.size}`}</Text> : null}
                 {row.risk ? (
                   <Text>
@@ -398,6 +513,9 @@ export const register: Register = (on) => {
               </Box>,
             ];
           }
+          // mod-layout-v2 — the rule between what the work is for and where it stands, at the band's own width.
+          if (row.kind === 'rule')
+            return [<Box key={`r${i}`} paddingLeft={2}><Text dimColor wrap="truncate">{'─'.repeat(Math.max(10, columns - 4))}</Text></Box>];
           if (row.kind === 'track')
             return [<Box key={`r${i}`} paddingLeft={2}><Text wrap="truncate">{track(row.value, row.tone)}</Text></Box>];
           if (row.kind === 'link' || row.kind === 'flag')
@@ -417,7 +535,15 @@ export const register: Register = (on) => {
               </Box>
               <Box flexShrink={1}>
                 <Text wrap="wrap">
-                  {row.label === 'Spend' ? spend(row.value) : row.label === 'Next' ? nextCommand(row.value) : <Text>{row.value}</Text>}
+                  {row.label === 'Spend'
+                    ? spend(row.value)
+                    : row.label === 'Next'
+                      ? nextCommand(row.value)
+                      : row.label === 'Status'
+                        ? track(row.value, row.tone)
+                        : row.label === 'Stories' || row.label === 'Sprint'
+                          ? bars(row.value)
+                          : <Text>{row.value}</Text>}
                 </Text>
               </Box>
             </Box>,
@@ -425,6 +551,26 @@ export const register: Register = (on) => {
         })}
       </Box>
     );
+
+    // screensaver D3 — under the band: the build rows stay, the picture plays below them. A terminal too short or narrow
+    // for any piece gets the band alone.
+    if (!saverRegion) return band;
+    return (
+      <Box flexDirection="column">
+        {band}
+        {saverRegion}
+      </Box>
+    );
+  });
+
+  // screensaver D4 — a surface that cannot draw the region (its module did not load, or a piece threw past the module's
+  // own guard): off for this load, said once, and the band is drawn again without it.
+  on('ui.fault', async ($, e, next) => {
+    if (e.module.endsWith(SAVER_MODULE.slice(2)) && saver.fault()) {
+      note($, `screensaver: off for this session — the ${e.surface} surface could not draw it (${e.reason})`);
+      $.ui.invalidate('ui.render');
+    }
+    return next(e);
   });
   // build-view-upgrade D5/D6 — the session line, coloured, on its own row under the engine's hint line. The engine's
   // drawing is kept as it is (`next(e)`); with no figures, or no `$.state`, the hint is left alone.

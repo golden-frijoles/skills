@@ -131,6 +131,10 @@ jobs:
       # and is covered by `claude plugin validate` below, which reads the module statically.
       - name: build view mod — the pure half
         run: node --test plugins/golden-frijoles/hooks/build-view.test.mjs
+      # The screensaver's pure halves: WHEN it runs, and the Client module's drawing (fake pieces — the real catalog is
+      # TypeScript, which `claude plugin validate` below reads).
+      - name: build view mod — the screensaver
+        run: node --test plugins/golden-frijoles/hooks/screensaver.test.mjs plugins/golden-frijoles/hooks/screensaver-view.test.mjs
       # The hook runs the resolver bundled beside it, never the open repo's (distribute-what-we-use D5). The
       # bundle is generated from template/scripts/; a stale one would render a different view than it tests.
       - name: build view mod — the bundled resolver matches template/scripts

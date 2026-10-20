@@ -323,3 +323,136 @@ test('S1.7: a shipped epic is green throughout, LOW risk is green, and under 90 
   expect(by('One bet, wired')?.bold).toBe(true);
   expect(parts.some((p) => p.text.includes('…'))).toBe(false); // the title fits on its own row: nothing cut
 });
+
+// ── mod-layout-v2 (the product owner, 2026-10-19): what and why, a rule, then where it stands ──────────────────────────────────
+const V2 = [
+  'golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH',
+  '  ❝ Why      A funnel today is one number per period.',
+  '  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84',
+  '  ' + '─'.repeat(98),
+  '  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped',
+  '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth',
+  '  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic',
+  '  » Sprint   1 of 2 · ▰▰▱  2 of 3 stories done',
+  '  ▸ Now      Sprint 1, Story 3: The trend on the flag page and the epic page',
+  '             As a founder reading a feature, I want the trend, so that I judge the bet.',
+  '  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session',
+  '  ⋯ Around   1 in QA · 6 ready',
+];
+
+test('mod-layout-v2: the kind and the title, the rule at the band\'s width, the track and both bars coloured', async ($, on) => {
+  const parts = await band($ as never, on, V2, 120);
+  const by = (text: string) => parts.find((p) => p.text === text);
+  expect(by('Epic')).toBeDefined();
+  expect(by(': ')).toBeDefined();
+  expect(by('Funnel truth')?.bold).toBe(true);
+  expect(by('─'.repeat(116))?.dim).toBe(true); // 120 columns less the band's padding and indent
+  expect(by('◉ Building')).toMatchObject({ color: 'yellow', bold: true });
+  expect(by('◆')?.color).toBe('cyan');
+  expect(by('Stories')?.dim).toBe(true);
+  expect(by('▰▰')?.color).toBe('green'); // the epic's bar and the sprint's
+  expect(by('1 of 2 · ')).toBeDefined(); // the Sprint row's words before its bar
+  expect(by('2 of 3 stories done')).toBeDefined();
+  const all = parts.map((p) => p.text).join('');
+  for (const w of V2.join(' ').split(/\s+/).filter((x) => x && x !== '·' && !/^─+$/.test(x) && x !== 'Epic:')) expect(all.includes(w)).toBe(true);
+});
+
+// ── screensaver (D1–D6): when it plays, what it draws, and that the first sign of the person ends it ─────────────────
+const IDLE_VIEW = ['golden-frijoles ○ No epic on this branch · main', '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/board'];
+
+async function saverWorld($: never, on: On, lines: string[] | null) {
+  const clock = mock.clock(on);
+  mock.store(on);
+  world(on, (argv) =>
+    argv.includes('--json') ? { exitCode: lines ? 0 : 1, stdout: lines ? JSON.stringify({ facts_mode: 'live', lines }) : '' } : null
+  );
+  on('command.register', async (_$, e) => ({ value: { command: e.name } }) as never);
+  // The engine's own band beneath the plugin: drawn when the plugin has nothing to show.
+  on('ui.render', async () => ({ type: 'Box', props: {}, children: [] }) as never);
+  on('turn.complete', async (_$, e) => ({ text: e.answer }) as never);
+  on('prompt.edit', async (_$, e) => ({ text: e.text + e.inputText, cursor: e.cursor + e.inputText.length }) as never);
+  const $$ = $ as unknown as {
+    session: { start: (e: never) => Promise<unknown> };
+    turn: { start: (e: never) => Promise<unknown>; complete: (e: never) => Promise<unknown> };
+    prompt: { edit: (e: never) => Promise<unknown> };
+    command: { run: (e: never) => Promise<{ text?: string }> };
+    ui: { mount: (e: never) => Promise<{ drawn: (s?: { in: string }) => Promise<unknown>; find: (q: never) => Promise<{ props: Record<string, unknown> } | undefined>; advance: (ms: number) => Promise<void>; resize: (s: never) => Promise<void> }> };
+  };
+  await $$.session.start({ cwd: ROOT, surface: null, isInteractive: true } as never);
+  await $$.turn.start({ text: 'go', turnId: 't1' } as never);
+  await $$.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never);
+  const mounted = await $$.ui.mount({
+    plugin: 'golden-frijoles',
+    surface: 'terminal',
+    component: 'AbovePrompt',
+    props: { hasSurvey: false, isWorking: false, maxRows: 40, bodyColumns: 100 },
+  } as never);
+  const saver = () => mounted.find({ type: 'Client' } as never);
+  return { clock, $$, mounted, saver };
+}
+
+test('screensaver: three minutes away with nothing in flight, a real piece plays under the band — whole, centred, captioned', async ($, on) => {
+  const { clock, mounted, saver } = await saverWorld($ as never, on, IDLE_VIEW);
+  expect(await saver()).toBeUndefined();
+  await clock.advance(170_000);
+  expect(await saver()).toBeUndefined(); // 2 min 50 s: not yet
+  await clock.advance(20_000);
+  const region = await saver();
+  expect(region?.props.module).toBe('hooks/screensaver-view.mjs'); // loaded, the path is the plugin's
+  const fits = region?.props.props as { fits: { id: string; rows: number }[]; hint: string | null };
+  expect(fits.fits.length).toBe(10); // 40 rows leave room for every piece, whole
+  expect(fits.hint).toBeNull(); // there is a band: the caption carries no link
+  // The module draws the real catalog: a picture, then the caption.
+  await mounted.resize({ columns: 100, rows: 30, in: 'screensaver' } as never);
+  await mounted.advance(500);
+  const drawn = flat(await mounted.drawn({ in: 'screensaver' }));
+  expect(drawn.at(-1)?.text).toMatch(/ascii\.rest · .+ — type to wake$/);
+  expect(drawn.length).toBeGreaterThan(10);
+  expect(drawn.every((r) => r.dim)).toBe(true);
+});
+
+test('screensaver: the first keystroke ends it; a running turn never shows it', async ($, on) => {
+  const { clock, $$, saver } = await saverWorld($ as never, on, IDLE_VIEW);
+  await clock.advance(190_000);
+  expect(await saver()).toBeDefined();
+  await $$.prompt.edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: 'h' } as never);
+  expect(await saver()).toBeUndefined();
+  await $$.turn.start({ text: 'go', turnId: 't2' } as never); // no turn.complete: the turn is still running
+  await clock.advance(600_000);
+  expect(await saver()).toBeUndefined();
+  // A subagent's turn ending is not the main turn ending.
+  await $$.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 'a1', agentId: 'sub', reason: 'answer' } as never);
+  await clock.advance(600_000);
+  expect(await saver()).toBeUndefined();
+  await $$.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't2', reason: 'answer' } as never);
+  await clock.advance(190_000);
+  expect(await saver()).toBeDefined();
+});
+
+test('screensaver D1: an epic in flight waits nine minutes, and the band stays above the picture', async ($, on) => {
+  const { clock, mounted, saver } = await saverWorld($ as never, on, V2);
+  await clock.advance(190_000);
+  expect(await saver()).toBeUndefined();
+  await clock.advance(360_000);
+  expect(await saver()).toBeDefined();
+  const all = flat(await mounted.drawn()).map((p) => p.text).join('');
+  expect(all.includes('Funnel truth')).toBe(true);
+});
+
+test('screensaver D6: with no view at all (not a Golden Frijoles repo) it still plays, and its caption says where the rest is', async ($, on) => {
+  const { $$, saver } = await saverWorld($ as never, on, null);
+  const now = await $$.command.run({ command: 'screensaver', args: 'now' } as never);
+  expect(String(now.text)).toContain('playing');
+  const region = await saver();
+  expect((region?.props.props as { hint: string }).hint).toBe('goldenfrijoles.com');
+});
+
+test('screensaver: /screensaver off stops it and keeps it off; the setting is saved', async ($, on) => {
+  const { clock, $$, saver } = await saverWorld($ as never, on, IDLE_VIEW);
+  const off = await $$.command.run({ command: 'screensaver', args: 'off' } as never);
+  expect(String(off.text)).toMatch(/off/);
+  await clock.advance(3_600_000);
+  expect(await saver()).toBeUndefined();
+  const bad = await $$.command.run({ command: 'screensaver', args: 'soon' } as never);
+  expect(String(bad.text)).toMatch(/try on, off, now, stop/);
+});

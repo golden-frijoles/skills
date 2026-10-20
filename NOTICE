@@ -5,3 +5,9 @@ This product includes software licensed under the Apache License, Version 2.0. "
 its logo are trademarks of the Golden Frijoles authors. Apache License, Version 2.0 §6 grants no
 rights to use these trademarks, and a fork of this repository must not use the "Golden Frijoles" name
 or logo for its own distribution.
+
+Third-party code
+----------------
+plugins/golden-frijoles/hooks/ascii/ contains ten animation files and the piece contract (types.ts), copied unchanged
+from ascii.rest (https://github.com/bas3line/ascii), Copyright (c) 2026 bas3line, under the MIT License. The license
+text is kept beside them in plugins/golden-frijoles/hooks/ascii/LICENSE. The screensaver in the build-view mod plays them.
