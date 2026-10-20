@@ -16,7 +16,7 @@ const TEXT = new Set(['hover', 'color', 'backgroundColor', 'dimColor', 'bold', '
 const BOX = new Set(['key', 'hover', 'position', 'flexDirection', 'flexGrow', 'flexShrink', 'flexWrap', 'alignItems', 'justifyContent', 'gap', 'columnGap', 'rowGap', 'width', 'height', 'minWidth', 'minHeight', 'padding', 'paddingX', 'paddingY', 'margin', 'overflow', 'children']);
 
 function piece(id, cols, rows, make) {
-  const frame = (t) => Array.from({ length: rows }, (_, r) => `${id}${r}`.padEnd(cols, '·').slice(0, cols) + (r === 0 ? '' : '')).join('\n');
+  const frame = () => Array.from({ length: rows }, (_, r) => `${id}${r}`.padEnd(cols, '·').slice(0, cols) + (r === 0 ? '' : '')).join('\n');
   return { id, meta: { name: id.replace('-', ' '), cols, rows }, make: make ?? (() => frame) };
 }
 
