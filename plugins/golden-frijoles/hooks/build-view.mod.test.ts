@@ -396,7 +396,7 @@ test('screensaver: three minutes away with nothing in flight, a real piece plays
   expect(await saver()).toBeUndefined();
   await clock.advance(170_000);
   expect(await saver()).toBeUndefined(); // 2 min 50 s: not yet
-  await clock.advance(20_000);
+  await clock.advance(10_000); // the 3-minute check exactly (see the D1 case on the frame budget)
   const region = await saver();
   expect(region?.props.module).toBe('hooks/screensaver-view.mjs'); // loaded, the path is the plugin's
   const fits = region?.props.props as { fits: { id: string; rows: number }[]; hint: string | null };
@@ -413,7 +413,7 @@ test('screensaver: three minutes away with nothing in flight, a real piece plays
 
 test('screensaver: the first keystroke ends it; a running turn never shows it', async ($, on) => {
   const { clock, $$, saver } = await saverWorld($ as never, on, IDLE_VIEW);
-  await clock.advance(190_000);
+  await clock.advance(180_000);
   expect(await saver()).toBeDefined();
   await $$.prompt.edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: 'h' } as never);
   expect(await saver()).toBeUndefined();
@@ -425,7 +425,7 @@ test('screensaver: the first keystroke ends it; a running turn never shows it', 
   await clock.advance(600_000);
   expect(await saver()).toBeUndefined();
   await $$.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't2', reason: 'answer' } as never);
-  await clock.advance(190_000);
+  await clock.advance(180_000);
   expect(await saver()).toBeDefined();
 });
 
@@ -433,7 +433,9 @@ test('screensaver D1: an epic in flight waits nine minutes, and the band stays a
   const { clock, mounted, saver } = await saverWorld($ as never, on, V2);
   await clock.advance(190_000);
   expect(await saver()).toBeUndefined();
-  await clock.advance(360_000);
+  // To the 9-minute check exactly: every second past the start is animation frames replayed inside ONE clock call,
+  // which on a slow CI runner went over the Client's 1000 ms budget (golden-frijoles/skills CI, 2026-10-20).
+  await clock.advance(350_000);
   expect(await saver()).toBeDefined();
   const all = flat(await mounted.drawn()).map((p) => p.text).join('');
   expect(all.includes('Funnel truth')).toBe(true);

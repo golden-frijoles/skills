@@ -1,5 +1,6 @@
-// The pieces the screensaver can play. Every file in ./pieces, and ./types.ts, is copied unchanged from
-// github.com/bas3line/ascii (ascii.rest, MIT — ./LICENSE; credited in the repo's NOTICE). Only this index is ours.
+// The pieces the screensaver can play. Every file in ./pieces, and ./types.ts, is copied from
+// github.com/bas3line/ascii (ascii.rest, MIT — ./LICENSE; credited in the repo's NOTICE), unchanged but for
+// doom-fire's warm-up (marked there). Only this index is ours.
 //
 // Chosen to be text in one ink (no `palette`, so no canvas), self-contained (no runtime imports), and short enough
 // to sit in the band above the prompt. Order is the play order; a terminal too short for a piece crops it to at most

@@ -7,6 +7,16 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-10-20
+
+### Fixed
+- **The screensaver no longer stalls on doom fire.** Its setup ran 200 simulation steps before the first frame (~80 ms in
+  Node, far more in the engine's sandbox), which could take the drawing over the engine's 1000 ms budget for a
+  `Client` region; the band then dropped the picture. It now runs 30 and the fire ignites over its first second. The
+  one changed line is marked in `hooks/ascii/pieces/doom-fire.ts` and named in `NOTICE`.
+- The screensaver specs step the clock to the moment it starts, not past it: a jump past the start replays every
+  animation frame inside one call, which went over the same budget on the mirror's CI runner.
+
 ## [1.14.0] - 2026-10-19
 
 ### Added

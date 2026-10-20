@@ -106,7 +106,9 @@ export default function doomFire(): Frame {
     }
   };
 
-  for (let i = 0; i < 200; i++) step();
+  // Golden Frijoles: 30 warm-up steps, not 200 — 200 cost ~80 ms in Node and over the engine's 1000 ms Client budget in
+  // its sandbox, so the band dropped the picture; with 30 the fire ignites over its first second instead.
+  for (let i = 0; i < 30; i++) step();
   const lv = new Float32Array(cols * rows);
   let last = 0;
   let acc = 0;

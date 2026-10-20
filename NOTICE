@@ -8,6 +8,7 @@ or logo for its own distribution.
 
 Third-party code
 ----------------
-plugins/golden-frijoles/hooks/ascii/ contains ten animation files and the piece contract (types.ts), copied unchanged
-from ascii.rest (https://github.com/bas3line/ascii), Copyright (c) 2026 bas3line, under the MIT License. The license
+plugins/golden-frijoles/hooks/ascii/ contains ten animation files and the piece contract (types.ts), copied
+from ascii.rest (https://github.com/bas3line/ascii), Copyright (c) 2026 bas3line, under the MIT License. They are
+unchanged but for one line: pieces/doom-fire.ts runs 30 warm-up steps instead of 200 (marked in the file). The license
 text is kept beside them in plugins/golden-frijoles/hooks/ascii/LICENSE. The screensaver in the build-view mod plays them.
