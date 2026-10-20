@@ -1,5 +1,5 @@
-// screensaver.mjs — WHEN the screensaver runs and WHAT fits (screensaver D1–D3). What it draws is ascii/ +
-// screensaver-view.mjs.
+// screensaver.mjs — WHEN the screensaver runs (screensaver D1–D2). What it draws, and at what size, is
+// scene-player.mjs (the ascii.rest scenes, rendered by scene-render.mjs).
 //
 // Pure, like build-view.mjs: no engine, no clock of its own (`now` is passed in), tested with node:test. index.tsx
 // wires it to events; this file decides nothing about epics — "nothing in flight" is the resolver's own `○` header
@@ -7,7 +7,8 @@
 //
 // The rule (screensaver D1, set 2026-10-19): it plays when the person has been away — no typing, no submit, no turn
 // running, no question waiting — for `minutes` (3 by default) while nothing is in flight, and for three times that
-// while an epic is: the band is the useful thing then, so it waits longer, and the build rows stay above the picture.
+// while an epic is: the band is the useful thing then, so it waits longer. `/screensaver now` plays at once either way
+// (S2, D7): the person asked, and the first key brings the band back.
 // A turn is never "away": an agent's long turn streams output the person is reading. The first sign of the person
 // ends it. Outside a Golden Frijoles repo — no view at all — counts as nothing in flight, so it plays anywhere the
 // plugin is installed (the standalone install, D6).
@@ -16,12 +17,6 @@ import { headerOf } from './build-view.mjs';
 export const IDLE_MINUTES = 3;
 export const IN_FLIGHT_FACTOR = 3; // an epic in flight waits 3 × the minutes
 export const CHECK_MS = 10_000; // how often the clock asks "has it been quiet long enough?"
-export const ROTATE_S = 45; // seconds on one piece before the next
-export const CAPTION_ROWS = 1; // the dim line under the picture
-export const SLACK_ROWS = 1; // the engine's own row under the band, never crowded out
-export const MIN_COLUMNS = 40;
-export const FALLBACK_MAX_ROWS = 20; // an engine that sends no `maxRows`
-export const MIN_CROP = 0.75; // a picture may lose at most a quarter of its height to fit, never its width
 const LABEL = 13; // the band's label column (build-view-one-story D1)
 
 /** The view text → 'idle' (nothing in flight, or no view at all), 'flight' (an epic, idea or fix in flight). */
@@ -39,8 +34,8 @@ const wrapped = (n, room) => Math.max(1, Math.ceil(n / Math.max(10, room)));
 
 /**
  * How many terminal rows the band's rows take at `columns` — each wrapped the way index.tsx wraps it: a field's value
- * at the label column, a story under it, everything else on one row. An estimate the fit is made against: it can be
- * a row short (word wrap breaks early), which is what SLACK_ROWS is for.
+ * at the label column, a story under it, everything else on one row. An estimate the layout is made against: it can be
+ * a row short (word wrap breaks early), which is what scene-player.mjs's SLACK_ROWS is for.
  */
 export function bandHeight(rows, columns) {
   const body = (Number.isFinite(columns) ? columns : 100) - 2;
@@ -50,23 +45,6 @@ export function bandHeight(rows, columns) {
     if (r.kind === 'header') return n + (r.right ? 2 : 1);
     return n + 1;
   }, 0);
-}
-
-/**
- * The pieces that fit right now, in catalog order: `[{ id, rows, anchor }]`, `rows` being how many of its rows to show.
- * Never scaled — an ASCII picture squashed or stretched is the "looks terrible" case: a piece is drawn at its own size,
- * centred, or cropped to at most MIN_CROP of its height from the side its `anchor` keeps (a fire keeps its base, a
- * tree its pot). Too wide never fits: cropping a picture's sides cuts its subject in half. Empty means no screensaver
- * — a short or narrow terminal never gets a cut-off picture.
- */
-export function fitPieces(catalog, { maxRows, bandRows = 0, columns }) {
-  const total = Number.isFinite(maxRows) ? maxRows : FALLBACK_MAX_ROWS;
-  const room = total - bandRows - CAPTION_ROWS - SLACK_ROWS;
-  const wide = Number.isFinite(columns) ? columns : 80;
-  if (wide < MIN_COLUMNS || room < 1) return [];
-  return catalog
-    .filter((p) => p.meta.cols <= wide && Math.ceil(p.meta.rows * MIN_CROP) <= room)
-    .map((p) => ({ id: p.id, rows: Math.min(p.meta.rows, room), anchor: p.anchor ?? 'middle' }));
 }
 
 /**

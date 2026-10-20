@@ -7,6 +7,26 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-10-20
+
+### Changed
+- **The screensaver plays ascii.rest's 34 colour scenes** (screensaver S1.4) — alpine dawn, tokyo rain, lake pichola,
+  saturn rise and thirty more — in place of the ten one-colour text pieces. A scene is 200×100 colour cells, too much
+  for the drawing sandbox (every one went over the engine's 1000 ms drawing budget), so `hooks/scene-render.mjs` renders
+  it once per size in the person's own Node — about 1.3 s for a 30-second clip — and the band paints the frames, 8 a
+  second, two pixels to a cell (`▀`, top in the text colour, bottom behind it). The picture keeps its 2:1 at any size:
+  box-averaged down, never stretched, its colours fitted to 94 per clip. A new scene every minute; asleep after 20.
+  The scenes are vendored as plain JavaScript by `scripts/vendor-ascii-scenes.mjs`, which refuses any that imports,
+  reaches the network or the process, or evals.
+- **`/screensaver now` plays with an epic in flight too** (D7), and where the band leaves no room it folds to its
+  header while the scene plays; the first key brings it back. The answer says what really happened — playing (and how
+  to get back), the terminal too small, or the scene could not render — never "playing" over a band that drew nothing.
+
+### Fixed
+- **`/screensaver now` with an epic in flight said "playing" and drew nothing**: the band left no room for a piece, so
+  none was drawn.
+- The frame clock runs only while a scene plays: an idle session never wakes 8 times a second.
+
 ## [1.14.1] - 2026-10-20
 
 ### Fixed

@@ -28,12 +28,13 @@
 // THE SPEND ROW (finops S1.3, D5/D24): the resolver prints it from `.golden-frijoles/usage-summary.json`; this module
 // only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
 //
-// THE SCREENSAVER (screensaver D1–D6): when the person has been away a few minutes — 3 with nothing in flight (or no
-// view at all: any repo, any folder), 9 with an epic in flight — an ascii.rest animation plays under the band, in a
-// `Client` region (screensaver-view.mjs). WHEN it runs and WHAT fits is decided in screensaver.mjs (pure, tested); this
-// file only feeds it events — typing (`prompt.edit`), a submit, a turn starting or ending, a question opening — and the
-// view's own text, and draws or drops the region. Any of those ends it at once; it never starts under a running turn.
-// `/screensaver` turns it on or off, sets the minutes, or plays it now. It never changes the build view's rows.
+// THE SCREENSAVER (screensaver D1–D7): when the person has been away a few minutes — 3 with nothing in flight (or no
+// view at all: any repo, any folder), 9 with an epic in flight — or at once on `/screensaver now`, an ascii.rest scene
+// plays under the band. WHEN is screensaver.mjs; the scene is rendered OFF the drawing path by scene-render.mjs, in the
+// person's own Node (the drawing sandbox is too slow to run one), and scene-player.mjs turns its frames into coloured
+// runs this file paints, 8 a second, only while it plays. Where the band leaves no room, it folds to its header while
+// the scene plays. Any key, submit, turn or question ends it and brings the band back. `/screensaver` turns it on or
+// off, sets the minutes, plays it now or stops it.
 //
 // It never throws into the turn: any failure logs (visible with `claude --debug`) and clears the view.
 import type { EngineInterface, Register } from 'claude-code';
@@ -61,8 +62,20 @@ import {
   versionOf,
   versionRow,
 } from './build-view.mjs';
-import { CHECK_MS, ROTATE_S, bandHeight, createSaver, fitPieces, parseArgs, statusText } from './screensaver.mjs';
-import { pieces as saverPieces } from './ascii/index.ts';
+import { CHECK_MS, bandHeight, createSaver, parseArgs, statusText } from './screensaver.mjs';
+import {
+  FPS,
+  RENDER_TIMEOUT_MS,
+  ROTATE_S,
+  SLEEP_MIN,
+  captionOf,
+  layoutFor,
+  parseClip,
+  renderArgv,
+  rowsOf,
+  sceneAt,
+  sceneName,
+} from './scene-player.mjs';
 import {
   LOG_FILE,
   LOG_GITIGNORE,
@@ -105,6 +118,105 @@ const SAVER_HINT = 'goldenfrijoles.com'; // the caption's tail when there is no 
 let saverMs = 0;
 const saver = createSaver({ now: () => saverMs });
 let turnRunning = false; // a model turn is in flight: the saver never starts under one (AbovePrompt `isWorking` too)
+
+// The scene (screensaver S2). Clips are kept by scene and size (the last few); one render runs at a time, and a size that
+// failed is not asked again this load. `layout` is the band's last drawing — the size a scene is rendered for.
+const FRAME_MS = Math.round(1000 / FPS);
+type Clip = NonNullable<ReturnType<typeof parseClip>>;
+const clips = new Map<string, Clip>();
+const failed = new Set<string>();
+let rendering: string | null = null;
+let playIndex = 0; // scenes this run has rotated through
+let frameNo = 0;
+let playMs = 0; // time on this scene
+let playedMs = 0; // time this run has played, for SLEEP_MIN
+let layout: { maxRows: number; columns: number; bandRows: number } | null = null;
+
+/** The scene this run is on and the size it is drawn at, or null when the terminal has no room for one. */
+function wantedScene() {
+  const at = layout ? layoutFor(layout) : null;
+  if (!at) return null;
+  const scene = sceneAt(saver.state.seed, playIndex);
+  return { scene, at, key: `${scene}@${at.cols}x${at.rows}` };
+}
+
+let frames: { cancel: () => void } | null = null; // the frame clock: running only while a scene plays
+
+/**
+ * A new run starts on its first frame, on the scene its seed picks, and starts the frame clock: 8 frames a second, the
+ * next scene after ROTATE_S (rendered while the last one still plays). The clock stops itself the moment nothing plays
+ * — an idle session never wakes 8 times a second for nothing.
+ */
+function beginScene($: EngineInterface) {
+  playIndex = 0;
+  frameNo = 0;
+  playMs = 0;
+  playedMs = 0;
+  startFrames($);
+}
+
+// The frame clock itself. Also started by the band's own drawing when a scene should play and the clock is not running
+// (it stops whenever there is nothing to draw: no band drawn yet, or no room for a scene).
+function startFrames($: EngineInterface) {
+  frames?.cancel();
+  frames = $.clock.every(FRAME_MS, () => {
+    if (!saver.state.active) {
+      frames?.cancel();
+      frames = null;
+      return;
+    }
+    frameNo += 1;
+    playMs += FRAME_MS;
+    playedMs += FRAME_MS;
+    // Nothing to draw here (no band drawn yet, or no room): the clock stops until the band's next drawing restarts it.
+    const want = wantedScene();
+    if (!want) {
+      frames?.cancel();
+      frames = null;
+      return;
+    }
+    // Asleep after SLEEP_MIN, or nothing to play (the scene could not render): the run ends and the band comes back.
+    if (playedMs >= SLEEP_MIN * 60_000 || failed.has(want.key)) {
+      saver.stop();
+      frames?.cancel();
+      frames = null;
+      $.ui.invalidate('ui.render');
+      return;
+    }
+    if (playMs >= ROTATE_S * 1000 && !rendering) {
+      playMs = 0;
+      playIndex += 1;
+      frameNo = 0;
+    }
+    void ensureClip($);
+    $.ui.invalidate('ui.render');
+  });
+}
+
+// Render the wanted clip if it is not here yet: a process, off the drawing path, at most one at a time. Never throws.
+async function ensureClip($: EngineInterface) {
+  const want = wantedScene();
+  if (!want || clips.has(want.key) || failed.has(want.key) || rendering) return want;
+  rendering = want.key;
+  try {
+    const run = await $.process.run(renderArgv(want.scene, want.at), { timeoutMs: RENDER_TIMEOUT_MS });
+    const clip = run.exitCode === 0 ? parseClip(run.stdout) : null;
+    if (clip) {
+      clips.set(want.key, clip);
+      while (clips.size > 3) clips.delete(clips.keys().next().value as string);
+    } else {
+      failed.add(want.key);
+      note($, `screensaver: could not render ${want.scene} (exit ${run.exitCode}) — is \`node\` on your PATH?`);
+    }
+  } catch (err) {
+    failed.add(want.key);
+    note($, `screensaver: could not render ${want.scene}: ${String(err)}`);
+  } finally {
+    rendering = null;
+  }
+  $.ui.invalidate('ui.render');
+  return want;
+}
 
 // D6 — the figures go to `$.state`, where the hint row reads them; on an engine without it, the plain status line.
 // Resolves true when the state write landed. Never throws.
@@ -202,7 +314,11 @@ export const register: Register = (on) => {
     if (savedSaver) saver.configure(savedSaver);
     $.clock.every(CHECK_MS, () => {
       saverMs += CHECK_MS;
-      if (saver.tick({ busy: turnRunning || questionsWaiting > 0 })) $.ui.invalidate('ui.render');
+      if (saver.tick({ busy: turnRunning || questionsWaiting > 0 })) {
+        beginScene($);
+        void ensureClip($);
+        $.ui.invalidate('ui.render');
+      }
     });
     // D1 — the tick; D3 — the online refresh, first after a minute, then every five.
     $.clock.every(TICK_MS, () => void live.check('tick'));
@@ -259,17 +375,26 @@ export const register: Register = (on) => {
   on('command.run', { command: 'screensaver' }, async ($, e) => {
     const a = parseArgs(e.args);
     if (a.error) return { text: a.error };
+    // screensaver D7 — `now` plays at once, an epic in flight or not: the person asked. The answer says what really
+    // happened: playing (and how to get back), or why not — never "playing" over a band that drew nothing.
     if (a.action === 'now') {
       const started = saver.start();
-      if (!started.ok)
-        return {
-          text:
-            started.reason === 'off'
-              ? 'screensaver: it is off — `/screensaver on` first.'
-              : statusText(saver.state),
-        };
+      if (!started.ok) return { text: 'screensaver: it is off — `/screensaver on` first.' };
+      beginScene($);
+      const want = await ensureClip($);
+      if (!want) {
+        saver.stop();
+        $.ui.invalidate('ui.render');
+        return { text: 'screensaver: this terminal is too small for a scene — it needs 11 free rows and 32 columns.' };
+      }
+      if (failed.has(want.key)) {
+        saver.stop();
+        $.ui.invalidate('ui.render');
+        return { text: `screensaver: could not render ${sceneName(want.scene)} — is \`node\` on your PATH?` };
+      }
       $.ui.invalidate('ui.render');
-      return { text: 'screensaver: playing — type, or send anything, to wake it.' };
+      const back = layout?.bandRows ? 'any key brings the build view back' : 'any key wakes it';
+      return { text: `screensaver: playing ${sceneName(want.scene)} — ${back}. \`/screensaver off\` turns it off.` };
     }
     if (a.action === 'stop') {
       if (saver.stop()) $.ui.invalidate('ui.render');
@@ -392,25 +517,39 @@ export const register: Register = (on) => {
     );
     if (!read) return next(e);
     const { value } = read;
-    const rows = bandRowsFrom(value ?? null);
+    const allRows = bandRowsFrom(value ?? null);
+    const columns = e.props.bodyColumns;
+    // The size a scene is rendered for: what the band leaves, read on every drawing (screensaver S2).
+    layout = { maxRows: e.props.maxRows, columns, bandRows: bandHeight(allRows, columns) };
     // screensaver D6 — no band (a folder with no git, or a view that failed) still gets the screensaver.
     const saving = saver.visible({ isWorking: e.props.isWorking, hasSurvey: e.props.hasSurvey });
-    if (!rows.length && !saving) return next(e);
-    const resolved = $.ui.resolve(e);
-    const { Box, Text } = resolved;
-    // `Client` is in some surfaces' element tables and not others': absent, the screensaver is simply not drawn.
-    const Client = 'Client' in resolved ? resolved.Client : undefined;
-    const columns = e.props.bodyColumns;
-    // screensaver D3 — the pieces that fit what the band leaves, each at its own size (cropped, never scaled).
-    const fits = saving && Client ? fitPieces(saverPieces, { maxRows: e.props.maxRows, bandRows: bandHeight(rows, columns), columns }) : [];
-    const saverRegion = fits.length ? (
-      <Client
-        key="screensaver"
-        module="./screensaver-view.mjs"
-        props={{ fits, rotateS: ROTATE_S, seed: saver.state.seed, hint: rows.length ? null : SAVER_HINT }}
-        width="100%"
-      />
-    ) : null;
+    if (!allRows.length && !saving) return next(e);
+    const { Box, Text } = $.ui.resolve(e);
+    // screensaver S2 (D3, D7) — the scene at its own 2:1 size, never stretched; the band folds to its header while it
+    // plays only when the terminal has no room for both.
+    const want = saving ? wantedScene() : null;
+    if (want && !frames) startFrames($);
+    const clip = want ? clips.get(want.key) : undefined;
+    const hint = allRows.length ? null : SAVER_HINT;
+    const saverRegion = !want ? null : clip ? (
+      <Box key="screensaver" flexDirection="column" paddingLeft={Math.max(0, Math.floor((columns - clip.cols) / 2))}>
+        {rowsOf(clip, frameNo).map((runs, y) => (
+          <Text key={`s${y}`} wrap="truncate">
+            {runs.map((r, x) => (
+              <Text key={`c${x}`} color={r.top} backgroundColor={r.bottom}>
+                {'▀'.repeat(r.n)}
+              </Text>
+            ))}
+          </Text>
+        ))}
+        <Text dimColor wrap="truncate">{captionOf(clip.name, { band: allRows.length > 0, hint })}</Text>
+      </Box>
+    ) : (
+      <Text key="screensaver" dimColor wrap="truncate">
+        {captionOf(`${sceneName(want.scene)} (rendering…)`, { band: allRows.length > 0, hint })}
+      </Text>
+    );
+    const rows = clip && want?.at.compact ? allRows.filter((r) => r.kind === 'header') : allRows;
     if (!rows.length) return saverRegion ?? next(e);
 
     // build-view-upgrade D2/D3 — the resolver's own glyphs and words, coloured; nothing computed here.
@@ -551,8 +690,7 @@ export const register: Register = (on) => {
       </Box>
     );
 
-    // screensaver D3 — under the band: the build rows stay, the picture plays below them. A terminal too short or narrow
-    // for any piece gets the band alone.
+    // screensaver D3 — under the band (or its header): a terminal too small for a scene gets the band alone.
     if (!saverRegion) return band;
     return (
       <Box flexDirection="column">

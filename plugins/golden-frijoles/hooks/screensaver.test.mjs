@@ -4,8 +4,7 @@ import assert from 'node:assert/strict';
 import { STATE_SYMBOLS } from './vendor/build-state.mjs';
 import { bandRowsFrom } from './build-view.mjs';
 import {
-  CAPTION_ROWS, IDLE_MINUTES, IN_FLIGHT_FACTOR, MIN_CROP, SLACK_ROWS,
-  bandHeight, createSaver, fitPieces, isIdleView, parseArgs, statusText, viewMode,
+  IDLE_MINUTES, IN_FLIGHT_FACTOR, bandHeight, createSaver, isIdleView, parseArgs, statusText, viewMode,
 } from './screensaver.mjs';
 
 const MIN = 60_000;
@@ -140,42 +139,6 @@ test('saved settings with junk in them are ignored field by field', () => {
   assert.deepEqual([saver.state.enabled, saver.state.minutes], [true, IDLE_MINUTES]);
 });
 
-const CATALOG = [
-  { id: 'tall', meta: { rows: 25, cols: 60 } },
-  { id: 'cat', meta: { rows: 15, cols: 56 } },
-  { id: 'wide', meta: { rows: 14, cols: 90 } },
-  { id: 'fire', meta: { rows: 18, cols: 60 }, anchor: 'bottom' },
-];
-const ids = (fits) => fits.map((f) => f.id);
-
-test('fitPieces D3: whole when it fits, cropped to at most a quarter from its anchored side, never too wide, never scaled', () => {
-  // A 30-row band holding 6 rows of view: room = 30 - 6 - CAPTION_ROWS - SLACK_ROWS = 22.
-  assert.equal(30 - 6 - CAPTION_ROWS - SLACK_ROWS, 22);
-  const fits = fitPieces(CATALOG, { maxRows: 30, bandRows: 6, columns: 100 });
-  assert.deepEqual(ids(fits), ['tall', 'cat', 'wide', 'fire'], 'tall (25) crops to 22, within a quarter');
-  assert.deepEqual(fits[0], { id: 'tall', rows: 22, anchor: 'middle' });
-  assert.deepEqual(fits[3], { id: 'fire', rows: 18, anchor: 'bottom' }, 'whole: its own rows');
-  assert.deepEqual(ids(fitPieces(CATALOG, { maxRows: 30, bandRows: 6, columns: 80 })), ['tall', 'cat', 'fire'], 'wide: never cut at the sides');
-  // room 14: the 18-row fire crops to 14 (≥ 75% of 18 = 13.5 → 14); the 25-row piece would lose too much.
-  assert.deepEqual(fitPieces(CATALOG, { maxRows: 22, bandRows: 6, columns: 100 }), [
-    { id: 'cat', rows: 14, anchor: 'middle' },
-    { id: 'wide', rows: 14, anchor: 'middle' },
-    { id: 'fire', rows: 14, anchor: 'bottom' },
-  ]);
-  assert.equal(Math.ceil(18 * MIN_CROP), 14);
-});
-
-test('fitPieces: boundaries — a short or narrow terminal gets none', () => {
-  const one = [{ id: 'p', meta: { rows: 16, cols: 64 } }];
-  const fit = (m, b, c = 80) => fitPieces(one, { maxRows: m, bandRows: b, columns: c }).length;
-  assert.equal(fit(12 + CAPTION_ROWS + SLACK_ROWS + 1, 1), 1, '12 rows of 16 is exactly three quarters');
-  assert.equal(fit(12 + CAPTION_ROWS + SLACK_ROWS, 1), 0, 'one row short');
-  assert.equal(fit(40, 1, 39), 0, 'under 40 columns: none');
-  assert.equal(fit(5, 30), 0, 'a band taller than the room: none, never a negative crop');
-  assert.equal(fitPieces(one, { maxRows: undefined, bandRows: 1, columns: undefined }).length, 1, 'an older engine: the fallbacks');
-  assert.equal(fitPieces([], { maxRows: 40, bandRows: 1, columns: 80 }).length, 0);
-});
-
 test('bandHeight: the band\'s rows as the terminal wraps them — the Why takes as many rows as it wraps to', () => {
   const view = [
     'r ▶ Epic: X · L · ▲ risk HIGH',
@@ -200,31 +163,4 @@ test('parseArgs and statusText', () => {
   assert.match(statusText({ ...base, mode: 'flight' }), /after 9 min away \(an epic is in flight; 3 min when nothing is\)/);
   assert.match(statusText({ ...base, active: true }), /playing now/);
   assert.match(statusText(base), /after 3 min away/);
-});
-
-// The real catalog is TypeScript: CI's Node 20 cannot import it, a Node that strips types can (22.18+, 24). Where it
-// can, every piece is checked against the contract fitPieces relies on — each frame exactly `rows` lines of `cols`.
-test('the real catalog: every frame is its declared size, and a crop keeps its anchored side', async (t) => {
-  let pieces;
-  try {
-    ({ pieces } = await import('./ascii/index.ts'));
-  } catch {
-    return t.skip('this Node cannot import TypeScript');
-  }
-  const { cropLines } = await import('./screensaver-view-core.mjs');
-  assert.equal(pieces.length, 10);
-  for (const p of pieces) {
-    const frame = p.make();
-    for (const at of [0, 1.7, 33]) {
-      const lines = frame(at, { paper: false }).split('\n');
-      assert.equal(lines.length, p.meta.rows, `${p.id} rows at ${at}`);
-      for (const l of lines) assert.ok([...l].length <= p.meta.cols, `${p.id} cols at ${at}`);
-    }
-    assert.ok(p.meta.cols <= 80, `${p.id} fits an 80-column terminal`);
-  }
-  const lines = ['a', 'b', 'c', 'd'];
-  assert.deepEqual(cropLines(lines, 2, 'bottom'), ['c', 'd']);
-  assert.deepEqual(cropLines(lines, 2, 'top'), ['a', 'b']);
-  assert.deepEqual(cropLines(lines, 2, 'middle'), ['b', 'c']);
-  assert.deepEqual(cropLines(lines, 9), lines);
 });

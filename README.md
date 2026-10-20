@@ -91,17 +91,18 @@ never on a turn's path. When the installed plugin is older than the marketplace 
 
 ### Screensavers
 
-Step away and the band plays an [ascii.rest](https://ascii.rest) animation under it — doom fire, a bonsai, a cat,
-Newton's cradle and six more — and the first key you press ends it. One line installs it, in any folder, Golden
-Frijoles repo or not:
+Step away and the band plays one of [ascii.rest](https://ascii.rest)'s 34 colour scenes under it — alpine dawn,
+tokyo rain, lake pichola, saturn rise… — and the first key you press brings the band back. One line installs it, in
+any folder, Golden Frijoles repo or not:
 
 ```
 claude plugin marketplace add golden-frijoles/skills && claude plugin install golden-frijoles@golden-frijoles
 ```
 
-Then `/screensaver now` to see one. It starts after 3 minutes away (9 while an epic is in flight), never during a
-turn; `/screensaver off`, `on`, `stop` or `<minutes>` changes that. Each piece is drawn at its own size — never
-scaled; a short terminal gets a piece cropped by at most a quarter of its height, or none. In a repo with no
+Then `/screensaver now` to see one, epic in flight or not. It starts by itself after 3 minutes away (9 while an epic
+is in flight), never during a turn, and sleeps after 20 minutes; `/screensaver off`, `on`, `stop` or `<minutes>`
+changes that. A scene keeps its 2:1 picture at any terminal size — rendered once by your own Node, scaled down by
+averaging, two pixels to a cell — and where the band leaves no room it folds to its header while the scene plays. In a repo with no
 `Roadmap/` the band then says `→ Next /golden-frijoles:setup`: that lights it up with your epic, its why, its
 progress and its spend.
 
