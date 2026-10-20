@@ -49,13 +49,16 @@ While an agent builds, the CLI shows what is being built, how far it has got, wh
 costs and what else is going on, each fact once:
 
 ```
-golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done
-  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped
-  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth
+golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH
   ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet
              over its whole life. We'll know when members open funnel trends.
   ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84
-  ▸ Now      S1.3 The trend on the flag page and the epic page
+  ──────────────────────────────────────────────────────────────────────────────────────────────────
+  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped
+  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth
+  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic
+  » Sprint   1 of 2 · ▰▰▱  2 of 3 stories done
+  ▸ Now      Sprint 1, Story 3: The trend on the flag page and the epic page
              As a founder reading a feature, I want the trend where I read its funnel, so that I
              judge the bet over its whole life.
   $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session
@@ -85,6 +88,22 @@ never on a turn's path. When the installed plugin is older than the marketplace 
   The plugin still validates, the mod disappears, and the contract, the checks and the resolver are
   untouched. (Emptying `modules` does *not* work: `hooks.json` must declare `hooks` or `modules`.)
 - `claude plugin validate plugins/golden-frijoles` checks the registration offline, and runs in CI.
+
+### Screensavers
+
+Step away and the band plays an [ascii.rest](https://ascii.rest) animation under it — doom fire, a bonsai, a cat,
+Newton's cradle and six more — and the first key you press ends it. One line installs it, in any folder, Golden
+Frijoles repo or not:
+
+```
+claude plugin marketplace add golden-frijoles/skills && claude plugin install golden-frijoles@golden-frijoles
+```
+
+Then `/screensaver now` to see one. It starts after 3 minutes away (9 while an epic is in flight), never during a
+turn; `/screensaver off`, `on`, `stop` or `<minutes>` changes that. Each piece is drawn at its own size — never
+scaled; a short terminal gets a piece cropped by at most a quarter of its height, or none. In a repo with no
+`Roadmap/` the band then says `→ Next /golden-frijoles:setup`: that lights it up with your epic, its why, its
+progress and its spend.
 
 ## Consume the marketplace
 
