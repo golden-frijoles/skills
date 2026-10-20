@@ -605,6 +605,9 @@ export function resolveBuildState(opts = {}) {
   } catch {
     state.repo = null;
   }
+  // screensaver S1 — a repo with no Roadmap/ at all has nothing for this view to say yet: the view then names the one
+  // step that gives it something (the setup skill reads the repo into a roadmap). Only read, never written.
+  if (!state.in_flight && opts.root && !existsSync(join(opts.root, 'Roadmap'))) state.no_roadmap = true;
   if (opts.elsewhere === false) return state;
   try {
     state.elsewhere = elsewhere_({ root: opts.root, git: opts.git || makeGit(opts.root), state });
@@ -794,7 +797,17 @@ function resolve_({ root, offline = false, git = makeGit(root), facts = null, gh
   // live-build-view S2.2 (D9): how many of this EPIC's stories have a commit — distinct ids the epic lists, from every id
   // a subject names (continuations too, so a pre-S2.1 `S1.1/1.2` bundle counts both). Not sprint-filtered: a stacked
   // `-s2` branch carries sprint 1's commits, and those are done stories.
-  const withCommits = new Set(subjects.flatMap(storyIdsInWithContinuations).filter((id) => byId.has(id)));
+  // Merged sprints count too (fix/build-view-merged-stories): each sprint's PR merges to main, so by sprint 4 its
+  // branch's base..HEAD holds only sprint 4 — and "1 of 18 done" was the count. A commit already on the base counts
+  // when its subject names THIS epic's slug (every epic has an S1.1, so a bare id on main says nothing).
+  const merged = mergeBase
+    ? (tryGit(git, ['log', '--format=%s', '--fixed-strings', `--grep=${epic.slug}`, mergeBase]) || '')
+        .split('\n')
+        .filter((s) => s && namesSlug(s, epic.slug))
+    : [];
+  const withCommits = new Set(
+    [...subjects, ...merged].flatMap(storyIdsInWithContinuations).filter((id) => byId.has(id))
+  );
   const foreign = [...new Set(subjects.flatMap(storyIdsIn).filter((id) => !accepts(id)))];
   let story = null;
   let storySource = 'unknown';
@@ -1058,6 +1071,9 @@ export function sprintBars(bySprint) {
 export const GLYPHS = Object.freeze({
   Why: '❝',
   Target: '⌖',
+  Status: '◆',
+  Stories: '∑',
+  Sprint: '»',
   Now: '▸',
   Spend: '$',
   Around: '⋯',
@@ -1153,25 +1169,43 @@ export function disagreement(state) {
 }
 
 /**
- * `<repo> <symbol> <lead> · <title> · <size> · ▲ risk <LEVEL>`, the right part pushed to column 100 (D2). When the whole
- * title and the right part cannot share 100 columns, the right part takes its own line under the header — the band's
- * narrow layout. Returns one line or two.
+ * `<repo> <symbol> <kind>: <title> · <size> · ▲ risk <LEVEL>` (mod-layout-v2: the kind of work — Epic, Idea, Bug, Chore
+ * — then what it is), the right part pushed to column 100 (D2). When the whole title and the right part cannot share
+ * 100 columns, the right part takes its own line under the header — the band's narrow layout. Returns one line or two.
  */
 function headerLines({ repo, symbol, lead, title, size, risk, right }) {
   const risky = risk ? `${GLYPHS.risk} risk ${String(risk).toUpperCase()}` : null;
   // The title is never cut here: the band clips it to the terminal's real width, and a title cut to fit 100 columns
   // could not be restored on a wider band (seen on a 170-column band, fixed 2026-10-17).
-  const full = [`${repo} ${symbol} ${lead}`, title || null, size, risky].filter(Boolean).join(' · ');
+  const full = [`${repo} ${symbol} ${lead}${title ? `: ${title}` : ''}`, size, risky].filter(Boolean).join(' · ');
   if (!right) return [full];
   if (cols(full) + 4 + cols(right) <= WIDTH) return [`${full}${' '.repeat(WIDTH - cols(full) - cols(right))}${right}`];
   return [full, `  ${right}`];
 }
 
-/** `▰▰▱│▱▱▱  2 of 8 stories done` — the header's right part for an epic. */
-function storiesRight(progress) {
+/** The separator between what the work is for (Why, Target) and where it stands (mod-layout-v2). */
+export const RULE = `  ${'─'.repeat(WIDTH - 2)}`;
+
+/** `∑ Stories  ▰▰▱│▱▱▱  2 of 8 done in the epic` — every sprint's cells, then the epic's count. */
+function storiesLine(progress) {
   const bars = sprintBars(progress.by_sprint);
-  const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} stories done`;
-  return bars ? `${bars}  ${done}` : done;
+  const done = `${progress.stories_with_commits ?? 0} of ${progress.stories} done in the epic`;
+  return field('Stories', bars ? `${bars}  ${done}` : done);
+}
+
+/** `» Sprint   3 of 5 · ▰▱▱▱  1 of 4 stories done` — the sprint this view is in, and how far it has got. */
+function sprintLine(progress) {
+  const n = progress.header_sprint ?? progress.sprint;
+  const sp = n ? progress.by_sprint?.[n - 1] : null;
+  const where = `${n ?? '?'} of ${progress.sprints}`;
+  if (!sp || !sp.total) return field('Sprint', where);
+  return field('Sprint', `${where} · ${sprintBars([sp])}  ${sp.done} of ${sp.total} stories done`);
+}
+
+/** `S3.2` → `Sprint 3, Story 2` — the id said in words (mod-layout-v2). Anything else is returned as it is. */
+export function storyWords(id) {
+  const m = /^S(\d+)\.(\d+)$/.exec(String(id || ''));
+  return m ? `Sprint ${m[1]}, Story ${m[2]}` : String(id || '');
 }
 
 /** ❝ Why, then ⌖ Target (D5). A seed being refined has a Why and no Target yet. */
@@ -1223,7 +1257,7 @@ function nowLines(state, now) {
   if (story) {
     const said = story.as_a && story.i_want && story.so_that;
     return [
-      field('Now', `${story.id}${story.title ? ` ${story.title}` : ''}`),
+      field('Now', `${storyWords(story.id)}${story.title ? `: ${story.title}` : ''}`),
       ...wrapWords(
         said
           ? `As ${story.as_a}, I want ${story.i_want}, so that ${story.so_that}.`
@@ -1261,6 +1295,9 @@ function aroundLines(state) {
   return lines;
 }
 
+/** What a repo with no Roadmap/ runs to get a view: the plugin's own setup skill (screensaver S1). */
+export const SETUP_COMMAND = '/golden-frijoles:setup';
+
 /** The view as the CLI and the band show it — a pure function of resolveBuildState's output (D1). */
 export function renderLines(state, now = new Date()) {
   const repo = state.repo || 'this repo';
@@ -1270,12 +1307,13 @@ export function renderLines(state, now = new Date()) {
     return [
       `${repo} ${STATE_SYMBOLS.none} No epic on this branch${where ? ` · ${where}` : ''}`,
       ...link(state.board?.url),
-      ...(state.quiet || state.where ? [] : [field('Now', state.reason)]),
+      ...(state.quiet || state.where || state.no_roadmap ? [] : [field('Now', state.reason)]),
       ...aroundLines(state),
+      ...(state.no_roadmap ? [field('Next', `${SETUP_COMMAND}   (lights this band up: your epic, its why, progress and spend)`)] : []),
     ];
   }
   const { stage, locking } = stageOf(state);
-  const track = stage ? `  ${stageTrack(stage, locking)}` : '  stage unknown: the board could not be read';
+  const track = field('Status', stage ? stageTrack(stage, locking) : 'unknown: the board could not be read');
   const flag = disagreement(state);
   const flagged = flag ? [`  ${GLYPHS.flag} ${flag}`] : [];
   const symbol = STATE_SYMBOLS[stage] ?? STATE_SYMBOLS.unknown;
@@ -1302,34 +1340,31 @@ export function renderLines(state, now = new Date()) {
         risk: seed.risk,
         right: seed.quote ? `quote $${seed.quote.low}–${seed.quote.high}` : null,
       }),
-      track,
-      ...flagged,
-      ...link(seed.path),
       // A seed shows a Target only when it says something (a bug or a chore has none to read).
       ...whyTargetLines(state.target, now, {
         withTarget: !refining && !!(state.target?.metric || state.target?.grounded_reason),
         always: false,
       }),
+      RULE,
+      track,
+      ...flagged,
+      ...link(seed.path),
       field('Now', now_),
       ...aroundLines(state),
     ];
   }
   const { epic, progress } = state;
-  const n = progress.header_sprint ?? progress.sprint;
+  // mod-layout-v2 (the product owner, 2026-10-19): what it is and why first, a rule, then where it stands — the stage, the link,
+  // the epic's stories, the sprint's, what is happening now, the spend, and everything else.
   return [
-    ...headerLines({
-      repo,
-      symbol,
-      lead: `Sprint ${n ?? '?'} of ${progress.sprints}`,
-      title: epic.title,
-      size: state.size,
-      risk: epic.risk,
-      right: storiesRight(progress),
-    }),
+    ...headerLines({ repo, symbol, lead: 'Epic', title: epic.title, size: state.size, risk: epic.risk }),
+    ...whyTargetLines(state.target, now),
+    RULE,
     track,
     ...flagged,
     ...link(state.board?.url ?? epic.path),
-    ...whyTargetLines(state.target, now),
+    storiesLine(progress),
+    sprintLine(progress),
     ...nowLines(state, now),
     ...(state.spend ? [field('Spend', spendValue(state.spend, state.quote ?? null))] : []),
     ...aroundLines(state),

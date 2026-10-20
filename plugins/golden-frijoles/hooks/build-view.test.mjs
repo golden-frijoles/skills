@@ -123,15 +123,19 @@ test('the bundle exists and is the real resolver: it emits `lines` for this repo
 const { bandRowsFrom, barsOf, trackOf, toneOf, headerOf, headerLayout } = view;
 
 // The design's building and idle states as the resolver prints them (build-state.test.mjs pins the same lines).
+const RULE = '  ──────────────────────────────────────────────────────────────────────────────────────────────────';
 const BUILDING = [
-  'golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done',
-  '  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped',
-  '  ⚑ the epic\'s docs say Shaping, but this branch has story commits',
-  '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth',
+  'golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH',
   '  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet',
   "             over its whole life. We'll know when members open funnel trends.",
   '  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84',
-  '  ▸ Now      S1.3 The trend on the flag page and the epic page',
+  RULE,
+  '  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped',
+  '  ⚑ the epic\'s docs say Shaping, but this branch has story commits',
+  '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth',
+  '  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic',
+  '  » Sprint   1 of 2 · ▰▰▱  2 of 3 stories done',
+  '  ▸ Now      Sprint 1, Story 3: The trend on the flag page and the epic page',
   '             As a founder reading a feature, I want the trend where I read its funnel, so that I',
   '             judge the bet over its whole life.',
   '  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session',
@@ -157,23 +161,25 @@ const drawn = (row) =>
 
 test('bandRowsFrom: every word of the resolver\'s lines is drawn, in order — the band adds and drops nothing (D3)', () => {
   for (const lines of [BUILDING, IDLE]) {
-    const rows = bandRowsFrom(lines.join('\n'));
-    assert.deepEqual(rows.flatMap((r) => words(drawn(r))), words(lines.join(' ')));
+    const rows = bandRowsFrom(lines.join('\n')).filter((r) => r.kind !== 'rule');
+    // The header's `Epic:` colon is punctuation the band draws itself.
+    const text = lines.filter((l) => l !== RULE).join(' ').replace(/^(\S+ \S \w+):/, '$1');
+    assert.deepEqual(rows.flatMap((r) => words(drawn(r))), words(text));
   }
   const rows = bandRowsFrom(BUILDING.join('\n'));
   assert.deepEqual(
     rows.map((r) => r.kind + (r.label ? `:${r.label}` : '')),
-    ['header', 'track', 'flag', 'link', 'field:Why', 'field:Target', 'field:Now', 'story', 'field:Spend', 'field:Around']
+    ['header', 'field:Why', 'field:Target', 'rule', 'field:Status', 'flag', 'link', 'field:Stories', 'field:Sprint', 'field:Now', 'story', 'field:Spend', 'field:Around']
   );
   // A continuation joins its field (so the band wraps it at its own width); the Now field's user story is its own row.
-  assert.equal(rows[4].value, "A funnel today is one number per period. Showing it by month lets founders judge a bet over its whole life. We'll know when members open funnel trends.");
-  assert.equal(rows[7].value, 'As a founder reading a feature, I want the trend where I read its funnel, so that I judge the bet over its whole life.');
+  assert.equal(rows[1].value, "A funnel today is one number per period. Showing it by month lets founders judge a bet over its whole life. We'll know when members open funnel trends.");
+  assert.equal(rows[10].value, 'As a founder reading a feature, I want the trend where I read its funnel, so that I judge the bet over its whole life.');
   assert.deepEqual(
     { ...rows[0], value: undefined },
-    { kind: 'header', repo: 'golden-frijoles', symbol: '▶', lead: 'Sprint 1 of 2', title: 'Funnel truth', size: 'L', risk: 'HIGH', right: '▰▰▱│▱▱▱▱▱  2 of 8 stories done', tone: 'busy', value: undefined }
+    { kind: 'header', repo: 'golden-frijoles', symbol: '▶', lead: 'Epic', title: 'Funnel truth', size: 'L', risk: 'HIGH', right: null, tone: 'busy', value: undefined }
   );
-  assert.equal(rows[1].tone, 'busy');
-  assert.equal(rows[8].tone, 'good');
+  assert.equal(rows[4].tone, 'busy', 'the Status field takes its marked word\'s tone');
+  assert.equal(rows[11].tone, 'good');
   for (const none of [null, undefined, '', '  \n']) assert.deepEqual(bandRowsFrom(none), []);
 });
 
@@ -186,22 +192,33 @@ test('bandRowsFrom: a bar the resolver put on its own line joins the header; the
   assert.deepEqual([idle[0].symbol, idle[0].lead, idle[0].title, idle[0].tone], ['○', 'No epic on this branch · docs/seed-consolidation', null, 'plain']);
   assert.equal(headerOf('golden-frijoles ❧ Idea · Owed on screen · M · ▲ risk HIGH      quote $15–34').right, 'quote $15–34');
   assert.equal(headerOf('repo ✓ Sprint 2 of 2 · A · B, with a dot · S').title, 'A · B, with a dot', 'a title may hold the separator');
+  // mod-layout-v2 — `<kind>: <title>`; the title keeps its own colons and dots.
+  const v2 = headerOf('golden-frijoles ▶ Epic: Launch: the first A/B · with a dot · L · ▲ risk HIGH');
+  assert.deepEqual([v2.lead, v2.title, v2.size, v2.risk], ['Epic', 'Launch: the first A/B · with a dot', 'L', 'HIGH']);
+  assert.deepEqual([headerOf('r ❧ Idea: Owed on screen · M').lead, headerOf('r ❧ Idea: Owed on screen · M').size], ['Idea', 'M']);
 });
 
 test('headerLayout: one row when it fits, the bar on its own row under 90 columns, only the title is ever clipped (D3)', () => {
-  const h = headerOf(BUILDING[0]);
+  // A seed's header still carries a right part (its quote), so the rule is pinned on the old shape too.
+  const h = headerOf('golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH            ▰▰▱│▱▱▱▱▱  2 of 8 stories done');
   assert.deepEqual(headerLayout(h, 120), { title: 'Funnel truth', rightRow: false });
   assert.deepEqual(headerLayout(h, 100), { title: 'Funnel truth', rightRow: false }, 'the design fits 100 columns');
   assert.deepEqual(headerLayout(h, 89), { title: 'Funnel truth', rightRow: true });
   const long = { ...h, title: 'The outcome report for any product, with its pace, its spend and its links' };
   assert.equal(headerLayout(long, 120).rightRow, true, 'the bar moves before the title is cut');
   const tight = headerLayout(long, 60);
-  assert.equal([...tight.title].length, 58 - [...'golden-frijoles ▶ Sprint 1 of 2 ·  · L · ▲ risk HIGH'].length);
+  assert.equal([...tight.title].length, 58 - [...'golden-frijoles ▶ Epic:  · L · ▲ risk HIGH'].length);
   assert.ok(tight.title.endsWith('…'));
 });
 
 test('barsOf / trackOf / toneOf / spendOf: colour hints read from the resolver\'s own glyphs and words', () => {
+  assert.deepEqual(barsOf('4 of 5 · ▰▱  1 of 2 stories done'), {
+    lead: '4 of 5 · ',
+    runs: [{ kind: 'done', text: '▰' }, { kind: 'todo', text: '▱' }],
+    rest: '1 of 2 stories done',
+  });
   assert.deepEqual(barsOf('▰▰▱│▱  2 of 4 stories done'), {
+    lead: '',
     runs: [
       { kind: 'done', text: '▰▰' },
       { kind: 'todo', text: '▱' },
@@ -220,7 +237,7 @@ test('barsOf / trackOf / toneOf / spendOf: colour hints read from the resolver\'
   assert.equal(trackOf('Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped').after, '');
   assert.equal(trackOf('Building'), null);
   // The track always names Shipped: the tone comes from the MARKED word, never from the whole line.
-  const tone = (track) => bandRowsFrom(`r ▶ Sprint 1 of 1 · X\n  ${track}`)[1].tone;
+  const tone = (track) => bandRowsFrom(`r ▶ Epic: X\n  ◆ Status   ${track}`)[1].tone;
   assert.equal(tone('Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), 'busy');
   assert.equal(tone('Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped'), 'info');
   assert.equal(tone('Refining ─ Ready ─ ◉ Locking ─ QA ─ Shipped'), 'busy');
@@ -669,4 +686,26 @@ test('D11: every glyph in the band, the session line and the bundled resolver is
   for (const text of drawn) for (const ch of text) if (ch.codePointAt(0) > 127 && tooWide(ch)) offenders.add(ch);
   assert.deepEqual([...offenders], [], `wide or emoji glyphs: ${[...offenders].join(' ')}`);
   assert.equal(new Set(Object.values(GLYPHS)).size, Object.values(GLYPHS).length, 'one glyph per meaning');
+});
+
+// fix/build-view-flip (2026-10-19) — the band flipped between the old layout ("Currently building …") and the new one
+// every 30 s: a session still running an older copy of the plugin, in the same checkout, wrote its layout into the
+// shared `$.store` slot under the same key, and this session served it back until the key moved.
+test('fix/build-view-flip: an entry another copy of the resolver wrote is never served — same root, same key', async () => {
+  const store = new Map();
+  const old = fakeIo({ store, resolveStdout: JSON.stringify({ lines: ['Currently building'] }) });
+  const mine = fakeIo({ store, resolveStdout: JSON.stringify({ lines: ['golden-frijoles ▶ Epic: X'] }) });
+  const oldView = view.createViewer(old, { buildState: '/cache/golden-frijoles/1.10.3/hooks/vendor/build-state.mjs' });
+  const myView = view.createViewer(mine, { buildState: '/cache/golden-frijoles/1.14.0/hooks/vendor/build-state.mjs' });
+  assert.equal(await oldView.check('tick'), 'resolved');
+  assert.equal(await myView.check('tick'), 'resolved', "the old copy's entry is not this view, though the key matches");
+  assert.deepEqual(mine.shown, ['golden-frijoles ▶ Epic: X']);
+  assert.equal(await myView.check('tick'), 'cached', 'its own entry holds as before');
+  assert.equal(store.get('/repo').by, '/cache/golden-frijoles/1.14.0/hooks/vendor/build-state.mjs');
+  // An entry from before the stamp existed carries no `by`: it is re-resolved once, then held.
+  store.set('/repo', { ...store.get('/repo'), by: undefined, text: 'Currently building' });
+  assert.equal(await myView.check('tick'), 'resolved');
+  assert.ok(!mine.shown.includes('Currently building'));
+  assert.equal(view.shouldRefresh({ key: 'k', at: 1, text: 't', by: 'a' }, 'k', 2, 'b'), true);
+  assert.equal(view.shouldRefresh({ key: 'k', at: 1, text: 't', by: 'a' }, 'k', 2, 'a'), false);
 });

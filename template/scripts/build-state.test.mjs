@@ -20,12 +20,14 @@ import {
   storyIdsIn,
   storyIdsInWithContinuations,
   namesSlug,
+  RULE,
+  storyWords,
 } from './build-state.mjs';
 import { PHASES } from './lib/roadmap-contract.mjs';
 
 const LOCKED = '2026-10-01T00:00:00Z';
-/** The track line, unlabelled under the header (build-view-one-story D1): its text without the indent. */
-const statusOf = (lines) => (lines.find((l) => /^ {2}\S/.test(l) && l.includes(' ─ ')) ?? '').slice(2);
+/** The track line, the ◆ Status field (mod-layout-v2): its value, without the indent and label. */
+const statusOf = (lines) => (lines.find((l) => l.startsWith('  ◆ Status   ')) ?? '').slice(13);
 // `lockedAt: null` leaves the stamp out — an epic whose architecture lock has not been run (live-build-view D11).
 const EPIC_README = (phase = 'Building', lockedAt = LOCKED) => `---
 status: in-progress
@@ -177,11 +179,11 @@ test('a clean feature branch mid-sprint: epic, story + user story, progress, sta
     f.commit('S2.2 — a second commit on the same story');
     const p = resolveBuildState({ root: f.root, offline: true, gh: noGh });
     assert.equal(p.progress.stories_with_commits, 3, 'S1.1 + S2.1 + S2.2; S1.2 is not a story of this epic');
-    // build-view-one-story D2 — the header says what and how far; the bar sits at column 100.
-    // (The fixture's repo is a long temp-dir name, so the bar takes its own line rather than cutting the title.)
-    const [head, bar] = renderLines(p);
-    assert.match(head, /^build-state-\S+ \S Sprint 2 of 2 · Arranged-only delivery · ▲ risk HIGH$/);
-    assert.equal(bar, '  ▰│▰▰  3 of 3 stories done');
+    // mod-layout-v2 — the header says what it is; the epic's bar and the sprint's sit under the rule.
+    const lines = renderLines(p);
+    assert.match(lines[0], /^build-state-\S+ \S Epic: Arranged-only delivery · ▲ risk HIGH$/);
+    assert.ok(lines.includes('  ∑ Stories  ▰│▰▰  3 of 3 done in the epic'), lines.join('\n'));
+    assert.ok(lines.includes('  » Sprint   2 of 2 · ▰▰  2 of 2 stories done'), lines.join('\n'));
     // D6 — the tree is clean and HEAD is S2.2's commit, so the work is between stories, and none is left.
     assert.equal(p.between, true);
     assert.equal(
@@ -200,6 +202,27 @@ test('S2.2: a pre-S2.1 bundle naming two stories in one subject counts both', ()
     f.commit('S2.1/2.2 — both stories in one commit');
     const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(s.progress.stories_with_commits, 2);
+  } finally {
+    f.done();
+  }
+});
+
+test('fix/build-view-merged-stories: a merged sprint still counts — "1 of 18" on sprint 4 was the bug', () => {
+  const f = fixture();
+  try {
+    f.git('switch', '-qc', 'feat/arranged-only-s1');
+    f.commit('feat(arranged-only): S1.1 the contract');
+    f.git('switch', '-q', 'main');
+    f.git('merge', '-q', '--no-ff', '-m', 'Merge pull request #1 from x/feat/arranged-only-s1', 'feat/arranged-only-s1');
+    // Another epic's S2.2 on main names no slug of this one: it says nothing about this epic.
+    f.commit('feat(other-epic): S2.2 something else');
+    f.git('switch', '-qc', 'feat/arranged-only-s2');
+    f.commit('feat(arranged-only): S2.1 agent surface parity');
+    const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
+    assert.equal(s.progress.stories_with_commits, 2, "S1.1 (merged) + S2.1 (this branch); not the other epic's S2.2");
+    assert.deepEqual(s.progress.by_sprint.map((sp) => sp.done), [1, 1]);
+    assert.equal(s.evidence.story_commits, 1, "the branch's own evidence is unchanged: merged work is not this branch's");
+    assert.equal(s.next_story.id, 'S2.2');
   } finally {
     f.done();
   }
@@ -244,9 +267,10 @@ test('commits with no story convention and no journal → story unknown, never a
     const lines = renderLines(s);
     assert.ok(lines.includes('  ⌖ Target   none set'), 'no target and no reason: "none set", nothing invented');
     assert.ok(lines.includes('  ▸ Now      no story started yet · S1.1 next'), 'never "session journal"');
-    // D2 — no story and no -sN: the header's sprint is the first with a story left, never "?".
-    assert.match(lines[0], /^\S+ \S Sprint 1 of 2 · Arranged-only delivery · ▲ risk HIGH$/);
-    assert.equal(lines[1], '  ▱│▱▱  0 of 3 stories done');
+    // D2 — no story and no -sN: the sprint shown is the first with a story left, never "?".
+    assert.match(lines[0], /^\S+ \S Epic: Arranged-only delivery · ▲ risk HIGH$/);
+    assert.ok(lines.includes('  ∑ Stories  ▱│▱▱  0 of 3 done in the epic'), lines.join('\n'));
+    assert.ok(lines.includes('  » Sprint   1 of 2 · ▱  0 of 1 stories done'), lines.join('\n'));
     assert.ok(!lines.join('\n').includes('journal'));
   } finally {
     f.done();
@@ -432,24 +456,28 @@ const disagreeing = {
 
 const GOLDEN = {
   building: [
-    "golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done",
-    "  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
-    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH",
     "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
     "             over its whole life. We'll know when members open funnel trends.",
     "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
-    "  ▸ Now      S1.3 The trend on the flag page and the epic page",
+    "  ──────────────────────────────────────────────────────────────────────────────────────────────────",
+    "  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic",
+    "  » Sprint   1 of 2 · ▰▰▱  2 of 3 stories done",
+    "  ▸ Now      Sprint 1, Story 3: The trend on the flag page and the epic page",
     "             As a founder reading a feature, I want the trend where I read its funnel, so that I",
     "             judge the bet over its whole life.",
     "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
     "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
   ],
   refining: [
-    "golden-frijoles ❧ Idea · Owed on screen · M · ▲ risk HIGH                               quote $15–34",
-    "  ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped",
-    "  ↗ Roadmap/00-ideas/seeds/owed-on-screen.md",
+    "golden-frijoles ❧ Idea: Owed on screen · M · ▲ risk HIGH                                quote $15–34",
     "  ❝ Why      Owed checks live only in a file nobody opens. Showing them where you already look cuts",
     "             the open count. We'll know when it falls.",
+    "  ──────────────────────────────────────────────────────────────────────────────────────────────────",
+    "  ◆ Status   ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped",
+    "  ↗ Roadmap/00-ideas/seeds/owed-on-screen.md",
     "  ▸ Now      plan ready, waiting for your approval",
     "  ⋯ Around   1 building · 6 ready · next up: A delivery whose settle fails is reclai… (#87)",
   ],
@@ -462,36 +490,45 @@ const GOLDEN = {
     "  → Next     /build delivery-stale-reclaim-uncounted   (top of the ready list)",
   ],
   qa: [
-    "golden-frijoles ◎ Sprint 2 of 2 · Owed on screen · M · ▲ risk HIGH      ▰▰│▰▰▰▰  6 of 6 stories done",
-    "  Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped",
-    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "golden-frijoles ◎ Epic: Owed on screen · M · ▲ risk HIGH",
     "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
     "             over its whole life. We'll know when members open funnel trends.",
     "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
+    "  ──────────────────────────────────────────────────────────────────────────────────────────────────",
+    "  ◆ Status   Refining ─ Ready ─ Building ─ ◉ QA ─ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ∑ Stories  ▰▰│▰▰▰▰  6 of 6 done in the epic",
+    "  » Sprint   2 of 2 · ▰▰▰▰  4 of 4 stories done",
     "  ▸ Now      between stories: S2.4 done, every story has a commit",
     "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
     "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
   ],
   shipped: [
-    "golden-frijoles ✓ Sprint 2 of 2 · One bet, wired · L · ▲ risk HIGH      ▰▰▰│▰▰▰  6 of 6 stories done",
-    "  Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped",
-    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/one-bet-wired",
+    "golden-frijoles ✓ Epic: One bet, wired · L · ▲ risk HIGH",
     "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
     "             over its whole life. We'll know when members open funnel trends.",
     "  ⌖ Target   flags with a funnel: 0 → 2 · read 30 days after shipping · intent match 84",
+    "  ──────────────────────────────────────────────────────────────────────────────────────────────────",
+    "  ◆ Status   Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/one-bet-wired",
+    "  ∑ Stories  ▰▰▰│▰▰▰  6 of 6 done in the epic",
+    "  » Sprint   2 of 2 · ▰▰▰  3 of 3 stories done",
     "  ▸ Now      shipped 10 Oct · verdict due 9 Nov",
     "  $ Spend    ▰▰▰▰▰▰▰▰▱▱  ≈$61 of the $49–79 quote · 4 sessions",
     "  ⋯ Around   1 in QA · 6 ready · next up: Drill impact for agents (#93)",
   ],
   disagreeing: [
-    "golden-frijoles ▶ Sprint 1 of 2 · Funnel truth · L · ▲ risk HIGH      ▰▰▱│▱▱▱▱▱  2 of 8 stories done",
-    "  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
-    "  ⚑ the epic's docs say Shaping, but this branch has story commits",
-    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "golden-frijoles ▶ Epic: Funnel truth · L · ▲ risk HIGH",
     "  ❝ Why      A funnel today is one number per period. Showing it by month lets founders judge a bet",
     "             over its whole life. We'll know when members open funnel trends.",
     "  ⌖ Target   members opening a trend: 0 → 3 · read 13 Nov · intent match 84",
-    "  ▸ Now      S1.3 The trend on the flag page and the epic page",
+    "  ──────────────────────────────────────────────────────────────────────────────────────────────────",
+    "  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped",
+    "  ⚑ the epic's docs say Shaping, but this branch has story commits",
+    "  ↗ https://goldenfrijoles.com/hub/golden-frijoles/epic/funnel-truth",
+    "  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic",
+    "  » Sprint   1 of 2 · ▰▰▱  2 of 3 stories done",
+    "  ▸ Now      Sprint 1, Story 3: The trend on the flag page and the epic page",
     "             As a founder reading a feature, I want the trend where I read its funnel, so that I",
     "             judge the bet over its whole life.",
     "  $ Spend    ▰▰▰▱▱▱▱▱▱▱  ≈$22 of the $49–68 quote · 1 session",
@@ -509,12 +546,20 @@ for (const [name, lines] of Object.entries(GOLDEN))
     assert.equal(lines.filter((l) => l.startsWith('  ⚑')).length, name === 'disagreeing' ? 1 : 0);
   });
 
-test('build-view-one-story D2: a title too long to share the line moves the bar down; the text never cuts a title', () => {
+test('build-view-one-story D2 / mod-layout-v2: the header carries no bar; a long title never cuts the bars', () => {
   const long = { ...building, epic: { ...building.epic, title: 'The outcome report for any product and its pace' } };
   const lines = renderLines(long, NOW);
-  assert.equal(lines[0], 'golden-frijoles ▶ Sprint 1 of 2 · The outcome report for any product and its pace · L · ▲ risk HIGH');
-  assert.equal(lines[1], '  ▰▰▱│▱▱▱▱▱  2 of 8 stories done', 'the bar is never cut');
-  assert.equal(lines[2], '  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped', 'the track is never cut');
+  assert.equal(lines[0], 'golden-frijoles ▶ Epic: The outcome report for any product and its pace · L · ▲ risk HIGH');
+  assert.ok(lines.includes('  ∑ Stories  ▰▰▱│▱▱▱▱▱  2 of 8 done in the epic'), 'the bar is never cut');
+  assert.ok(lines.includes('  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), 'the track is never cut');
+  // The order the product owner approved (2026-10-19): what and why, a rule, then where it stands.
+  const order = ['❝ Why', '⌖ Target', '──', '◆ Status', '↗', '∑ Stories', '» Sprint', '▸ Now', '$ Spend', '⋯ Around'];
+  const at = order.map((m) => lines.findIndex((l) => l.startsWith(`  ${m}`)));
+  assert.deepEqual([...at].sort((x, y) => x - y), at, lines.join('\n'));
+  assert.ok(at.every((i) => i > 0));
+  assert.equal(storyWords('S3.2'), 'Sprint 3, Story 2');
+  assert.equal(storyWords('S12.10'), 'Sprint 12, Story 10');
+  assert.equal(storyWords('weird'), 'weird');
   // Seen on a 170-column band: a title cut to fit 100 columns here cannot be restored by the band, which clips to its
   // real width itself (headerLayout). So the text carries the whole title, however long.
   const title = 'word '.repeat(40).trim();
@@ -574,10 +619,10 @@ test('build-view-one-story D6: between stories only when the tree is clean and H
     const now = () => renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh })).find((l) => l.startsWith('  ▸ Now'));
     assert.equal(now(), '  ▸ Now      between stories: S2.1 done, S2.2 next');
     writeFileSync(join(f.root, 'half-done.txt'), 'work in progress');
-    assert.equal(now(), '  ▸ Now      S2.1 Agent surface parity', 'uncommitted work: the story stays in flight');
+    assert.equal(now(), '  ▸ Now      Sprint 2, Story 1: Agent surface parity', 'uncommitted work: the story stays in flight');
     rmSync(join(f.root, 'half-done.txt'));
     f.commit('chore: tidy');
-    assert.equal(now(), '  ▸ Now      S2.1 Agent surface parity', 'HEAD is not the story\'s commit: no claim it is done');
+    assert.equal(now(), '  ▸ Now      Sprint 2, Story 1: Agent surface parity', 'HEAD is not the story\'s commit: no claim it is done');
     f.commit('S2.2 — seller toggle');
     f.commit('chore(release): 1.2.3');
     assert.equal(
@@ -610,9 +655,9 @@ test('build-view-one-story D7: a shipped epic reads shipped on its close-out bra
     const day = f.git('log', '-1', '--format=%cs');
     assert.equal(s.shipped_on, day, 'the commit that wrote status: shipped');
     const lines = renderLines(s, new Date(`${day}T12:00:00Z`));
-    assert.match(lines[0], /^\S+ ✓ Sprint 2 of 2 · Arranged-only delivery · ▲ risk HIGH/);
-    assert.ok(lines.includes('  ▰│▰▰  3 of 3 stories done'), 'never "1 of 3" on a branch whose stories are on main');
-    assert.ok(lines.includes('  Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped'));
+    assert.match(lines[0], /^\S+ ✓ Epic: Arranged-only delivery · ▲ risk HIGH/);
+    assert.ok(lines.includes('  ∑ Stories  ▰│▰▰  3 of 3 done in the epic'), 'never "1 of 3" on a branch whose stories are on main');
+    assert.ok(lines.includes('  ◆ Status   Refining ─ Ready ─ Building ─ QA ─ ◉ Shipped'));
     const due = new Date(Date.parse(`${day}T00:00:00Z`) + 30 * 86_400_000);
     const short = (d) => `${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]}`;
     const shippedDay = new Date(`${day}T00:00:00Z`);
@@ -842,10 +887,10 @@ test('codex round 2: a sprint whose frontmatter cannot be read says so', () => {
     assert.equal(s.status_source, 'unknown');
     // D4 (d) — the unreadable sprint is a ⚑ line under the track, as written.
     const lines = renderLines(s);
-    const at = lines.indexOf('  stage unknown: the board could not be read');
+    const at = lines.indexOf('  ◆ Status   unknown: the board could not be read');
     assert.ok(at > 0, lines.join('\n'));
     // #396 review — the header never claims a stage the track cannot name.
-    assert.match(lines[0], /^\S+ ◌ Sprint 2 of 2 /);
+    assert.match(lines[0], /^\S+ ◌ Epic: /);
     assert.match(lines[at + 1], /^ {2}⚑ Roadmap\/…\/sprint-2\.md frontmatter could not be read$/, 'right under the track');
     // A commit naming S2.1 does NOT lift it either: with sprint-2 unreadable, no story list says S2.1
     // exists, so the id is unlisted and the honest answer stays unknown.
@@ -962,8 +1007,9 @@ test('a branch naming a seed with no epic is that bug/chore/spike — with its o
     s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.equal(s.status, 'Building', 'a commit on the branch is the evidence');
     assert.deepEqual(renderLines(s), [
-      `${s.repo} ▶ Bug · A bug called checkout-typo · S · ▲ risk LOW`,
-      '  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped',
+      `${s.repo} ▶ Bug: A bug called checkout-typo · S · ▲ risk LOW`,
+      RULE,
+      '  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped',
       '  ↗ Roadmap/00-ideas/seeds/checkout-typo.md',
       '  ▸ Now      1 commit on this branch',
     ]);
@@ -974,7 +1020,7 @@ test('a branch naming a seed with no epic is that bug/chore/spike — with its o
     f.git('switch', '-qc', 'spike/why-slow');
     assert.match(
       renderLines(resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh }))[0],
-      /^\S+ ❧ Spike · A spike called why-slow · S · ▲ risk LOW$/,
+      /^\S+ ❧ Spike: A spike called why-slow · S · ▲ risk LOW$/,
       'a spike seed not started reads at Refining, by its type word'
     );
   } finally {
@@ -999,10 +1045,11 @@ test('build-view-one-story D6: an idea being refined on its own docs/ branch rea
     const s = resolveBuildState({ board: false, root: f.root, offline: true, gh: noGh });
     assert.deepEqual(renderLines(s), [
       // the fixture's repo name is 18 columns, so the quote fits on the header at column 100
-      `${s.repo} ❧ Idea · A feature called night-garden · M · ▲ risk LOW`.padEnd(100 - 'quote $15–34'.length) + 'quote $15–34',
-      '  ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped',
-      '  ↗ Roadmap/00-ideas/seeds/night-garden.md',
+      `${s.repo} ❧ Idea: A feature called night-garden · M · ▲ risk LOW`.padEnd(100 - 'quote $15–34'.length) + 'quote $15–34',
       '  ❝ Why      A garden at night.',
+      RULE,
+      '  ◆ Status   ◉ Refining ─ Ready ─ Building ─ QA ─ Shipped',
+      '  ↗ Roadmap/00-ideas/seeds/night-garden.md',
       '  ▸ Now      plan ready, waiting for your approval',
     ]);
   } finally {
@@ -1020,7 +1067,7 @@ test('build-view-one-story D7: with no facts snapshot yet, this branch\'s story 
     assert.equal(s.stage, 'Ready to build', 'the board alone reads the docs');
     const lines = renderLines(s);
     assert.match(lines[0], /^\S+ ▶ /);
-    assert.ok(lines.includes('  Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), lines.join('\n'));
+    assert.ok(lines.includes('  ◆ Status   Refining ─ Ready ─ ◉ Building ─ QA ─ Shipped'), lines.join('\n'));
   } finally {
     f.done();
   }
@@ -1336,7 +1383,7 @@ test('build-view-one-story D5: Why and Target say what we know — the target, e
         now
       );
       const at = lines.findIndex((l) => /^ {2}[❝⌖] /.test(l));
-      return lines.slice(at, lines.findIndex((l) => l.startsWith('  ▸ Now')));
+      return lines.slice(at, lines.indexOf(RULE));
     };
     // No hypothesis and no Why section: the line still says so, never vanishes.
     assert.deepEqual(why(), ['  ❝ Why      not written yet', '  ⌖ Target   none set']);
@@ -1680,7 +1727,7 @@ test('finops 2.4: on a quoted epic branch the resolver prints the inside state',
       lines.join('\n')
     );
     // D2 — the size comes off `quote_basis` when the README has no `appetite:` (3 of 92 do).
-    assert.match(lines[0], / · Arranged-only delivery · M · ▲ risk HIGH/);
+    assert.match(lines[0], / Epic: Arranged-only delivery · M · ▲ risk HIGH/);
   } finally {
     f.done();
   }

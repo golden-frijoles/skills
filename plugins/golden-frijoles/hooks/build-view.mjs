@@ -32,9 +32,13 @@ export const MAX_AGE_MS = 300_000;
  * `git rev-parse` that failed — is the one case with nothing to key on, and it refreshes every turn by
  * design: there is no way to know that anything is still true.
  */
-export function shouldRefresh(cached, key, now = Date.now()) {
+export function shouldRefresh(cached, key, now = Date.now(), by = null) {
   if (!key) return true;
   if (!cached || cached.key !== key) return true;
+  // fix/build-view-flip — the slot is shared by every session in this checkout, and a session still running an OLDER
+  // copy of the plugin writes ITS layout into it under the same key; served back, the band flipped between the two
+  // layouts until the key moved. An entry another copy of the resolver wrote is not this view.
+  if (by !== null && cached.by !== by) return true;
   const resolved = typeof cached.text === 'string' || cached.text === null;
   if (!resolved || !('text' in cached)) return true;
   return !(Number.isFinite(cached.at) && now - cached.at < MAX_AGE_MS);
@@ -102,7 +106,7 @@ export function shouldRefreshUsage(lastAt, root, now = Date.now()) {
 // a word of the resolver's text. The glyphs live in the resolver (build-state.mjs GLYPHS); this file only knows which
 // labels are fields.
 
-const FIELD_LABELS = ['Why', 'Target', 'Now', 'Spend', 'Around', 'Next', 'Plugin'];
+const FIELD_LABELS = ['Why', 'Target', 'Status', 'Stories', 'Sprint', 'Now', 'Spend', 'Around', 'Next', 'Plugin'];
 /** The header's state symbol → its stage's tone (the same tone toneOf gives the stage's word on the track). */
 export const SYMBOL_TONES = Object.freeze({
   '❧': 'busy',
@@ -130,13 +134,14 @@ export function toneOf(value) {
  * value. Anything without a leading bar → null, and it draws as plain text.
  */
 export function barsOf(value) {
-  const m = /^([▰▱│]+) +(.*)$/.exec(String(value || ''));
+  // mod-layout-v2: the Sprint row leads with words (`4 of 5 · ▰▱▱▱  1 of 4 stories done`) — kept as `lead`.
+  const m = /^([^▰▱│]*?)([▰▱│]+) +(.*)$/.exec(String(value || ''));
   if (!m) return null;
-  const runs = [...m[1].matchAll(/▰+|▱+|│+/g)].map(([text]) => ({
+  const runs = [...m[2].matchAll(/▰+|▱+|│+/g)].map(([text]) => ({
     kind: text[0] === '▰' ? 'done' : text[0] === '▱' ? 'todo' : 'sep',
     text,
   }));
-  return { runs, rest: m[2] };
+  return { lead: m[1], runs, rest: m[3] };
 }
 
 /**
@@ -167,9 +172,9 @@ export function spendOf(value) {
 }
 
 /**
- * The header line (build-view-one-story D2/D3): `<repo> <symbol> <lead> · <title> · <size> · ▲ risk <LEVEL>`, then the
- * right part after 4+ spaces. Split into its parts so the band can colour each and clip only the title. A header with
- * nothing in flight (`○`) has a lead and no title.
+ * The header line (build-view-one-story D2/D3; mod-layout-v2): `<repo> <symbol> <kind>: <title> · <size> · ▲ risk
+ * <LEVEL>`, then the right part after 4+ spaces. Split into its parts so the band can colour each and clip only the
+ * title. A header with nothing in flight (`○`) has a lead and no title.
  */
 export function headerOf(line) {
   const m = /^(\S+) (\S) (.*?)(?: {4,}(\S.*))?$/.exec(String(line || ''));
@@ -180,7 +185,11 @@ export function headerOf(line) {
   let end = parts.length;
   const risk = /^▲ risk (\w+)$/.exec(parts[end - 1] ?? '')?.[1] ?? null;
   if (risk) end -= 1;
-  const size = end > 2 && /^(?:XS|S|M|L|XL)$/.test(parts[end - 1]) ? parts[--end] : null;
+  const size = end > 1 && /^(?:XS|S|M|L|XL)$/.test(parts[end - 1]) ? parts[--end] : null;
+  // `Epic: Launch: the first…` — the kind is one word, so the FIRST `: ` ends it; the title keeps its own colons.
+  const named = parts.slice(0, end).join(' · ');
+  const kind = /^(\w+): (.+)$/s.exec(named);
+  if (kind) return { repo, symbol, lead: kind[1], title: kind[2], size, risk, right };
   return { repo, symbol, lead: parts[0], title: parts.slice(1, end).join(' · ') || null, size, risk, right };
 }
 
@@ -198,7 +207,7 @@ export function headerLayout(h, columns) {
   const width = Math.max(20, (Number.isFinite(columns) ? columns : 100) - 2);
   const left =
     columnsOf(`${h.repo} ${h.symbol} ${h.lead}`) +
-    (h.title ? 3 : 0) +
+    (h.title ? 2 : 0) +
     (h.size ? 3 + columnsOf(h.size) : 0) +
     (h.risk ? 3 + columnsOf(`▲ risk ${h.risk}`) : 0);
   const oneRow =
@@ -235,6 +244,8 @@ export function bandRowsFrom(text) {
       last.right = right[1];
       return;
     }
+    // mod-layout-v2 — the rule between what the work is for and where it stands; the band draws it at its own width.
+    if (/^ {2}─{3,}$/.test(line)) return rows.push({ kind: 'rule' });
     const cont = /^ {13}(\S.*)$/.exec(line);
     if (cont && last && (last.kind === 'field' || last.kind === 'story')) {
       if (last.kind === 'field' && last.label === 'Now') return rows.push({ kind: 'story', value: cont[1] });
@@ -244,7 +255,8 @@ export function bandRowsFrom(text) {
     const f = /^ {2}(\S) ([A-Z][a-z]+) +(\S.*)$/.exec(line);
     if (f && FIELD_LABELS.includes(f[2])) {
       const [, glyph, label, value] = f;
-      return rows.push({ kind: 'field', glyph, label, value, tone: label === 'Spend' ? spendOf(value).tone : 'plain' });
+      const tone = label === 'Spend' ? spendOf(value).tone : label === 'Status' ? toneOf(trackOf(value)?.word) : 'plain';
+      return rows.push({ kind: 'field', glyph, label, value, tone });
     }
     if (/^ {2}↗ /.test(line)) return rows.push({ kind: 'link', glyph: '↗', value: line.slice(4) });
     if (/^ {2}⚑ /.test(line)) return rows.push({ kind: 'flag', glyph: '⚑', value: line.slice(4) });
@@ -455,7 +467,9 @@ export function createViewer(io, { buildState = VENDOR_BUILD_STATE } = {}) {
       const force = forceNext;
       forceNext = false;
       const cached = force ? null : await io.getCached(root);
-      if (!force && !shouldRefresh(cached, key, io.now())) {
+      // `by` is the resolver's installed path, which carries the plugin's version (…/cache/…/<version>/hooks/vendor/…):
+      // two copies of the plugin never serve each other's text (fix/build-view-flip).
+      if (!force && !shouldRefresh(cached, key, io.now(), buildState)) {
         await viewer.show(cached.text || null);
         return did;
       }
@@ -466,7 +480,7 @@ export function createViewer(io, { buildState = VENDOR_BUILD_STATE } = {}) {
       // Drawn first: a cache write that fails (the plugin's one $.store file is capped, and every checkout root keeps a
       // slot) must cost a re-resolve next time, never the view itself (#240 review, round 2).
       try {
-        await io.setCached(root, { key, at: io.now(), text });
+        await io.setCached(root, { key, at: io.now(), text, by: buildState });
       } catch (err) {
         io.log(`build view: could not cache the view (${String(err)})`);
       }
