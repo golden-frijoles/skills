@@ -7,6 +7,16 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-10-20
+
+### Fixed
+- **The screensaver plays in a short band again** — the Claude Mac app in fullscreen said "too small for any piece".
+  A text piece is drawn at its own size, trimmed by at most a quarter of its height, and the shortest still needs 11
+  rows: less than that band leaves. When nothing fits that way, the piece that keeps the most of itself now plays, down to
+  half its height and never under 8 rows, keeping its anchored side (never its width, never scaled). When nothing fits
+  even then, `/screensaver now` says what it measured: the free rows and columns, and what the smallest piece needs.
+- **The caption is centred under the picture**, as the picture is in the band.
+
 ## [1.16.0] - 2026-10-20
 
 ### Changed

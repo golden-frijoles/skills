@@ -425,6 +425,11 @@ test('screensaver: three minutes away with nothing in flight, a piece plays unde
   expect((await w.caption())?.text).toMatch(/ascii\.rest · test piece — any key returns to the build view/);
   const lines = flat(await w.mounted.drawn()).filter((p) => /^[#*+=:. -]{40}$/.test(p.text));
   expect(lines.length).toBe(12); // the piece's own 12 rows, each its own 40 columns
+  // Centred: the picture by its width, the caption by its own, in the band's 100 columns.
+  const caption = 'ascii.rest · test piece — any key returns to the build view';
+  const boxes = (await (w.mounted as unknown as { findAll: (q: never) => Promise<{ props: { paddingLeft?: number } }[]> }).findAll({ type: 'Box' } as never)).map((b) => b.props.paddingLeft);
+  expect(boxes).toContain(30); // (100 - 40) / 2
+  expect(boxes).toContain(Math.floor((100 - [...caption].length) / 2));
   expect((await textOf(w.mounted)).includes('No epic on this branch')).toBe(true); // the band stays above it
 });
 
@@ -469,7 +474,7 @@ test('screensaver D7: `/screensaver now` mid-epic plays at once; where there is 
 test('screensaver D7: `/screensaver now` says why it cannot play — a terminal too small, or no Node to render with', async ($, on) => {
   const small = await saverWorld($ as never, on, V2, { maxRows: 10 });
   const tiny = await small.$$.command.run({ command: 'screensaver', args: 'now' } as never);
-  expect(String(tiny.text)).toMatch(/too small for any piece/);
+  expect(String(tiny.text)).toMatch(/no piece fits here — 7 free rows × 100 columns, and the smallest needs 8 × \d+/);
   expect(small.renders).toEqual([]);
   expect(await small.caption()).toBeUndefined();
 });

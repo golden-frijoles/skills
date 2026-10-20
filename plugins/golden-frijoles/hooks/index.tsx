@@ -74,6 +74,7 @@ import {
   renderArgv,
   fitAt,
   linesOf,
+  tooSmallText,
 } from './piece-player.mjs';
 import {
   LOG_FILE,
@@ -384,7 +385,7 @@ export const register: Register = (on) => {
       if (!want) {
         saver.stop();
         $.ui.invalidate('ui.render');
-        return { text: 'screensaver: this terminal is too small for any piece — make it taller or wider and try again.' };
+        return { text: tooSmallText(layout) };
       }
       if (failed.has(want.key)) {
         saver.stop();
@@ -527,6 +528,12 @@ export const register: Register = (on) => {
     // screensaver D3/D7 — the piece at its own size, centred, never scaled; the band folds to its header while it plays
     // only when the terminal has no room for both.
     const want = saving ? wantedPiece() : null;
+    // The caption sits centred under the picture, as the picture sits in the band.
+    const centred = (line: string) => (
+      <Box paddingLeft={Math.max(0, Math.floor((columns - [...line].length) / 2))}>
+        <Text dimColor wrap="truncate">{line}</Text>
+      </Box>
+    );
     if (want && !frames) startFrames($);
     const clip = want ? clips.get(want.key) : undefined;
     const hint = allRows.length ? null : SAVER_HINT;
@@ -539,12 +546,10 @@ export const register: Register = (on) => {
             </Text>
           ))}
         </Box>
-        <Text dimColor wrap="truncate">{captionOf(clip.name, { band: allRows.length > 0, hint })}</Text>
+        {centred(captionOf(clip.name, { band: allRows.length > 0, hint }))}
       </Box>
     ) : (
-      <Text key="screensaver" dimColor wrap="truncate">
-        {captionOf(`${want.fit.name} (starting…)`, { band: allRows.length > 0, hint })}
-      </Text>
+      <Box key="screensaver">{centred(captionOf(`${want.fit.name} (starting…)`, { band: allRows.length > 0, hint }))}</Box>
     );
     const rows = clip && want?.compact ? allRows.filter((r) => r.kind === 'header') : allRows;
     if (!rows.length) return saverRegion ?? next(e);

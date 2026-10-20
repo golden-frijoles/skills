@@ -16,6 +16,10 @@ export const CAPTION_ROWS = 1;
 export const SLACK_ROWS = 1; // the engine's own row under the band, never crowded out
 export const HEADER_ROWS = 1;
 export const MIN_CROP = 0.75; // a piece may lose at most a quarter of its height to fit, never its width
+// …unless nothing fits that way: a short band (the Mac app in fullscreen) takes the piece that keeps the most of itself,
+// down to half its height, and never fewer than MIN_ROWS rows. Still never its width, never scaled.
+export const TIGHT_CROP = 0.5;
+export const MIN_ROWS = 8;
 
 /** The renderer bundled beside this file — the person's own Node runs it, never a file the open repo supplies. */
 export const PIECE_RENDER = decodeURIComponent(new URL('./piece-render.mjs', import.meta.url).pathname).replace(
@@ -24,11 +28,13 @@ export const PIECE_RENDER = decodeURIComponent(new URL('./piece-render.mjs', imp
 );
 
 /** The pieces that fit `room` rows and `columns` columns, in play order: `[{ id, name, rows, anchor }]`. */
-export function fitting(room, columns, catalog = PIECES) {
+export function fitting(room, columns, catalog = PIECES, crop = MIN_CROP) {
   const wide = Number.isFinite(columns) ? columns : 80;
+  if (room < MIN_ROWS) return [];
   return catalog
-    .filter((p) => p.cols <= wide && Math.ceil(p.rows * MIN_CROP) <= room)
-    .map((p) => ({ id: p.id, name: p.name, rows: Math.min(p.rows, Math.floor(room)), anchor: p.anchor ?? 'middle' }));
+    .filter((p) => p.cols <= wide && Math.ceil(p.rows * crop) <= room)
+    .map((p) => ({ id: p.id, name: p.name, rows: Math.min(p.rows, Math.floor(room)), anchor: p.anchor ?? 'middle' }))
+    .sort((a, b) => (crop === MIN_CROP ? 0 : loss(a, catalog) - loss(b, catalog))); // tight: the least cut first
 }
 
 /**
@@ -37,12 +43,34 @@ export function fitting(room, columns, catalog = PIECES) {
  * gets the band, never a squashed or cut-off picture. `bandRows` is the band's wrapped height (screensaver.mjs).
  */
 export function layoutFor({ maxRows, columns, bandRows }, catalog = PIECES) {
-  const total = Number.isFinite(maxRows) ? maxRows : 20;
-  const full = fitting(total - bandRows - CAPTION_ROWS - SLACK_ROWS, columns, catalog);
-  if (full.length) return { fits: full, compact: false };
-  const folded = bandRows > 0 ? fitting(total - HEADER_ROWS - CAPTION_ROWS - SLACK_ROWS, columns, catalog) : [];
-  return folded.length ? { fits: folded, compact: true } : null;
+  const { beside, folded } = roomOf({ maxRows, bandRows });
+  // In order: beside the band, then folded — first trimming at most a quarter, then (a short band) at most half.
+  for (const crop of [MIN_CROP, TIGHT_CROP]) {
+    const full = fitting(beside, columns, catalog, crop);
+    if (full.length) return { fits: full, compact: false };
+    const fold = bandRows > 0 ? fitting(folded, columns, catalog, crop) : [];
+    if (fold.length) return { fits: fold, compact: true };
+  }
+  return null;
 }
+
+/** The rows a piece has beside the whole band, and with the band folded to its header. */
+export function roomOf({ maxRows, bandRows }) {
+  const total = Number.isFinite(maxRows) ? maxRows : 20;
+  const beside = total - bandRows - CAPTION_ROWS - SLACK_ROWS;
+  return { beside, folded: bandRows > 0 ? total - HEADER_ROWS - CAPTION_ROWS - SLACK_ROWS : beside };
+}
+
+/** Why nothing plays, with what was measured — so a "too small" can be told from a band that drew nothing. */
+export function tooSmallText(layout, catalog = PIECES) {
+  const narrowest = Math.min(...catalog.map((p) => p.cols));
+  if (!layout) return 'screensaver: the band has not been drawn here yet — try again in a moment.';
+  const { folded } = roomOf(layout);
+  const cols = Number.isFinite(layout.columns) ? layout.columns : '?';
+  return `screensaver: no piece fits here — ${Math.max(0, folded)} free rows × ${cols} columns, and the smallest needs ${MIN_ROWS} × ${narrowest}. Make the window taller or wider.`;
+}
+
+const loss = (fit, catalog) => 1 - fit.rows / (catalog.find((p) => p.id === fit.id)?.rows ?? fit.rows);
 
 /** The fit `n` steps after the one `seed` starts on. */
 export const fitAt = (fits, seed, n = 0) => fits[((((Math.trunc(seed) || 0) + n) % fits.length) + fits.length) % fits.length];
@@ -86,5 +114,5 @@ export function linesOf(clip, frameNo, fit) {
 /** The line under the picture: which piece, where it is from, and how to get back. */
 export function captionOf(name, { band = true, hint = null } = {}) {
   const back = band ? 'any key returns to the build view' : 'any key wakes it';
-  return `  ascii.rest · ${name} — ${back}${hint ? ` · ${hint}` : ''}`;
+  return `ascii.rest · ${name} — ${back}${hint ? ` · ${hint}` : ''}`;
 }

@@ -7,8 +7,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CAPTION_ROWS, HEADER_ROWS, MIN_CROP, PIECES, PIECE_RENDER, SLACK_ROWS,
-  captionOf, cropLines, fitAt, fitting, layoutFor, linesOf, parseClip, renderArgv,
+  CAPTION_ROWS, HEADER_ROWS, MIN_CROP, MIN_ROWS, PIECES, PIECE_RENDER, SLACK_ROWS, TIGHT_CROP,
+  captionOf, cropLines, fitAt, fitting, layoutFor, linesOf, parseClip, renderArgv, tooSmallText,
 } from './piece-player.mjs';
 import { renderClip } from './piece-render.mjs';
 import { CATEGORIES, MAX_COLS, MAX_ROWS, metaOf, qualifies, refusal } from '../../../scripts/vendor-ascii-pieces.mjs';
@@ -44,6 +44,16 @@ test('layoutFor D3/D7: under the whole band when a piece fits; else under its he
   assert.equal(folded.compact, true);
   assert.deepEqual(folded.fits.map((f) => f.rows), [24 - HEADER_ROWS - extra, 15, 14, 18].map((r) => Math.min(r, 24 - HEADER_ROWS - extra)));
   assert.equal(layoutFor({ maxRows: 10, columns: 100, bandRows: 16 }, CATALOG), null, 'too small even folded');
+  // The Mac app in fullscreen: a band with 10 rows folded. Nothing fits trimming a quarter (cat needs 12), so the tight
+  // fit takes what keeps the most of itself, down to half, least cut first — and never a piece wider than the band.
+  const tight = layoutFor({ maxRows: 13, columns: 100, bandRows: 16 }, CATALOG);
+  assert.equal(tight.compact, true);
+  assert.deepEqual(tight.fits.map((f) => [f.id, f.rows]), [['wide', 10], ['cat', 10], ['fire', 10]], 'least cut first; tall loses over half');
+  assert.ok(tight.fits.every((f) => f.rows >= MIN_ROWS));
+  assert.deepEqual(layoutFor({ maxRows: 13, columns: 80, bandRows: 16 }, CATALOG).fits.map((f) => f.id), ['cat', 'fire'], 'still never too wide');
+  assert.equal(fitting(MIN_ROWS - 1, 100, CATALOG, TIGHT_CROP).length, 0, 'never under MIN_ROWS');
+  // The real catalog in that same band: something plays.
+  assert.ok(layoutFor({ maxRows: 13, columns: 70, bandRows: 16 }).fits.length > 0);
   assert.equal(layoutFor({ maxRows: 40, columns: 30, bandRows: 0 }, CATALOG), null, 'too narrow for every piece');
 });
 
@@ -78,9 +88,14 @@ test('cropLines / linesOf: frames loop, crop from the anchor, and pad to the pie
   assert.deepEqual(linesOf(clip, 3), ['gh  ', 'ij  ', 'kl  '], 'the clip loops');
 });
 
+test('tooSmallText: what was measured, and what the smallest piece needs', () => {
+  assert.match(tooSmallText({ maxRows: 9, columns: 100, bandRows: 16 }, CATALOG), /no piece fits here — 6 free rows × 100 columns, and the smallest needs 8 × 56\./);
+  assert.match(tooSmallText(null), /not been drawn here yet/);
+});
+
 test('captionOf: the piece, where it is from, and how to get back', () => {
-  assert.equal(captionOf('campfire'), '  ascii.rest · campfire — any key returns to the build view');
-  assert.equal(captionOf('x', { band: false, hint: 'goldenfrijoles.com' }), '  ascii.rest · x — any key wakes it · goldenfrijoles.com');
+  assert.equal(captionOf('campfire'), 'ascii.rest · campfire — any key returns to the build view');
+  assert.equal(captionOf('x', { band: false, hint: 'goldenfrijoles.com' }), 'ascii.rest · x — any key wakes it · goldenfrijoles.com');
 });
 
 test('piece-render.mjs: a real piece renders to a clip parseClip reads, at its own size', () => {
