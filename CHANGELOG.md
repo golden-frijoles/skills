@@ -7,6 +7,18 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-20
+
+### Changed
+- **The screensaver plays ascii.rest's text animations again, from eight categories only** (screensaver S1.5): shapes,
+  space, physics, nature, creatures, objects, generative and effects — 96 pieces, one ink each, so every terminal draws
+  them crisply, and no logo, company or distro ever plays. The colour scenes are gone: squeezed into a terminal band, at a
+  quarter of their resolution and through the terminal's own colour table, they did not hold up. Each piece is drawn at its
+  own size, centred, never scaled (cropped by at most a quarter of its height when the band is short, from the side it
+  keeps); it is rendered once by the person's own Node (`hooks/piece-render.mjs`), so a heavy one can never stall the band,
+  and played 10 frames a second. `/screensaver now` mid-epic, the folding band, the honest answer and the 20-minute sleep
+  stay as 1.15.0 made them. `scripts/vendor-ascii-pieces.mjs` replaces `vendor-ascii-scenes.mjs`.
+
 ## [1.15.0] - 2026-10-20
 
 ### Changed

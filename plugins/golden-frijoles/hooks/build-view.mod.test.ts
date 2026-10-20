@@ -360,16 +360,11 @@ test('mod-layout-v2: the kind and the title, the rule at the band\'s width, the 
 // ── screensaver (D1–D7, S2): when it plays, what it draws, and that the first sign of the person ends it ────────────
 const IDLE_VIEW = ['golden-frijoles ○ No epic on this branch · main', '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/board'];
 
-// What scene-render.mjs prints, at the size asked: every pixel a different colour from the last — the worst case for
-// the band, which joins neighbouring cells of one colour pair into one run.
+// What piece-render.mjs prints: a 40 × 12 piece, four frames, each line full of characters.
 function fakeClip(argv: readonly string[], frames = 4) {
-  const at = (name: string) => Number(argv[argv.indexOf(`--${name}`) + 1]);
-  const cols = at('cols');
-  const rows = at('rows');
-  const palette = Array.from({ length: 94 }, (_, i) => `#${(i * 2731).toString(16).padStart(6, '0').slice(-6)}`);
-  const frame = (f: number) => Array.from({ length: cols * rows * 2 }, (_, i) => String.fromCharCode(33 + ((i * 7 + f) % 94))).join('');
-  const head = { v: 1, scene: argv[argv.indexOf('--scene') + 1], name: 'test scene', cols, rows, fps: 8, palette };
-  return [JSON.stringify(head), ...Array.from({ length: frames }, (_, f) => frame(f))].join('\n');
+  const head = { v: 2, piece: argv[argv.indexOf('--piece') + 1], name: 'test piece', cols: 40, rows: 12, fps: 10 };
+  const frame = (f: number) => Array.from({ length: 12 }, (_, y) => `${'#*+=-:. '.repeat(5)}`.slice((y + f) % 8, ((y + f) % 8) + 40).padEnd(40, '#')).join('\n');
+  return [JSON.stringify(head), ...Array.from({ length: frames }, (_, f) => JSON.stringify(frame(f)))].join('\n');
 }
 
 type Saver = {
@@ -389,7 +384,7 @@ async function saverWorld($: never, on: On, lines: string[] | null, { maxRows = 
   mock.store(on);
   const renders: string[] = [];
   world(on, (argv) => {
-    if (String(argv[1]).endsWith('scene-render.mjs')) {
+    if (String(argv[1]).endsWith('piece-render.mjs')) {
       renders.push(argv.join(' '));
       return render ? { exitCode: render, stdout: '' } : { exitCode: 0, stdout: fakeClip(argv) };
     }
@@ -418,25 +413,24 @@ async function saverWorld($: never, on: On, lines: string[] | null, { maxRows = 
 }
 const textOf = async (m: { drawn: () => Promise<unknown> }) => flat(await m.drawn()).map((p) => p.text).join('');
 
-test('screensaver: three minutes away with nothing in flight, a scene plays under the band — 2:1, coloured, captioned', async ($, on) => {
+test('screensaver: three minutes away with nothing in flight, a piece plays under the band — its own size, captioned', async ($, on) => {
   const w = await saverWorld($ as never, on, IDLE_VIEW);
   expect(await w.caption()).toBeUndefined();
   await w.clock.advance(170_000);
   expect(await w.caption()).toBeUndefined(); // 2 min 50 s: not yet
   await w.clock.advance(10_000); // the 3-minute check
   expect(w.renders.length).toBe(1);
-  expect(w.renders[0]).toMatch(/--cols 100 --rows 25 --fps 8 --seconds 30$/); // 2:1: 100 columns hold 25 rows
-  await w.clock.advance(125); // one frame: the clip is in
-  expect((await w.caption())?.text).toMatch(/ascii\.rest · test scene — any key returns to the build view/);
-  const runs = flat(await w.mounted.drawn()).filter((p) => p.text.startsWith('▀'));
-  expect(runs.length).toBeGreaterThan(28); // a row of runs per terminal row
-  expect(runs.every((r) => /^#[0-9a-f]{6}$/.test(String(r.color)))).toBe(true);
+  expect(w.renders[0]).toMatch(/--piece \S+ --fps 10 --seconds 30$/);
+  await w.clock.advance(100); // one frame: the clip is in
+  expect((await w.caption())?.text).toMatch(/ascii\.rest · test piece — any key returns to the build view/);
+  const lines = flat(await w.mounted.drawn()).filter((p) => /^[#*+=:. -]{40}$/.test(p.text));
+  expect(lines.length).toBe(12); // the piece's own 12 rows, each its own 40 columns
   expect((await textOf(w.mounted)).includes('No epic on this branch')).toBe(true); // the band stays above it
 });
 
 test('screensaver: the first keystroke ends it; a running turn never shows it, nor does a subagent ending', async ($, on) => {
   const w = await saverWorld($ as never, on, IDLE_VIEW);
-  await w.clock.advance(180_125);
+  await w.clock.advance(180_100);
   expect(await w.caption()).toBeDefined();
   await w.$$.prompt.edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: 'h' } as never);
   expect(await w.caption()).toBeUndefined();
@@ -447,15 +441,15 @@ test('screensaver: the first keystroke ends it; a running turn never shows it, n
   await w.clock.advance(600_000);
   expect(await w.caption()).toBeUndefined();
   await w.$$.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't2', reason: 'answer' } as never);
-  await w.clock.advance(180_125);
+  await w.clock.advance(180_100);
   expect(await w.caption()).toBeDefined();
 });
 
-test('screensaver D1: an epic in flight waits nine minutes, and the band stays above the scene when there is room', async ($, on) => {
+test('screensaver D1: an epic in flight waits nine minutes, and the band stays above the piece when there is room', async ($, on) => {
   const w = await saverWorld($ as never, on, V2);
   await w.clock.advance(190_000);
   expect(await w.caption()).toBeUndefined();
-  await w.clock.advance(350_125);
+  await w.clock.advance(350_100);
   expect(await w.caption()).toBeDefined();
   expect((await textOf(w.mounted)).includes('A funnel today is one number per period.')).toBe(true);
 });
@@ -464,7 +458,6 @@ test('screensaver D7: `/screensaver now` mid-epic plays at once; where there is 
   const w = await saverWorld($ as never, on, V2, { maxRows: 18 });
   const now = await w.$$.command.run({ command: 'screensaver', args: 'now' } as never);
   expect(String(now.text)).toMatch(/^screensaver: playing .+ — any key brings the build view back\. `\/screensaver off` turns it off\.$/);
-  expect(w.renders[0]).toMatch(/--cols 60 --rows 15 /); // 18 rows less the header, the caption and the engine's row
   const folded = await textOf(w.mounted);
   expect(folded.includes('Funnel truth')).toBe(true); // the header stays
   expect(folded.includes('A funnel today is one number per period.')).toBe(false); // the rest folds while it plays
@@ -476,7 +469,7 @@ test('screensaver D7: `/screensaver now` mid-epic plays at once; where there is 
 test('screensaver D7: `/screensaver now` says why it cannot play — a terminal too small, or no Node to render with', async ($, on) => {
   const small = await saverWorld($ as never, on, V2, { maxRows: 10 });
   const tiny = await small.$$.command.run({ command: 'screensaver', args: 'now' } as never);
-  expect(String(tiny.text)).toMatch(/too small for a scene/);
+  expect(String(tiny.text)).toMatch(/too small for any piece/);
   expect(small.renders).toEqual([]);
   expect(await small.caption()).toBeUndefined();
 });

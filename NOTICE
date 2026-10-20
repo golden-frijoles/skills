@@ -8,7 +8,8 @@ or logo for its own distribution.
 
 Third-party code
 ----------------
-plugins/golden-frijoles/hooks/scenes/ contains the 34 "scenes" of ascii.rest (https://github.com/bas3line/ascii),
-Copyright (c) 2026 bas3line, under the MIT License, copied by scripts/vendor-ascii-scenes.mjs with their TypeScript
-annotations stripped and nothing else changed. The license text is kept beside them in
-plugins/golden-frijoles/hooks/scenes/LICENSE. The screensaver in the build-view mod plays them.
+plugins/golden-frijoles/hooks/pieces/ contains 96 text pieces of ascii.rest (https://github.com/bas3line/ascii), from
+its shapes, space, physics, nature, creatures, objects, generative and effects categories, Copyright (c) 2026 bas3line,
+under the MIT License, copied by scripts/vendor-ascii-pieces.mjs with their TypeScript annotations stripped and nothing
+else changed. The license text is kept beside them in plugins/golden-frijoles/hooks/pieces/LICENSE. The screensaver in
+the build-view mod plays them.
