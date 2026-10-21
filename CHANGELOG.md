@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-10-21
+
+### Added
+- **The plugin has an icon** — `.claude-plugin/icon.png`, the Golden Frijoles bean at 512 × 512, rendered from the
+  site's `icon.svg`. `claude plugin validate` no longer warns `ICON_MISSING`, and the plugin directory takes its
+  listing icon from the first submission only, so it is in place before that.
+
 ## [1.17.0] - 2026-10-21
 
 ### Added
