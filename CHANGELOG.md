@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.16.2] - 2026-10-21
+
+### Changed
+- **`/setup` runs CLI 1.11.0**, which adds `frijoles experiments ls / show / create / start / pause / resume / stop /
+  decide / delete`: an agent launches, reads and decides an A/B test from a terminal, through the console's own
+  commands (low traffic never blocks a start; any end date or none; roll out or keep at any time).
+
 ## [1.16.1] - 2026-10-20
 
 ### Fixed
