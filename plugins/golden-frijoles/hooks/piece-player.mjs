@@ -4,9 +4,12 @@
 // ones), and comes back as a clip: a header line and one JSON string per frame. This module decides which pieces fit
 // the room the band leaves — each at its own size, never scaled: centred, or cropped by at most a quarter of its height
 // from the side it keeps (D3) — and turns a frame into the lines the band draws.
-import { PIECES } from './pieces/index.mjs';
+import { PIECES as ASCII_PIECES } from './pieces/index.mjs';
+import { ORIGINAL_PIECES } from './originals/catalog.mjs';
 
-export { PIECES };
+// The pieces we draw ourselves, in colour, come first: a run starts on one of them and plays through them all before
+// any ascii.rest text piece (screensaver S1.6). `color` marks them everywhere downstream.
+export const PIECES = [...ORIGINAL_PIECES, ...ASCII_PIECES];
 export const FPS = 10;
 export const SECONDS = 30; // one clip; it loops until the next piece
 export const ROTATE_S = 45; // seconds on one piece before the next
@@ -33,7 +36,7 @@ export function fitting(room, columns, catalog = PIECES, crop = MIN_CROP) {
   if (room < MIN_ROWS) return [];
   return catalog
     .filter((p) => p.cols <= wide && Math.ceil(p.rows * crop) <= room)
-    .map((p) => ({ id: p.id, name: p.name, rows: Math.min(p.rows, Math.floor(room)), anchor: p.anchor ?? 'middle' }))
+    .map((p) => ({ id: p.id, name: p.name, rows: Math.min(p.rows, Math.floor(room)), anchor: p.anchor ?? 'middle', color: p.color === true }))
     .sort((a, b) => (crop === MIN_CROP ? 0 : loss(a, catalog) - loss(b, catalog))); // tight: the least cut first
 }
 
@@ -72,25 +75,35 @@ export function tooSmallText(layout, catalog = PIECES) {
 
 const loss = (fit, catalog) => 1 - fit.rows / (catalog.find((p) => p.id === fit.id)?.rows ?? fit.rows);
 
-/** The fit `n` steps after the one `seed` starts on. */
-export const fitAt = (fits, seed, n = 0) => fits[((((Math.trunc(seed) || 0) + n) % fits.length) + fits.length) % fits.length];
+/** The fit `n` steps after the one `seed` starts on — among our own colour pieces when any fit, so a run opens on one. */
+export function fitAt(fits, seed, n = 0) {
+  const own = fits.filter((f) => f.color).length || fits.length;
+  const start = (((Math.trunc(seed) || 0) % own) + own) % own;
+  return fits[(((start + n) % fits.length) + fits.length) % fits.length];
+}
 
 /** The renderer's command line. */
 export function renderArgv(id, script = PIECE_RENDER) {
   return ['node', script, '--piece', id, '--fps', String(FPS), '--seconds', String(SECONDS)];
 }
 
-/** piece-render.mjs's stdout → `{ piece, name, cols, rows, fps, frames }` (each frame its lines), or null if malformed. */
+/**
+ * piece-render.mjs's stdout → `{ piece, name, cols, rows, fps, frames, colors }` (each frame its lines; `colors` is one
+ * string per frame for a colour piece, null for text), or null if malformed.
+ */
 export function parseClip(text) {
   const lines = String(text ?? '').split('\n').filter((l) => l.length);
   if (lines.length < 2) return null;
   try {
     const head = JSON.parse(lines[0]);
     const { v, piece, name, cols, rows, fps } = head ?? {};
-    if (v !== 2 || !Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) return null;
-    const frames = lines.slice(1).map((l) => JSON.parse(l));
-    if (!frames.every((f) => typeof f === 'string')) return null;
-    return { piece, name: String(name ?? piece), cols, rows, fps: Number(fps) || FPS, frames: frames.map((f) => f.split('\n')) };
+    if ((v !== 2 && v !== 3) || !Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) return null;
+    const raw = lines.slice(1).map((l) => JSON.parse(l));
+    if (!raw.every((f) => typeof f === 'string')) return null;
+    const colour = v === 3;
+    const split = raw.map((f) => (colour ? f.split('\u0001') : [f, null]));
+    if (colour && !split.every(([, c]) => typeof c === 'string' && c.length === cols * rows * 4)) return null;
+    return { piece, name: String(name ?? piece), cols, rows, fps: Number(fps) || FPS, frames: split.map(([f]) => f.split('\n')), colors: colour ? split.map(([, c]) => c) : null };
   } catch {
     return null;
   }
@@ -98,11 +111,16 @@ export function parseClip(text) {
 
 /** The rows of a frame to show: all of them, or `rows` of them kept from the anchored side. */
 export function cropLines(lines, rows, anchor = 'middle') {
-  if (!Number.isFinite(rows) || rows >= lines.length) return lines;
+  const { from, keep } = cropOf(lines.length, rows, anchor);
+  return from === 0 && keep === lines.length ? lines : lines.slice(from, from + keep);
+}
+
+/** Which rows of `total` survive a crop to `rows`: where they start and how many. */
+export function cropOf(total, rows, anchor = 'middle') {
+  if (!Number.isFinite(rows) || rows >= total) return { from: 0, keep: total };
   const keep = Math.max(1, rows);
-  const cut = lines.length - keep;
-  const from = anchor === 'top' ? 0 : anchor === 'bottom' ? cut : Math.floor(cut / 2);
-  return lines.slice(from, from + keep);
+  const cut = total - keep;
+  return { from: anchor === 'top' ? 0 : anchor === 'bottom' ? cut : Math.floor(cut / 2), keep };
 }
 
 /** Frame `frameNo` of a clip as the lines drawn: looped, cropped to the fit, each line padded to the piece's width. */
@@ -111,8 +129,49 @@ export function linesOf(clip, frameNo, fit) {
   return cropLines(f, fit?.rows ?? clip.rows, fit?.anchor).map((l) => l.padEnd(clip.cols));
 }
 
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const hexOf = new Map();
+/** Two clip characters (12 bits, 4 a channel) as `#rrggbb`. */
+function hex(a, b) {
+  const n = B64.indexOf(a) * 64 + B64.indexOf(b);
+  let h = hexOf.get(n);
+  if (!h) hexOf.set(n, (h = `#${(((n >> 8) & 15) * 17 * 65536 + ((n >> 4) & 15) * 17 * 256 + (n & 15) * 17).toString(16).padStart(6, '0')}`));
+  return h;
+}
+
+/**
+ * Frame `frameNo` of a colour clip as the rows drawn: each row a list of runs `{ text, fg, bg }` — neighbours of one
+ * colour pair merged, so a flat sky is one run — looped and cropped exactly like linesOf. A space shows only its
+ * background, so it joins whichever run sits on the same one and never splits it.
+ */
+export function runsOf(clip, frameNo, fit) {
+  const at = ((frameNo % clip.frames.length) + clip.frames.length) % clip.frames.length;
+  const lines = clip.frames[at], cells = clip.colors[at];
+  const { from, keep } = cropOf(lines.length, fit?.rows ?? clip.rows, fit?.anchor);
+  return lines.slice(from, from + keep).map((line, y) => {
+    const chars = [...line.padEnd(clip.cols)];
+    const runs = [];
+    for (const [x, ch] of chars.entries()) {
+      const i = ((from + y) * clip.cols + x) * 4;
+      const bg = hex(cells[i + 2], cells[i + 3]);
+      const last = runs[runs.length - 1];
+      if (ch === ' ' && last && last.bg === bg) {
+        last.text += ch; // a space shows only its background: it joins any run on the same one
+        continue;
+      }
+      const fg = ch === ' ' ? bg : hex(cells[i], cells[i + 1]);
+      if (last && last.bg === bg && (last.fg === fg || last.blank)) {
+        last.text += ch;
+        last.fg = fg;
+        last.blank = false;
+      } else runs.push({ text: ch, fg, bg, blank: ch === ' ' });
+    }
+    return runs.map(({ text, fg, bg }) => ({ text, fg, bg }));
+  });
+}
+
 /** The line under the picture: which piece, where it is from, and how to get back. */
-export function captionOf(name, { band = true, hint = null } = {}) {
+export function captionOf(name, { band = true, hint = null, from = 'ascii.rest' } = {}) {
   const back = band ? 'any key returns to the build view' : 'any key wakes it';
-  return `ascii.rest · ${name} — ${back}${hint ? ` · ${hint}` : ''}`;
+  return `${from} · ${name} — ${back}${hint ? ` · ${hint}` : ''}`;
 }

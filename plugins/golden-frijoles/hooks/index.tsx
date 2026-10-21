@@ -29,8 +29,8 @@
 // only keeps that file fresh, by running the bundled `epic-actuals.mjs --refresh` from `session.measure`.
 //
 // THE SCREENSAVER (screensaver D1–D7): when the person has been away a few minutes — 3 with nothing in flight (or no
-// view at all: any repo, any folder), 9 with an epic in flight — or at once on `/screensaver now`, an ascii.rest piece
-// plays under the band, text in one ink at its own size. WHEN is screensaver.mjs; the piece is rendered OFF the drawing
+// view at all: any repo, any folder), 9 with an epic in flight — or at once on `/screensaver now`, a piece plays under the band
+// — ours in colour, or an ascii.rest text piece in one ink — at its own size. WHEN is screensaver.mjs; the piece is rendered OFF the drawing
 // path by piece-render.mjs, in the person's own Node (the drawing sandbox is too slow for the heavy ones), and
 // piece-player.mjs picks what fits and turns frames into lines this file draws, 10 a second, only while it plays. Where
 // the band leaves no room it folds to its header while the piece plays. Any key, submit, turn or question ends it and
@@ -74,6 +74,7 @@ import {
   renderArgv,
   fitAt,
   linesOf,
+  runsOf,
   tooSmallText,
 } from './piece-player.mjs';
 import {
@@ -540,16 +541,26 @@ export const register: Register = (on) => {
     const saverRegion = !want ? null : clip ? (
       <Box key="screensaver" flexDirection="column">
         <Box flexDirection="column" paddingLeft={Math.max(0, Math.floor((columns - clip.cols) / 2))}>
-          {linesOf(clip, frameNo, want.fit).map((line, y) => (
-            <Text key={`s${y}`} wrap="truncate">
-              {line}
-            </Text>
-          ))}
+          {clip.colors
+            ? runsOf(clip, frameNo, want.fit).map((runs, y) => (
+                <Text key={`s${y}`} wrap="truncate">
+                  {runs.map((r, x) => (
+                    <Text key={`c${x}`} color={r.fg} backgroundColor={r.bg}>
+                      {r.text}
+                    </Text>
+                  ))}
+                </Text>
+              ))
+            : linesOf(clip, frameNo, want.fit).map((line, y) => (
+                <Text key={`s${y}`} wrap="truncate">
+                  {line}
+                </Text>
+              ))}
         </Box>
-        {centred(captionOf(clip.name, { band: allRows.length > 0, hint }))}
+        {centred(captionOf(clip.name, { band: allRows.length > 0, hint, from: want.fit.color ? 'golden frijoles' : 'ascii.rest' }))}
       </Box>
     ) : (
-      <Box key="screensaver">{centred(captionOf(`${want.fit.name} (starting…)`, { band: allRows.length > 0, hint }))}</Box>
+      <Box key="screensaver">{centred(captionOf(`${want.fit.name} (starting…)`, { band: allRows.length > 0, hint, from: want.fit.color ? 'golden frijoles' : 'ascii.rest' }))}</Box>
     );
     const rows = clip && want?.compact ? allRows.filter((r) => r.kind === 'header') : allRows;
     if (!rows.length) return saverRegion ?? next(e);

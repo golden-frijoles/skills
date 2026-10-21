@@ -8,12 +8,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CAPTION_ROWS, HEADER_ROWS, MIN_CROP, MIN_ROWS, PIECES, PIECE_RENDER, SLACK_ROWS, TIGHT_CROP,
-  captionOf, cropLines, fitAt, fitting, layoutFor, linesOf, parseClip, renderArgv, tooSmallText,
+  captionOf, cropLines, fitAt, fitting, layoutFor, linesOf, parseClip, renderArgv, runsOf, tooSmallText,
 } from './piece-player.mjs';
-import { renderClip } from './piece-render.mjs';
+import { colourCode, colourFrame, renderClip } from './piece-render.mjs';
+import { ORIGINALS, catalogOf } from './originals/registry.mjs';
+import { ORIGINAL_PIECES } from './originals/catalog.mjs';
 import { CATEGORIES, MAX_COLS, MAX_ROWS, metaOf, qualifies, refusal } from '../../../scripts/vendor-ascii-pieces.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const VENDORED = PIECES.filter((p) => !p.color); // ascii.rest's text pieces; ours are in originals/
 const CATALOG = [
   { id: 'tall', name: 'tall', cols: 60, rows: 25 },
   { id: 'cat', name: 'cat', cols: 56, rows: 15 },
@@ -23,10 +26,10 @@ const CATALOG = [
 
 test('fitting D3: whole when it fits, cropped by at most a quarter from its anchored side, never too wide, never scaled', () => {
   assert.deepEqual(fitting(22, 100, CATALOG), [
-    { id: 'tall', name: 'tall', rows: 22, anchor: 'middle' }, // 25 → 22, within a quarter
-    { id: 'cat', name: 'cat', rows: 15, anchor: 'middle' },
-    { id: 'wide', name: 'wide', rows: 14, anchor: 'middle' },
-    { id: 'fire', name: 'fire', rows: 18, anchor: 'bottom' },
+    { id: 'tall', name: 'tall', rows: 22, anchor: 'middle', color: false }, // 25 → 22, within a quarter
+    { id: 'cat', name: 'cat', rows: 15, anchor: 'middle', color: false },
+    { id: 'wide', name: 'wide', rows: 14, anchor: 'middle', color: false },
+    { id: 'fire', name: 'fire', rows: 18, anchor: 'bottom', color: false },
   ]);
   assert.deepEqual(fitting(22, 80, CATALOG).map((f) => f.id), ['tall', 'cat', 'fire'], 'wide is never cut at the sides');
   assert.deepEqual(fitting(14, 100, CATALOG).map((f) => [f.id, f.rows]), [['cat', 14], ['wide', 14], ['fire', 14]]);
@@ -108,8 +111,8 @@ test('piece-render.mjs: a real piece renders to a clip parseClip reads, at its o
 });
 
 test('every vendored piece renders at its declared size, from an allowed category, in one ink', async () => {
-  assert.ok(PIECES.length >= 60, `${PIECES.length} pieces`);
-  for (const p of PIECES) {
+  assert.ok(VENDORED.length >= 60, `${VENDORED.length} pieces`);
+  for (const p of VENDORED) {
     assert.ok(CATEGORIES.includes(p.category), `${p.id}: ${p.category}`);
     assert.ok(p.cols <= MAX_COLS && p.rows <= MAX_ROWS, p.id);
     const piece = await import(`./pieces/${p.id}.mjs`);
@@ -123,7 +126,7 @@ test('every vendored piece renders at its declared size, from an allowed categor
 test('the vendored pieces are pure: no import, no network, no process, no eval — the guard has teeth too', () => {
   const dir = join(HERE, 'pieces');
   const files = readdirSync(dir).filter((f) => f.endsWith('.mjs') && f !== 'index.mjs');
-  assert.equal(files.length, PIECES.length);
+  assert.equal(files.length, VENDORED.length);
   for (const f of files) assert.equal(refusal(readFileSync(join(dir, f), 'utf8')), null, f);
   assert.match(refusal('import x from "y";'), /imports/);
   assert.equal(refusal('import type { A } from "y";'), null, 'a type import is stripped');
@@ -138,4 +141,67 @@ test('qualifies: the product owner\'s categories only (no logos, companies, dist
   for (const no of ['logos', 'companies', 'distros', 'scenes', 'ui', 'data', 'type']) assert.equal(qualifies(metaOf(src(no))), false, no);
   assert.equal(qualifies(metaOf(src('nature', '  palette: ["#000000"],\n'))), false, 'a palette is a canvas piece');
   assert.equal(qualifies(metaOf(src('nature').replace('cols: 60', 'cols: 120'))), false, 'too wide for a band');
+});
+
+test('originals D1: the catalog the band reads is exactly the pieces, in colour, at their own size, in a band\'s room', async () => {
+  assert.deepEqual(ORIGINAL_PIECES, catalogOf(), 'run `node hooks/originals/registry.mjs` and paste it into catalog.mjs');
+  assert.equal(ORIGINAL_PIECES.length, 15);
+  assert.equal(new Set(PIECES.map((p) => p.id)).size, PIECES.length, 'ids are unique across both catalogs');
+  for (const [id, { meta, make }] of Object.entries(ORIGINALS)) {
+    assert.ok(id.startsWith('gf-') && meta.cols <= MAX_COLS && meta.rows <= MAX_ROWS, id);
+    const clip = parseClip(renderClip({ meta, default: make }, { id, fps: 4, seconds: 2 }));
+    assert.deepEqual([clip.cols, clip.rows, clip.frames.length, clip.colors.length], [meta.cols, meta.rows, 8, 8], id);
+    for (const f of [clip.frames[0], clip.frames[7]]) assert.ok(f.length === meta.rows && f.every((l) => [...l].length === meta.cols), `${id} frame size`);
+    assert.notEqual(clip.colors[1], clip.colors[7], `${id} moves`);
+    assert.ok(new Set(clip.colors[7]).size > 6, `${id} has colour`);
+  }
+});
+
+test('originals are loop-safe and deterministic: the same time gives the same frame', () => {
+  for (const [id, { meta, make }] of Object.entries(ORIGINALS)) {
+    const a = renderClip({ meta, default: make }, { id, fps: 5, seconds: 3 }), b = renderClip({ meta, default: make }, { id, fps: 5, seconds: 3 });
+    assert.equal(a, b, id);
+  }
+});
+
+test('colourCode / colourFrame / parseClip: 12-bit colour, 2 characters, round trip and refusal', () => {
+  assert.equal(colourCode(0x000000, 0xffffff), 'AA');
+  assert.equal(colourCode(-1, 0xffffff), '//', 'no colour is the given default (white here)');
+  assert.equal(colourCode(0xffffff, 0), '//');
+  assert.equal(colourCode(0xf80000, 0), '8A', 'red rounds to 4 bits: f8 → f');
+  const f = { ch: ['ab', 'c '], fg: [0xff0000, -1, 0x00ff00, 0], bg: [0, 0, 0x0000ff, -1] };
+  const text = colourFrame(f);
+  assert.equal(text.split('\u0001')[0], 'ab\nc ');
+  assert.equal(text.split('\u0001')[1].length, 4 * 4);
+  const clip = parseClip([JSON.stringify({ v: 3, piece: 'x', name: 'x', cols: 2, rows: 2, fps: 1 }), JSON.stringify(text)].join('\n'));
+  assert.deepEqual([clip.cols, clip.rows, clip.frames[0], clip.colors.length], [2, 2, ['ab', 'c '], 1]);
+  const short = [JSON.stringify({ v: 3, piece: 'x', name: 'x', cols: 2, rows: 2, fps: 1 }), JSON.stringify('ab\nc \u0001AA')].join('\n');
+  assert.equal(parseClip(short), null, 'colours of the wrong length are refused, not painted wrong');
+  assert.equal(parseClip(['{"v":9,"cols":1,"rows":1}', '"x"'].join('\n')), null);
+});
+
+test('runsOf: neighbours of one colour pair merge, a space never splits a run, and the crop keeps the colours with their rows', () => {
+  const cell = (fg, bg) => colourCode(fg, 0) + colourCode(bg, 0);
+  const red = 0xff0000, blue = 0x0000ff;
+  // 3 columns × 3 rows: row 0 red-on-blue ▀▀ then a space; row 1 the same; row 2 a different colour.
+  const rows = ['▀▀ ', '▀▀ ', '▀▀▀'];
+  const colors = [cell(red, blue) + cell(red, blue) + cell(0x00ff00, blue), cell(red, blue) + cell(red, blue) + cell(0x00ff00, blue), cell(0x00ff00, 0) + cell(0x00ff00, 0) + cell(0x00ff00, 0)].join('');
+  const clip = { cols: 3, rows: 3, frames: [rows], colors: [colors] };
+  const all = runsOf(clip, 0, { rows: 3, anchor: 'middle' });
+  assert.deepEqual(all[0].map((r) => r.text), ['▀▀ '], 'equal pairs merge, and a space joins the run on its own background');
+  assert.deepEqual(runsOf({ ...clip, frames: [['▀▀▀', rows[1], rows[2]]], colors: [cell(red, blue).repeat(3) + colors.slice(12)] }, 0, { rows: 3 })[0].map((r) => r.text), ['▀▀▀'], 'three of one pair are one run');
+  assert.equal(all[0][0].fg, '#ff0000');
+  assert.equal(all[0][0].bg, '#0000ff');
+  const bottom = runsOf(clip, 0, { rows: 1, anchor: 'bottom' });
+  assert.equal(bottom.length, 1);
+  assert.equal(bottom[0][0].fg, '#00ff00', 'the bottom row keeps its own colours after the crop');
+  assert.equal(runsOf(clip, 3, { rows: 1, anchor: 'top' })[0][0].fg, '#ff0000', 'looped; the top row keeps its own');
+});
+
+test('fitAt D1: a run opens on one of our colour pieces and plays them all before any ascii.rest piece', () => {
+  const fits = [{ id: 'a', color: true }, { id: 'b', color: true }, { id: 'c', color: true }, { id: 'x' }, { id: 'y' }];
+  for (let seed = 0; seed < 9; seed++) assert.ok(fitAt(fits, seed, 0).color, `seed ${seed} opens on ours`);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map((n) => fitAt(fits, 1, n).id), ['b', 'c', 'x', 'y', 'a', 'b']);
+  assert.equal(fitAt(fits.filter((f) => !f.color), 7, 0).id, 'y', 'no colour piece fits: the old walk');
+  assert.equal(captionOf('x', { from: 'golden frijoles' }), 'golden frijoles · x — any key returns to the build view');
 });

@@ -164,16 +164,17 @@ test('/build with no slug or an unknown one lists the epics and fills nothing', 
 // ── build-view-upgrade S1.4 (D5/D6): the session line, coloured, under the hint — with the time to each reset ─────────
 const HOUR = 3_600_000;
 const NOW = Date.UTC(2026, 9, 8, 1, 0);
-type Run = { text: string; color?: string; bold?: boolean; dim?: boolean; italic?: boolean };
+type Run = { text: string; color?: string; backgroundColor?: string; bold?: boolean; dim?: boolean; italic?: boolean };
 // Every drawn string with the styles it inherits from the Text nodes around it (build-view-one-story S1.7).
 const flat = (node: unknown, inherit: Omit<Run, 'text'> = {}): Run[] => {
   if (typeof node === 'string') return node ? [{ text: node, ...inherit }] : [];
   if (!node || typeof node !== 'object') return [];
-  const el = node as { props?: { color?: string; bold?: boolean; dimColor?: boolean; italic?: boolean }; children?: unknown };
+  const el = node as { props?: { color?: string; backgroundColor?: string; bold?: boolean; dimColor?: boolean; italic?: boolean }; children?: unknown };
   const p = el.props ?? {};
   const style = {
     ...inherit,
     ...(p.color ? { color: p.color } : {}),
+    ...(p.backgroundColor ? { backgroundColor: p.backgroundColor } : {}),
     ...(p.bold ? { bold: true } : {}),
     ...(p.dimColor ? { dim: true } : {}),
     ...(p.italic ? { italic: true } : {}),
@@ -361,10 +362,13 @@ test('mod-layout-v2: the kind and the title, the rule at the band\'s width, the 
 const IDLE_VIEW = ['golden-frijoles ○ No epic on this branch · main', '  ↗ https://goldenfrijoles.com/hub/golden-frijoles/board'];
 
 // What piece-render.mjs prints: a 40 × 12 piece, four frames, each line full of characters.
-function fakeClip(argv: readonly string[], frames = 4) {
-  const head = { v: 2, piece: argv[argv.indexOf('--piece') + 1], name: 'test piece', cols: 40, rows: 12, fps: 10 };
+// `colour` makes it one of ours: v 3, each frame followed by its colours (4 characters a cell: foreground, background).
+function fakeClip(argv: readonly string[], frames = 4, colour = false) {
+  const head = { v: colour ? 3 : 2, piece: argv[argv.indexOf('--piece') + 1], name: 'test piece', cols: 40, rows: 12, fps: 10 };
   const frame = (f: number) => Array.from({ length: 12 }, (_, y) => `${'#*+=-:. '.repeat(5)}`.slice((y + f) % 8, ((y + f) % 8) + 40).padEnd(40, '#')).join('\n');
-  return [JSON.stringify(head), ...Array.from({ length: frames }, (_, f) => JSON.stringify(frame(f)))].join('\n');
+  // Red on blue on the left half, green on blue on the right: two runs a row.
+  const cells = Array.from({ length: 12 }, () => Array.from({ length: 40 }, (_, x) => (x < 20 ? '8AAP' : 'DwAP')).join('')).join('');
+  return [JSON.stringify(head), ...Array.from({ length: frames }, (_, f) => JSON.stringify(colour ? `${frame(f)}\u0001${cells}` : frame(f)))].join('\n');
 }
 
 type Saver = {
@@ -379,14 +383,14 @@ type Saver = {
   renders: string[];
 };
 
-async function saverWorld($: never, on: On, lines: string[] | null, { maxRows = 60, render = 0 } = {}): Promise<Saver> {
+async function saverWorld($: never, on: On, lines: string[] | null, { maxRows = 60, render = 0, colour = false } = {}): Promise<Saver> {
   const clock = mock.clock(on);
   mock.store(on);
   const renders: string[] = [];
   world(on, (argv) => {
     if (String(argv[1]).endsWith('piece-render.mjs')) {
       renders.push(argv.join(' '));
-      return render ? { exitCode: render, stdout: '' } : { exitCode: 0, stdout: fakeClip(argv) };
+      return render ? { exitCode: render, stdout: '' } : { exitCode: 0, stdout: fakeClip(argv, 4, colour) };
     }
     return argv.includes('--json') ? { exitCode: lines ? 0 : 1, stdout: lines ? JSON.stringify({ facts_mode: 'live', lines }) : '' } : null;
   });
@@ -408,7 +412,7 @@ async function saverWorld($: never, on: On, lines: string[] | null, { maxRows = 
     component: 'AbovePrompt',
     props: { hasSurvey: false, isWorking: false, maxRows, bodyColumns: 100 },
   } as never);
-  const caption = () => mounted.find({ type: 'Text', text: /ascii\.rest · / } as never);
+  const caption = () => mounted.find({ type: 'Text', text: /(ascii\.rest|golden frijoles) · / } as never);
   return { clock, $$, mounted, caption, renders };
 }
 const textOf = async (m: { drawn: () => Promise<unknown> }) => flat(await m.drawn()).map((p) => p.text).join('');
@@ -422,15 +426,26 @@ test('screensaver: three minutes away with nothing in flight, a piece plays unde
   expect(w.renders.length).toBe(1);
   expect(w.renders[0]).toMatch(/--piece \S+ --fps 10 --seconds 30$/);
   await w.clock.advance(100); // one frame: the clip is in
-  expect((await w.caption())?.text).toMatch(/ascii\.rest · test piece — any key returns to the build view/);
+  expect((await w.caption())?.text).toMatch(/(golden frijoles|ascii\.rest) · test piece — any key returns to the build view/); // the first piece is one of ours
   const lines = flat(await w.mounted.drawn()).filter((p) => /^[#*+=:. -]{40}$/.test(p.text));
   expect(lines.length).toBe(12); // the piece's own 12 rows, each its own 40 columns
   // Centred: the picture by its width, the caption by its own, in the band's 100 columns.
-  const caption = 'ascii.rest · test piece — any key returns to the build view';
+  const caption = 'golden frijoles · test piece — any key returns to the build view';
   const boxes = (await (w.mounted as unknown as { findAll: (q: never) => Promise<{ props: { paddingLeft?: number } }[]> }).findAll({ type: 'Box' } as never)).map((b) => b.props.paddingLeft);
   expect(boxes).toContain(30); // (100 - 40) / 2
   expect(boxes).toContain(Math.floor((100 - [...caption].length) / 2));
   expect((await textOf(w.mounted)).includes('No epic on this branch')).toBe(true); // the band stays above it
+});
+
+test('screensaver S1.6: one of ours plays in colour — runs of one colour pair, a hex foreground and background, captioned from golden frijoles', async ($, on) => {
+  const w = await saverWorld($ as never, on, IDLE_VIEW, { colour: true });
+  await w.clock.advance(180_100);
+  expect(w.renders[0]).toMatch(/--piece gf-\S+ /);
+  expect((await w.caption())?.text).toBe('golden frijoles · test piece — any key returns to the build view');
+  const runs = flat(await w.mounted.drawn()).filter((p) => p.color === '#ff0000' || p.color === '#00ff00');
+  expect(runs.length).toBe(24); // 12 rows × (a red run and a green run) — not 480 single cells
+  expect(runs.every((r) => r.backgroundColor === '#0000ff')).toBe(true);
+  expect(runs.reduce((n, r) => n + r.text.length, 0)).toBe(12 * 40); // every cell is in a run (a space joins the run beside it)
 });
 
 test('screensaver: the first keystroke ends it; a running turn never shows it, nor does a subagent ending', async ($, on) => {

@@ -13,3 +13,6 @@ its shapes, space, physics, nature, creatures, objects, generative and effects c
 under the MIT License, copied by scripts/vendor-ascii-pieces.mjs with their TypeScript annotations stripped and nothing
 else changed. The license text is kept beside them in plugins/golden-frijoles/hooks/pieces/LICENSE. The screensaver in
 the build-view mod plays them.
+
+plugins/golden-frijoles/hooks/originals/ holds the 15 colour pieces of the screensaver, written for this project under the
+Apache License, Version 2.0; four of them are loose homages to well-known paintings and stories, not copies of them.

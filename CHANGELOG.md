@@ -7,6 +7,22 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-21
+
+### Added
+- **The screensaver plays 15 animations we drew ourselves, in colour, before any ascii.rest piece** (screensaver S1.6).
+  The four favourites made psychedelic (a Lorenz butterfly pair in braille, a spiral bloom of the spinner's own glyphs,
+  rain on a pool of liquid light, streaks on a shifting current); four classic paintings (*Starry Night*, *The Great
+  Wave*, *The Scream*, *The Persistence of Memory*); three scenes from Jack and the Beanstalk (the stalk growing, the
+  giant's castle, the golden harp and goose); the Balrog on the bridge, in a live fire; a mirror-ball disco; a
+  bioluminescent jellyfish bloom; and a wormhole. Each is drawn at its own size, centred and never scaled; a run opens on
+  one of them and plays through all of them, 45 seconds each, before the ascii.rest text pieces take over.
+- **Colour clips.** `hooks/piece-render.mjs` renders a colour piece into a `v: 3` clip (12-bit colour per cell) and the
+  band merges neighbours of one colour into a single run, so a flat sky is one run, not a hundred.
+
+### Changed
+- The caption reads `golden frijoles · <piece>` for ours and `ascii.rest · <piece>` for the rest.
+
 ## [1.16.3] - 2026-10-21
 
 ### Changed

@@ -91,8 +91,9 @@ never on a turn's path. When the installed plugin is older than the marketplace 
 
 ### Screensavers
 
-Step away and the band plays one of [ascii.rest](https://ascii.rest)'s 96 text animations under it — a campfire, a
-donut, a galaxy, synthwave, a lighthouse, doom fire… — and the first key you press brings the band back. One line
+Step away and the band plays an animation under it — one of 15 we draw in colour (a swirling *Starry Night*, a Lorenz
+butterfly, Jack's beanstalk, the Balrog on the bridge, a disco, a jellyfish bloom…) or one of
+[ascii.rest](https://ascii.rest)'s 96 text pieces (a campfire, a donut, doom fire…) — and the first key you press brings the band back. One line
 installs it, in any folder, Golden Frijoles repo or not:
 
 ```
