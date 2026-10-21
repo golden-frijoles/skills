@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.16.3] - 2026-10-21
+
+### Changed
+- **`/setup` runs CLI 1.12.0**, which adds `frijoles version` (the version you have, the latest published, how it was
+  installed) and `frijoles update` (updates a global install; prints the command for npx, a project dependency or a
+  checkout; `--check` only reports), plus a once-a-day "a newer frijoles is out" line in an interactive terminal — never
+  under `--json` or in CI. `frijoles doctor` shares the check.
+
 ## [1.16.2] - 2026-10-21
 
 ### Changed
