@@ -130,17 +130,17 @@ Golden Frijoles keeps what it receives while your account is open, and a product
 
 ### What the mod runs, reads and writes
 
-Every program is your own `node`, `git` or `gh`, and every script is one bundled in this plugin (`hooks/`,
-`hooks/vendor/` and `skills/refine/vendor/`), never a file from the repo you have open: the repo is only ever read, through `--repo-root`.
+Every program is your own `node`, `git` or `gh`, and every script is one bundled in this plugin (`<plugin>`, where Claude Code
+installed it: `hooks/`, `hooks/vendor/` and `skills/refine/vendor/`), never a file from the repo you have open: the repo is only ever read, through `--repo-root`.
 
 | Command | When | Why | Network |
 | --- | --- | --- | --- |
-| `node hooks/vendor/build-state.mjs --json --offline --repo-root <repo>` | Each turn | Reads git and `Roadmap/` to draw the build view | None |
-| `node hooks/vendor/build-state.mjs --json --repo-root <repo>` | A minute in, every 5 minutes, and after a `git push` or `gh pr create/ready/merge/close/reopen` | Same, plus which branches and PRs exist; saves them to `.golden-frijoles/board.json` | `git ls-remote --heads origin` to your git remote, `gh pr list` and one `gh` call for the branch's PR to GitHub, with your own credentials. Nothing from the repo is sent |
+| `node <plugin>/hooks/vendor/build-state.mjs --json --offline --repo-root <repo>` | Each turn | Reads git and `Roadmap/` to draw the build view | None |
+| `node <plugin>/hooks/vendor/build-state.mjs --json --repo-root <repo>` | A minute in, every 5 minutes, and after a `git push` or `gh pr create/ready/merge/close/reopen` | Same, plus which branches and PRs exist; saves them to `.golden-frijoles/board.json` | `git ls-remote --heads origin` to your git remote, `gh pr list` and one `gh` call for the branch's PR to GitHub, with your own credentials. Nothing from the repo is sent |
 | `git -C <repo> worktree list --porcelain`, `git rev-parse HEAD --abbrev-ref HEAD --show-toplevel` | With the view | Which branch and worktree you are on | None |
-| `node hooks/piece-render.mjs --piece <id> --fps 10 --seconds 30` | When the screensaver starts a piece | Draws the animation in its own process | None |
-| `node skills/refine/vendor/emit-epic-kickoff.mjs --list` or `--epic <slug> --repo-root <repo>` | When you type `/build` | Prints the epic's kickoff and puts it in your prompt | None |
-| `node hooks/vendor/epic-actuals.mjs --refresh --repo-root <repo>` | At most once a minute | Counts each epic's tokens and cost from your transcripts in `~/.claude/projects/` | None, unless the project set `spend.telemetry` to `on`: then token and cost totals per session and epic (no content) go to `POST /api/v1/track` on your Golden Frijoles project, with its ingest key (`SELF_PROJECT_API_KEY` or `GROWTH_ENGINE_API_KEY`), at most every 10 minutes |
+| `node <plugin>/hooks/piece-render.mjs --piece <id> --fps 10 --seconds 30` | When the screensaver starts a piece | Draws the animation in its own process | None |
+| `node <plugin>/skills/refine/vendor/emit-epic-kickoff.mjs --list` or `--epic <slug> --repo-root <repo>` | When you type `/build` | Prints the epic's kickoff and puts it in your prompt | None |
+| `node <plugin>/hooks/vendor/epic-actuals.mjs --refresh --repo-root <repo>` | At most once a minute | Counts each epic's tokens and cost from your transcripts in `~/.claude/projects/` | None, unless the project set `spend.telemetry` to `on`: then token and cost totals per session and epic (no content) go to `POST /api/v1/track` on your Golden Frijoles project, with its ingest key (`SELF_PROJECT_API_KEY` or `GROWTH_ENGINE_API_KEY`), at most every 10 minutes |
 
 It reads the installed and published copies of this plugin's `plugin.json` (to say when an update is out), and it
 keeps its own settings (the screensaver's on/off and minutes, a per-repo cache) in Claude Code's store.
