@@ -13,6 +13,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 - **`plugin.json` names the privacy policy** (`privacyPolicyUrl`: https://goldenfrijoles.com/privacy), and the README has a
   "Data and the services it contacts" section: which services the kit and CLI contact, when, what is sent, and how long
   Golden Frijoles keeps it. The plugin directory's submission form asks for both.
+- **The README says what the mod runs, reads and writes** — each command it starts, when and why, which ones reach the
+  network (the online board refresh's `git ls-remote` and `gh pr list`; the spend push only with `spend.telemetry`
+  on), and that it writes only inside `<repo>/.golden-frijoles/`. The plugin directory's lints ask for it.
+
+### Removed
+- **`types` in `plugin.json`** — Claude Code ignores it at load time and the directory flags it as unknown. The
+  `types/index.d.ts` contract stays in the plugin.
 
 ## [1.17.1] - 2026-10-21
 

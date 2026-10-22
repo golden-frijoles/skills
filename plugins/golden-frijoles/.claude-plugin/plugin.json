@@ -5,6 +5,5 @@
   "author": {
     "name": "Daniel"
   },
-  "privacyPolicyUrl": "https://goldenfrijoles.com/privacy",
-  "types": "./types/index.d.ts"
+  "privacyPolicyUrl": "https://goldenfrijoles.com/privacy"
 }
