@@ -123,8 +123,9 @@ login, key or CLI that you set up; with none of them, everything stays on your m
 | **GitHub, Vercel, npm** | Through your own `gh`, `vercel` and `npx` | PRs and checks, deployments, downloading the kit |
 
 Golden Frijoles keeps what it receives while your account is open, and a product's data until you delete and purge it
-(`frijoles projects purge`, 30 days after deleting). Data sent to the other services is kept under their own terms. See
-[goldenfrijoles.com/privacy](https://goldenfrijoles.com/privacy).
+(`frijoles projects purge`, 30 days after deleting). Data sent to the other services is kept under their own terms.
+
+**Privacy:** [goldenfrijoles.com/privacy](https://goldenfrijoles.com/privacy)
 
 ## Consume the marketplace
 

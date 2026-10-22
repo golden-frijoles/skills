@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.2] - 2026-10-21
+
+### Added
+- **`plugin.json` names the privacy policy** (`privacyPolicyUrl`: https://goldenfrijoles.com/privacy), and the README has a
+  "Data and the services it contacts" section: which services the kit and CLI contact, when, what is sent, and how long
+  Golden Frijoles keeps it. The plugin directory's submission form asks for both.
+
 ## [1.17.1] - 2026-10-21
 
 ### Added
