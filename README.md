@@ -107,6 +107,25 @@ quarter of its height, or none — and where the band leaves no room it folds to
 `Roadmap/` the band then says `→ Next /golden-frijoles:setup`: that lights it up with your epic, its why, its
 progress and its spend.
 
+## Data and the services it contacts
+
+The plugin declares no connectors, and its hooks make no network calls: they only run local scripts (the screensaver's
+renderer, the build view, and the spend count, which reads your Claude Code transcripts on your machine). The skills
+run the kit (`npx @golden-frijoles/kit`) and the `frijoles` CLI, and those contact the services below. Each needs a
+login, key or CLI that you set up; with none of them, everything stays on your machine.
+
+| Service | When | What is sent |
+| --- | --- | --- |
+| **goldenfrijoles.com** (Golden Frijoles) | You sign in (`frijoles login`) or add a project key | Your project's roadmap (epic titles, why, targets, read dates, stages), its outcome report and product events; flags, metrics and experiments are read back. Sign-in stores your account email. |
+| **TypeSafe** (api.typesafe.ai) | You add a `TYPESAFE_API_KEY` | Short passages of your docs and code changes, checked against wording and code rules |
+| **Another model family** (Codex/OpenAI, agy, Vibe), through your own CLI | One is installed | The strategy draft for the strategy skill's cold read; PR diffs for cross-agent review and epic docs for drafting, if you switch those on in setup; the epic's pitch for the intent check (off by default) |
+| **Telegram, Slack** | You add a bot token or webhook | Status messages, to your own chat |
+| **GitHub, Vercel, npm** | Through your own `gh`, `vercel` and `npx` | PRs and checks, deployments, downloading the kit |
+
+Golden Frijoles keeps what it receives while your account is open, and a product's data until you delete and purge it
+(`frijoles projects purge`, 30 days after deleting). Data sent to the other services is kept under their own terms. See
+[goldenfrijoles.com/privacy](https://goldenfrijoles.com/privacy).
+
 ## Consume the marketplace
 
 The prompt at the top does this for you — an agent that reads it runs the right one of the two
