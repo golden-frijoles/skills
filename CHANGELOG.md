@@ -17,10 +17,6 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   network (the online board refresh's `git ls-remote` and `gh pr list`; the spend push only with `spend.telemetry`
   on), and that it writes only inside `<repo>/.golden-frijoles/`. The plugin directory's lints ask for it.
 
-### Removed
-- **`types` in `plugin.json`** — Claude Code ignores it at load time and the directory flags it as unknown. The
-  `types/index.d.ts` contract stays in the plugin.
-
 ## [1.17.1] - 2026-10-21
 
 ### Added
