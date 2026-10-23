@@ -7,6 +7,13 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.3] - 2026-10-23
+
+### Changed
+- **The cross-review rail accepts agy 1.4.6.** `cross-agent-doctor agy --fix` re-verified agy's print/--model contract
+  against the installed CLI (help contract ok, the fallback model answered) and moved the pin from 1.4.2. With the old
+  pin, a newer agy refused to review at all.
+
 ## [1.17.2] - 2026-10-21
 
 ### Added
