@@ -7,6 +7,12 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.4] - 2026-11-02
+
+### Changed
+- The cross-review rail accepts agy 1.4.11: agy self-updated, `cross-agent-doctor.mjs agy --fix` re-verified the
+  print/`--model` contract (primary at capacity, fallback answered) and moved `AGY_PINNED` from 1.4.6.
+
 ## [1.17.3] - 2026-10-23
 
 ### Changed
