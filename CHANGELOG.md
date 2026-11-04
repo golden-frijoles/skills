@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.5] - 2026-11-04
+
+### Changed
+- **The skills pin CLI 1.13.0**, which adds `frijoles events count <event> [--days N] [--by <tag>]`: an event per UTC day,
+  optionally split by a tag such as `utm_source` (traffic-relaunch S1.4).
+- The cross-review rail accepts agy 1.4.12: `cross-agent-doctor.mjs agy --fix` re-verified the print/`--model`
+  contract (primary and fallback answered) and moved `AGY_PINNED` from 1.4.11.
+
 ## [1.17.4] - 2026-11-02
 
 ### Changed
