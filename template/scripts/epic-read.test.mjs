@@ -1,6 +1,7 @@
 // epic-read.test.mjs — the read (result-record S2.1, D8): drafted by the agent, written only on approval.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -96,6 +97,24 @@ test('a shipped epic with no target: an owner verdict with evidence, one at a ti
   assert.equal(owner.state, 'ready');
 });
 
+// ⚠️ SEALED: git exports GIT_DIR into hooks, and it overrides cwd (see build-state.test.mjs).
+const GIT_ENV_TO_CLEAR = [
+  'GIT_DIR',
+  'GIT_INDEX_FILE',
+  'GIT_WORK_TREE',
+  'GIT_COMMON_DIR',
+  'GIT_OBJECT_DIRECTORY',
+];
+// The CLI under test runs in THIS process and reads the fixture's ship day with its own `git log`, so the process is
+// sealed as well: from a pre-push hook an inherited GIT_DIR sent that read to the real repository, which has no such file.
+for (const k of GIT_ENV_TO_CLEAR) delete process.env[k];
+const SHIP_DAY = '2026-10-04T12:00:00Z';
+function sealedEnv(base = process.env) {
+  const env = { ...base, GIT_AUTHOR_DATE: SHIP_DAY, GIT_COMMITTER_DATE: SHIP_DAY };
+  for (const k of GIT_ENV_TO_CLEAR) delete env[k];
+  return env;
+}
+
 // ── the CLI, on a real README ───────────────────────────────────────────────────────────────────────────────────
 
 function fixture(extra) {
@@ -131,6 +150,17 @@ function fixture(extra) {
       '',
     ].join('\n')
   );
+  // The ship day is a git date (the commit that wrote `status: shipped`), and with no history the extractor says
+  // "today". A read date that passes before shipping moves to ship day, so an uncommitted fixture made every
+  // `--today` here "not yet" from the real 5 Nov 2026 on. Committed on a fixed day, the fixture has no clock.
+  const git = (...a) =>
+    execFileSync('git', a, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'], env: sealedEnv() });
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 't@t');
+  git('config', 'user.name', 't');
+  git('config', 'commit.gpgsign', 'false');
+  git('add', '.');
+  git('commit', '-q', '-m', 'ship reminders');
   return { root, readme, done: () => rmSync(root, { recursive: true, force: true }) };
 }
 
