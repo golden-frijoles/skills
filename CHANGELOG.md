@@ -15,6 +15,11 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
   and silently reported zero migrations, so migration drift went quiet. It now reads both v3 shapes and v2's table, and
   calls `migration list --remote` (v3 removed `--linked`'s meaning; local is the default).
 
+### Changed
+- The cross-review rail accepts agy 1.5.11 (`cross-agent-doctor.mjs agy --fix`: help contract ok, primary and fallback
+  answered; `AGY_PINNED` moved from 1.4.12) and codex 0.166.0 (`CODEX_VERIFIED` from 0.154.0, after a clean structured
+  review on #461). Folded into this release rather than shipped as 1.17.7 minutes later.
+
 ## [1.17.5] - 2026-11-04
 
 ### Changed

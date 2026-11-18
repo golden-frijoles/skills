@@ -43,7 +43,7 @@ import { TOOL_TRANSCRIPT, assertReviewOutput } from './review-shape.mjs';
 export { assertReviewOutput };
 
 /** Codex CLI version last observed producing a real, structured review. Bump after a verified run. */
-export const CODEX_VERIFIED = '0.154.0';
+export const CODEX_VERIFIED = '0.166.0';
 
 /** Minimal glob → RegExp: `**` any depth, `*` within a segment, `?` one char. Anchored, case-sensitive. */
 export function globToRegExp(glob) {
