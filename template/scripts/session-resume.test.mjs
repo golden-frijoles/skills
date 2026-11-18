@@ -10,6 +10,7 @@ import {
   resolveRepos,
   parseWorktreeListPorcelain,
   parseMigrationListTable,
+  gatherMigrationDrift,
   rollupHasFailure,
   rollupHasPending,
   decideStrayBranch,
@@ -1163,4 +1164,31 @@ for (const [shape, fixture] of [
 
 test('parseMigrationListTable: JSON that is not a migration list falls back to the table reader (→ no rows)', () => {
   assert.equal(parseMigrationListTable('{"message":"nope"}').rows.length, 0);
+});
+
+// ---- gatherMigrationDrift: an output the parser cannot read is "could not look", never a clean all-clear ----
+
+function driftWith(stdout) {
+  return gatherMigrationDrift({
+    repos: [{ repo: 'acme/app', dir: 'app' }],
+    root: '/r',
+    existsSyncFn: () => true,
+    readdirSyncFn: () => ['20260101000000_a.sql', '20260102000000_b.sql'],
+    spawn: () => ({ status: 0, stdout, stderr: '' }),
+  });
+}
+
+test('gatherMigrationDrift: files exist but 0 rows parsed → unavailable with a reason (a CLI output change stays loud)', () => {
+  for (const stdout of ['Target: project x\n{"migrations":[]}', '{"migrations":[]}', 'something new entirely']) {
+    const [res] = driftWith(stdout);
+    assert.equal(res.available, false, stdout);
+    assert.match(res.reason, /unrecognised `supabase migration list` output \(2 migration files, 0 rows parsed\)/);
+  }
+});
+
+test('gatherMigrationDrift: parsed rows are reported as available', () => {
+  const [res] = driftWith(MIGRATION_FIXTURE_V3_JSON);
+  assert.equal(res.available, true);
+  assert.equal(res.fileCount, 2);
+  assert.deepEqual(res.unappliedLocal, ['20260722170000']);
 });

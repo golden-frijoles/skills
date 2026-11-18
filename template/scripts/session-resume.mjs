@@ -832,7 +832,7 @@ function gatherRepoGh({ repo, listPullsFn, mergeFn, rollupFn }) {
   return { available: true, open: openDetailed, recentMerged };
 }
 
-function gatherMigrationDrift({ repos, root, existsSyncFn, readdirSyncFn, spawn }) {
+export function gatherMigrationDrift({ repos, root, existsSyncFn, readdirSyncFn, spawn }) {
   const results = [];
   for (const r of repos) {
     if (r.dir == null) continue; // no local checkout — nothing to compare
@@ -861,11 +861,22 @@ function gatherMigrationDrift({ repos, root, existsSyncFn, readdirSyncFn, spawn 
       });
       continue;
     }
+    const parsed = parseMigrationListTable(res.stdout);
+    // Files exist, so the CLI must have listed rows. Zero rows means its output changed shape (CLI v3 did exactly that),
+    // and reporting "available, nothing unapplied" would be the silent all-clear this check exists to prevent.
+    if (!parsed.rows.length) {
+      results.push({
+        repo: r.repo,
+        available: false,
+        reason: `unrecognised \`supabase migration list\` output (${files.length} migration files, 0 rows parsed)`,
+      });
+      continue;
+    }
     results.push({
       repo: r.repo,
       available: true,
       fileCount: files.length,
-      ...parseMigrationListTable(res.stdout),
+      ...parsed,
     });
   }
   return results;
