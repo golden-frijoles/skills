@@ -7,6 +7,14 @@ newest heading are always the same number — `scripts/check-release.mjs` enforc
 
 ## [Unreleased]
 
+## [1.17.6] - 2026-11-18
+
+### Fixed
+- **`session-resume` reads Supabase CLI v3's `migration list`.** v3 prints JSON when it detects an agent and a
+  backtick-quoted table otherwise (`-o json` is still ignored for this subcommand); the v2 table parser matched neither
+  and silently reported zero migrations, so migration drift went quiet. It now reads both v3 shapes and v2's table, and
+  calls `migration list --remote` (v3 removed `--linked`'s meaning; local is the default).
+
 ## [1.17.5] - 2026-11-04
 
 ### Changed

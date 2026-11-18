@@ -21,7 +21,7 @@
 // `git worktree list` + each worktree's own dirty state, open PRs with mergeability + CI rollup, recently
 // merged PRs — across the SAME repos standup.mjs reads (reporting.config.json). Plus migration drift
 // (D5): repo migration files vs the live `supabase_migrations.schema_migrations`, both directions, via
-// `supabase migration list --linked` (a read-only CLI call — this script NEVER applies a migration, never
+// `supabase migration list --remote` (a read-only CLI call — this script NEVER applies a migration, never
 // `db push`). That check only runs against a repo that actually owns a non-empty `supabase/migrations`
 // directory — a checkout with no migrations of its own is skipped uneventfully (not flagged as 100%
 // drift) rather than compared against migration files that simply don't live there. A project that does
@@ -145,17 +145,38 @@ export function parseWorktreeListPorcelain(text) {
   });
 }
 
-// `supabase migration list --linked` prints a 3-column ASCII table (Local | Remote | Time), NOT
+// `supabase migration list --remote` prints a 3-column ASCII table (Local | Remote | Time), NOT
 // machine-readable JSON even with `-o json` (confirmed live, CLI 2.98.1 — the flag is accepted but
 // ignored for this subcommand), so this parses the pretty table directly. A blank Local column means
 // "applied remotely, no local file"; a blank Remote column means "local file, not applied remotely" — D5
 // wants BOTH directions. Header/separator rows (`Local | Remote | ...`, `---|---|---`) are skipped; a
 // data row needs at least one 14-digit timestamp version in either column.
+//
+// CLI v3 (verified live, 3.2.0, 2026-11-18) prints one of two shapes, and the caller cannot pick: when it detects an
+// agent (AI_AGENT etc.) stdout is JSON `{"migrations":[{"local","remote","time"}…]}`; otherwise it is the same table
+// with every cell wrapped in backticks. `-o json` is still ignored for this subcommand (it yields the table). Both
+// shapes, and v2's bare table, reduce to the same rows here.
+function migrationRowsFromJson(text) {
+  const t = (text || '').trim();
+  if (!t.startsWith('{')) return null;
+  let doc;
+  try {
+    doc = JSON.parse(t);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(doc?.migrations)) return null;
+  const ver = (v) => (typeof v === 'string' && /^\d{14}$/.test(v.trim()) ? v.trim() : null);
+  return doc.migrations
+    .map((m) => ({ local: ver(m?.local), remote: ver(m?.remote) }))
+    .filter((r) => r.local || r.remote);
+}
+
 export function parseMigrationListTable(text) {
-  const rows = [];
-  for (const raw of (text || '').split('\n')) {
+  const rows = migrationRowsFromJson(text) ?? [];
+  for (const raw of rows.length ? [] : (text || '').split('\n')) {
     if (!raw.includes('|')) continue;
-    const parts = raw.split('|').map((s) => s.trim());
+    const parts = raw.split('|').map((s) => s.trim().replace(/^`(.*)`$/, '$1').trim());
     if (parts.length < 2) continue;
     const [local, remote] = parts;
     if (/^local$/i.test(local) || /^-+$/.test(local.replace(/\s/g, ''))) continue;
@@ -826,7 +847,7 @@ function gatherMigrationDrift({ repos, root, existsSyncFn, readdirSyncFn, spawn 
     if (!files.length) continue;
 
     const cwd = join(root, r.dir);
-    const res = spawn('supabase', ['migration', 'list', '--linked'], {
+    const res = spawn('supabase', ['migration', 'list', '--remote'], {
       cwd,
       encoding: 'utf8',
       timeout: MIGRATION_TIMEOUT_MS,

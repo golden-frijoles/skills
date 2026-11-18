@@ -1123,3 +1123,44 @@ test('result-record D9: a DERIVED read date reaches session-resume — the extra
   assert.deepEqual(decideReadsDue([row], '2026-11-02'), [], 'not before shipped + 30');
   assert.match(decideReadsDue([row], '2026-11-03')[0].detail, /Read due: Derived · since 3 Nov/);
 });
+
+// ---- parseMigrationListTable under CLI v3 (verified live, 3.2.0, 2026-11-18) ----
+// The matched rows below are real output. Production had no drift that day, so the local-only and remote-only rows
+// are NOT observed live under v3: they reuse v2's shape (blank cell / missing key) and say so here.
+
+const MIGRATION_FIXTURE_V3_TABLE = [
+  '  ',
+  '   Local            | Remote           | Time (UTC)            ',
+  '  ------------------|------------------|-----------------------',
+  '   `20260713220000` | `20260713220000` | `2026-07-13 22:00:00` ',
+  '   `20260714150000` | `20260714150000` | `2026-07-14 15:00:00` ',
+  '   `20260722170000` |                  | `2026-07-22 17:00:00` ', // local-only (shape assumed)
+  '                    | `20260725120000` | `2026-07-25 12:00:00` ', // remote-only (shape assumed)
+].join('\n');
+
+const MIGRATION_FIXTURE_V3_JSON = JSON.stringify({
+  migrations: [
+    { local: '20260713220000', remote: '20260713220000', time: '2026-07-13 22:00:00' },
+    { local: '20260714150000', remote: '20260714150000', time: '2026-07-14 15:00:00' },
+    { local: '20260722170000', remote: '', time: '2026-07-22 17:00:00' }, // local-only (shape assumed)
+    { remote: '20260725120000', time: '2026-07-25 12:00:00' }, // remote-only (shape assumed)
+  ],
+  message: 'Migrations listed',
+  target: { kind: 'linked', environment: 'production' },
+});
+
+for (const [shape, fixture] of [
+  ['v3 backtick table (human run)', MIGRATION_FIXTURE_V3_TABLE],
+  ['v3 JSON (agent run)', MIGRATION_FIXTURE_V3_JSON],
+]) {
+  test(`parseMigrationListTable: ${shape} reads the same rows as v2's table`, () => {
+    const parsed = parseMigrationListTable(fixture);
+    assert.equal(parsed.rows.length, 4);
+    assert.deepEqual(parsed.unappliedLocal, ['20260722170000']);
+    assert.deepEqual(parsed.appliedNoFile, ['20260725120000']);
+  });
+}
+
+test('parseMigrationListTable: JSON that is not a migration list falls back to the table reader (→ no rows)', () => {
+  assert.equal(parseMigrationListTable('{"message":"nope"}').rows.length, 0);
+});
